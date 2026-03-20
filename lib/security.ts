@@ -1,49 +1,49 @@
-import { createHmac, timingSafeEqual } from "crypto"
-import path from "path"
-
 export const SELF_HOSTED_ACCESS_COOKIE_NAME = "taxhacker_self_hosted_access"
+const textEncoder = new TextEncoder()
 
-export function resolvePathWithinBase(basePath: string, ...paths: string[]) {
-  const normalizedBasePath = path.resolve(basePath)
-  const resolvedPath = path.resolve(normalizedBasePath, ...paths)
-
-  if (resolvedPath !== normalizedBasePath && !resolvedPath.startsWith(`${normalizedBasePath}${path.sep}`)) {
-    throw new Error("Path traversal detected")
+function getWebCrypto() {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Web Crypto API is not available")
   }
 
-  return resolvedPath
+  return globalThis.crypto
 }
 
-export function normalizeBackupFilePath(filePath: string) {
-  const normalizedInputPath = filePath.replaceAll("\\", "/")
-  const strippedUploadsPrefix = normalizedInputPath.replace(/^.*\/uploads\//, "").replace(/^\/+/, "")
-  const normalizedRelativePath = path.posix.normalize(strippedUploadsPrefix)
-  const pathSegments = normalizedRelativePath.split("/").filter(Boolean)
+function toHex(buffer: ArrayBuffer) {
+  return Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, "0")).join("")
+}
 
-  if (pathSegments[0]?.includes("@")) {
-    pathSegments.shift()
+function timingSafeEqual(left: string, right: string) {
+  if (left.length !== right.length) {
+    return false
   }
 
-  const cleanedRelativePath = pathSegments.join("/")
+  let mismatch = 0
 
-  if (
-    !cleanedRelativePath ||
-    cleanedRelativePath === "." ||
-    cleanedRelativePath === ".." ||
-    cleanedRelativePath.startsWith("../") ||
-    path.posix.isAbsolute(cleanedRelativePath)
-  ) {
-    throw new Error("Invalid backup file path")
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index)
   }
 
-  return cleanedRelativePath
+  return mismatch === 0
 }
 
-export function buildSelfHostedAccessCookieValue(adminToken: string, authSecret: string) {
-  return createHmac("sha256", authSecret).update(adminToken).digest("hex")
+async function signSelfHostedAccess(adminToken: string, authSecret: string) {
+  const key = await getWebCrypto().subtle.importKey(
+    "raw",
+    textEncoder.encode(authSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+
+  return getWebCrypto().subtle.sign("HMAC", key, textEncoder.encode(adminToken))
 }
 
-export function hasSelfHostedAccess(
+export async function buildSelfHostedAccessCookieValue(adminToken: string, authSecret: string) {
+  return toHex(await signSelfHostedAccess(adminToken, authSecret))
+}
+
+export async function hasSelfHostedAccess(
   cookieValue: string | null | undefined,
   adminToken: string | null | undefined,
   authSecret: string
@@ -52,13 +52,6 @@ export function hasSelfHostedAccess(
     return false
   }
 
-  const expectedValue = buildSelfHostedAccessCookieValue(adminToken, authSecret)
-  const cookieBuffer = Buffer.from(cookieValue)
-  const expectedBuffer = Buffer.from(expectedValue)
-
-  if (cookieBuffer.length !== expectedBuffer.length) {
-    return false
-  }
-
-  return timingSafeEqual(cookieBuffer, expectedBuffer)
+  const expectedValue = await buildSelfHostedAccessCookieValue(adminToken, authSecret)
+  return timingSafeEqual(cookieValue, expectedValue)
 }

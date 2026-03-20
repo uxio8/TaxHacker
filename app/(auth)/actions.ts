@@ -24,13 +24,17 @@ export async function selfHostedGetStartedAction(formData: FormData) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(config.selfHosted.accessCookieName, buildSelfHostedAccessCookieValue(submittedToken, config.auth.secret), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: config.app.baseURL.startsWith("https://"),
-    path: "/",
-    maxAge: 30 * 24 * 60 * 60,
-  })
+  cookieStore.set(
+    config.selfHosted.accessCookieName,
+    await buildSelfHostedAccessCookieValue(submittedToken, config.auth.secret),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: config.app.baseURL.startsWith("https://"),
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60,
+    }
+  )
 
   const existingUser = await getSelfHostedUser()
   const user = existingUser ?? (await getOrCreateSelfHostedUser())

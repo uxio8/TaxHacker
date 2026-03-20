@@ -2,7 +2,7 @@ import { File, Transaction, User } from "@/prisma/client"
 import { access, constants, readdir, stat } from "fs/promises"
 import path from "path"
 import config from "./config"
-import { resolvePathWithinBase } from "./security"
+import { resolvePathWithinBase } from "./file-security"
 
 export const FILE_UPLOAD_PATH = path.resolve(process.env.UPLOAD_PATH || "./uploads")
 export const FILE_UNSORTED_DIRECTORY_NAME = "unsorted"

@@ -9,6 +9,10 @@ export async function subscribeToNewsletterAction(email: string) {
       return { success: false, error: "Invalid email address" }
     }
 
+    if (!resend || !config.email.audienceId) {
+      return { success: false, error: "Newsletter is not configured yet" }
+    }
+
     const existingContacts = await resend.contacts.list({
       audienceId: config.email.audienceId,
     })

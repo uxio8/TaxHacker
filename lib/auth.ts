@@ -28,11 +28,15 @@ export const auth = betterAuth({
   appName: config.app.title,
   baseURL: config.app.baseURL,
   secret: config.auth.secret,
-  email: {
-    provider: "resend",
-    from: config.email.from,
-    resend,
-  },
+  ...(resend
+    ? {
+        email: {
+          provider: "resend" as const,
+          from: config.email.from,
+          resend,
+        },
+      }
+    : {}),
   session: {
     strategy: "jwt",
     expiresIn: 180 * 24 * 60 * 60, // 365 days
@@ -72,7 +76,7 @@ async function hasValidatedSelfHostedAccess() {
 
   const cookieStore = await cookies()
 
-  return hasSelfHostedAccess(
+  return await hasSelfHostedAccess(
     cookieStore.get(config.selfHosted.accessCookieName)?.value,
     config.selfHosted.adminToken,
     config.auth.secret

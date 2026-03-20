@@ -16,7 +16,7 @@ export async function GET() {
   }
 
   const cookieStore = await cookies()
-  const hasAccess = hasSelfHostedAccess(
+  const hasAccess = await hasSelfHostedAccess(
     cookieStore.get(config.selfHosted.accessCookieName)?.value,
     config.selfHosted.adminToken,
     config.auth.secret

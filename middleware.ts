@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 export default async function middleware(request: NextRequest) {
   if (globalConfig.selfHosted.isEnabled) {
-    const hasAccess = hasSelfHostedAccess(
+    const hasAccess = await hasSelfHostedAccess(
       request.cookies.get(globalConfig.selfHosted.accessCookieName)?.value,
       globalConfig.selfHosted.adminToken,
       globalConfig.auth.secret

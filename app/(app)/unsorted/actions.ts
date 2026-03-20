@@ -6,6 +6,7 @@ import { buildLLMPrompt } from "@/ai/prompt"
 import { fieldsToJsonSchema } from "@/ai/schema"
 import { transactionFormSchema } from "@/forms/transactions"
 import { ActionState } from "@/lib/actions"
+import { canAnalyzeFileMimeType, getAnalyzeMimeTypeError } from "@/lib/analysis-support"
 import { getCurrentUser, isAiBalanceExhausted, isSubscriptionExpired } from "@/lib/auth"
 import {
   getDirectorySize,
@@ -35,6 +36,13 @@ export async function analyzeFileAction(
 
   if (!file || file.userId !== user.id) {
     return { success: false, error: "File not found or does not belong to the user" }
+  }
+
+  if (!canAnalyzeFileMimeType(file.mimetype)) {
+    return {
+      success: false,
+      error: getAnalyzeMimeTypeError(file.mimetype),
+    }
   }
 
   if (isAiBalanceExhausted(user)) {

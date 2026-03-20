@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db"
-import { normalizeBackupFilePath } from "@/lib/security"
+import { normalizeBackupFilePath } from "@/lib/file-security"
 
 type BackupSetting = {
   filename: string

@@ -60,7 +60,7 @@ export default async function SelfHostedWelcomePage({
   const params = await searchParams
   const user = await getSelfHostedUser()
   const cookieStore = await cookies()
-  const hasAccess = hasSelfHostedAccess(
+  const hasAccess = await hasSelfHostedAccess(
     cookieStore.get(config.selfHosted.accessCookieName)?.value,
     config.selfHosted.adminToken,
     config.auth.secret
