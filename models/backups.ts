@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { normalizeBackupFilePath } from "@/lib/security"
 
 type BackupSetting = {
   filename: string
@@ -167,7 +168,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
       return {
         id: json.id,
         filename: json.filename,
-        path: json.path ? json.path.replace(/^.*\/uploads\//, "") : "",
+        path: normalizeBackupFilePath(json.path || ""),
         metadata: json.metadata,
         isReviewed: json.isReviewed,
         mimetype: json.mimetype,

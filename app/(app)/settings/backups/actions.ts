@@ -4,6 +4,7 @@ import { ActionState } from "@/lib/actions"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getUserUploadsDirectory, safePathJoin } from "@/lib/files"
+import { normalizeBackupFilePath } from "@/lib/security"
 import { MODEL_BACKUP, modelFromJSON } from "@/models/backups"
 import fs from "fs/promises"
 import JSZip from "jszip"
@@ -66,6 +67,8 @@ export async function restoreBackupAction(
       console.warn("No metadata found in backup, assuming legacy format")
     }
 
+    await validateBackupFilesArchive(zip)
+
     // Remove existing data
     if (REMOVE_EXISTING_DATA) {
       await cleanupUserTables(user.id)
@@ -101,8 +104,8 @@ export async function restoreBackupAction(
       const userUploadsDirectory = getUserUploadsDirectory(user)
 
       for (const file of files) {
-        const filePathWithoutPrefix = path.normalize(file.path.replace(/^.*\/uploads\//, ""))
-        const zipFilePath = path.join("data/uploads", filePathWithoutPrefix)
+        const filePathWithoutPrefix = normalizeBackupFilePath(file.path)
+        const zipFilePath = toBackupZipPath(filePathWithoutPrefix)
         const zipFile = zip.file(zipFilePath)
         if (!zipFile) {
           console.log(`File ${file.path} not found in backup`)
@@ -111,10 +114,6 @@ export async function restoreBackupAction(
 
         const fileContents = await zipFile.async("nodebuffer")
         const fullFilePath = safePathJoin(userUploadsDirectory, filePathWithoutPrefix)
-        if (!fullFilePath.startsWith(path.normalize(userUploadsDirectory))) {
-          console.error(`Attempted path traversal detected for file ${file.path}`)
-          continue
-        }
 
         try {
           await fs.mkdir(path.dirname(fullFilePath), { recursive: true })
@@ -149,6 +148,42 @@ export async function restoreBackupAction(
       error: `Error restoring from backup: ${error instanceof Error ? error.message : String(error)}`,
     }
   }
+}
+
+async function validateBackupFilesArchive(zip: JSZip) {
+  const filesManifest = zip.file("data/files.json")
+  if (!filesManifest) {
+    return
+  }
+
+  let records: unknown
+  try {
+    records = JSON.parse(await filesManifest.async("string"))
+  } catch (error) {
+    throw new Error("Invalid files.json in backup")
+  }
+
+  if (!Array.isArray(records)) {
+    throw new Error("Invalid files.json in backup")
+  }
+
+  for (const record of records) {
+    if (!record || typeof record !== "object") {
+      throw new Error("Invalid files.json record in backup")
+    }
+
+    const maybePath = "path" in record ? record.path : ""
+    const normalizedPath = normalizeBackupFilePath(typeof maybePath === "string" ? maybePath : "")
+    const zipFilePath = toBackupZipPath(normalizedPath)
+
+    if (!zip.file(zipFilePath)) {
+      throw new Error(`Missing uploaded file in backup: ${normalizedPath}`)
+    }
+  }
+}
+
+function toBackupZipPath(relativeFilePath: string) {
+  return `data/uploads/${relativeFilePath.split(path.sep).join("/")}`
 }
 
 async function cleanupUserTables(userId: string) {

@@ -137,12 +137,15 @@ services:
       - "7331:7331"
     environment:
       - SELF_HOSTED_MODE=true
+      - SELF_HOSTED_ADMIN_TOKEN=replace-with-a-long-random-string
       - UPLOAD_PATH=/app/data/uploads
       - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/taxhacker
     volumes:
       - ./data:/app/data
     restart: unless-stopped
 ```
+
+When `SELF_HOSTED_MODE=true`, the instance no longer auto-logs the first visitor in. You must set `SELF_HOSTED_ADMIN_TOKEN` and use that token on the `/self-hosted` screen to unlock the app. On the first successful access, TaxHacker will also ask for the initial provider, API key, and default currency.
 
 ### Environment Variables
 
@@ -154,7 +157,8 @@ Configure TaxHacker for your specific needs with these environment variables:
 | `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user@localhost:5432/taxhacker` |
 | `PORT` | No | Port to run the application on | `7331` (default) |
 | `BASE_URL` | No | Base URL for the application | `http://localhost:7331` |
-| `SELF_HOSTED_MODE` | No | Set to "true" for self-hosting: enables auto-login, custom API keys, and additional features | `true` |
+| `SELF_HOSTED_MODE` | No | Set to `true` to enable the self-hosted flow, custom API keys, and instance-level configuration | `true` |
+| `SELF_HOSTED_ADMIN_TOKEN` | Yes when `SELF_HOSTED_MODE=true` | Shared secret required to unlock the self-hosted instance and complete first-time setup | `replace-with-a-long-random-string` |
 | `DISABLE_SIGNUP` | No | Disable new user registration on your instance | `false` |
 | `BETTER_AUTH_SECRET` | Yes | Secret key for authentication (minimum 16 characters) | `your-secure-random-key` |
 

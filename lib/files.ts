@@ -2,6 +2,7 @@ import { File, Transaction, User } from "@/prisma/client"
 import { access, constants, readdir, stat } from "fs/promises"
 import path from "path"
 import config from "./config"
+import { resolvePathWithinBase } from "./security"
 
 export const FILE_UPLOAD_PATH = path.resolve(process.env.UPLOAD_PATH || "./uploads")
 export const FILE_UNSORTED_DIRECTORY_NAME = "unsorted"
@@ -51,11 +52,7 @@ function formatFilePath(filename: string, date: Date, format = "{YYYY}/{MM}/{nam
 }
 
 export function safePathJoin(basePath: string, ...paths: string[]) {
-  const joinedPath = path.join(basePath, path.normalize(path.join(...paths)))
-  if (!joinedPath.startsWith(basePath)) {
-    throw new Error("Path traversal detected")
-  }
-  return joinedPath
+  return resolvePathWithinBase(basePath, ...paths)
 }
 
 export async function fileExists(filePath: string) {

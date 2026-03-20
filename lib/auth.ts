@@ -6,10 +6,11 @@ import { prismaAdapter } from "better-auth/adapters/prisma"
 import { APIError } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
 import { emailOTP } from "better-auth/plugins/email-otp"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "./db"
 import { resend, sendOTPCodeEmail } from "./email"
+import { hasSelfHostedAccess } from "./security"
 
 export type UserProfile = {
   id: string
@@ -64,8 +65,26 @@ export const auth = betterAuth({
   ],
 })
 
+async function hasValidatedSelfHostedAccess() {
+  if (!config.selfHosted.isEnabled || !config.selfHosted.adminToken) {
+    return false
+  }
+
+  const cookieStore = await cookies()
+
+  return hasSelfHostedAccess(
+    cookieStore.get(config.selfHosted.accessCookieName)?.value,
+    config.selfHosted.adminToken,
+    config.auth.secret
+  )
+}
+
 export async function getSession() {
   if (config.selfHosted.isEnabled) {
+    if (!(await hasValidatedSelfHostedAccess())) {
+      return null
+    }
+
     const user = await getSelfHostedUser()
     return user ? { user } : null
   }
@@ -77,11 +96,15 @@ export async function getSession() {
 
 export async function getCurrentUser(): Promise<User> {
   if (config.selfHosted.isEnabled) {
+    if (!(await hasValidatedSelfHostedAccess())) {
+      redirect(config.selfHosted.welcomeUrl)
+    }
+
     const user = await getSelfHostedUser()
     if (user) {
       return user
     } else {
-      redirect(config.selfHosted.redirectUrl)
+      redirect(config.selfHosted.welcomeUrl)
     }
   }
 

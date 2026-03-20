@@ -1,9 +1,11 @@
 import { z } from "zod"
+import { SELF_HOSTED_ACCESS_COOKIE_NAME } from "./security"
 
 const envSchema = z.object({
   BASE_URL: z.string().url().default("http://localhost:7331"),
   PORT: z.string().default("7331"),
-  SELF_HOSTED_MODE: z.enum(["true", "false"]).default("true"),
+  SELF_HOSTED_MODE: z.enum(["true", "false"]).default("false"),
+  SELF_HOSTED_ADMIN_TOKEN: z.string().trim().optional(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL_NAME: z.string().default("gpt-4o-mini"),
   GOOGLE_API_KEY: z.string().optional(),
@@ -49,6 +51,8 @@ const config = {
   },
   selfHosted: {
     isEnabled: env.SELF_HOSTED_MODE === "true",
+    adminToken: env.SELF_HOSTED_ADMIN_TOKEN,
+    accessCookieName: SELF_HOSTED_ACCESS_COOKIE_NAME,
     redirectUrl: "/self-hosted/redirect",
     welcomeUrl: "/self-hosted",
   },
