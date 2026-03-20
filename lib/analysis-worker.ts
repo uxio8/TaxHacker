@@ -11,16 +11,19 @@ import {
   type AnalysisJobAttachment,
   type AnalysisJobProviderConfig,
 } from "./analysis-jobs.ts"
+import { recoverStaleAnalysisJobs } from "./analysis-worker-recovery.ts"
 import {
   getPoolCloudClientInstanceId,
   PoolCloudClient,
   POOL_CLOUD_LEASE_OUTCOME,
 } from "./pool-cloud-client.ts"
+import { buildPoolCloudCodexCommand } from "./pool-cloud-codex-command.ts"
 
 const WORKER_POLL_INTERVAL_MS = 1500
 const POOL_CLOUD_LEASE_TTL_SEC = 300
 const POOL_CLOUD_RENEW_INTERVAL_MS = 30_000
 const ANALYSIS_TIMEOUT_MS = 10 * 60 * 1000
+const STALE_ANALYSIS_JOB_TIMEOUT_MS = ANALYSIS_TIMEOUT_MS + 60 * 1000
 
 type AnalysisJobRecord = {
   id: string
@@ -45,6 +48,14 @@ export async function runAnalysisWorker() {
   process.on("SIGTERM", stopWorker)
 
   try {
+    const recoveredJobs = await recoverStaleAnalysisJobs(prisma, {
+      staleAfterMs: STALE_ANALYSIS_JOB_TIMEOUT_MS,
+    })
+
+    if (recoveredJobs > 0) {
+      console.warn(`Recovered ${recoveredJobs} stale analysis job(s) before polling for new work`)
+    }
+
     while (!stopping) {
       const job = await claimNextAnalysisJob(prisma)
       if (!job) {
@@ -257,42 +268,34 @@ async function requestPoolCloudAnalysis(
     await writeFile(schemaPath, JSON.stringify(schema, null, 2), "utf8")
 
     const commandResult = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-      const args = [
-        "exec",
-        "--skip-git-repo-check",
-        "--sandbox",
-        "read-only",
-        "--output-schema",
+      const command = buildPoolCloudCodexCommand({
+        workingDirectory,
         schemaPath,
-        "--output-last-message",
         resultPath,
-      ]
-
-      for (const attachment of attachments) {
-        if (attachment.filePath) {
-          args.push("--image", attachment.filePath)
-        }
-      }
-
-      args.push(prompt)
-
-      const child = spawn("codex", args, {
-        cwd: workingDirectory,
-        env: {
+        prompt,
+        attachments,
+        environment: {
           ...process.env,
           CODEX_HOME: codexHome,
         },
+      })
+
+      const child = spawn(command.command, command.args, {
+        cwd: command.cwd,
+        env: command.env,
+        stdio: command.stdio,
       })
 
       commandStarted = true
       let stdout = ""
       let stderr = ""
 
-      child.stdout.on("data", (chunk) => {
+      child.stdin?.end(command.prompt)
+      child.stdout?.on("data", (chunk) => {
         stdout += String(chunk)
       })
 
-      child.stderr.on("data", (chunk) => {
+      child.stderr?.on("data", (chunk) => {
         stderr += String(chunk)
       })
 

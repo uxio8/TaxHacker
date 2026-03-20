@@ -2,7 +2,7 @@ import { File, Transaction, User } from "@/prisma/client"
 import { access, constants, readdir, stat } from "fs/promises"
 import path from "path"
 import config from "./config"
-import { resolvePathWithinBase } from "./file-security"
+import { resolvePathWithinBase, resolveRelativePath } from "./file-security"
 
 export const FILE_UPLOAD_PATH = path.resolve(process.env.UPLOAD_PATH || "./uploads")
 export const FILE_UNSORTED_DIRECTORY_NAME = "unsorted"
@@ -24,17 +24,17 @@ export function getUserPreviewsDirectory(user: User) {
 
 export function unsortedFilePath(fileUuid: string, filename: string) {
   const fileExtension = path.extname(filename)
-  return safePathJoin(FILE_UNSORTED_DIRECTORY_NAME, `${fileUuid}${fileExtension}`)
+  return resolveRelativePath(FILE_UNSORTED_DIRECTORY_NAME, `${fileUuid}${fileExtension}`)
 }
 
 export function previewFilePath(fileUuid: string, page: number) {
-  return safePathJoin(FILE_PREVIEWS_DIRECTORY_NAME, `${fileUuid}.${page}.webp`)
+  return resolveRelativePath(FILE_PREVIEWS_DIRECTORY_NAME, `${fileUuid}.${page}.webp`)
 }
 
 export function getTransactionFileUploadPath(fileUuid: string, filename: string, transaction: Transaction) {
   const fileExtension = path.extname(filename)
   const storedFileName = `${fileUuid}${fileExtension}`
-  return formatFilePath(storedFileName, transaction.issuedAt || new Date())
+  return resolveRelativePath(formatFilePath(storedFileName, transaction.issuedAt || new Date()))
 }
 
 export function fullPathForFile(user: User, file: File) {

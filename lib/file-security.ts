@@ -11,6 +11,31 @@ export function resolvePathWithinBase(basePath: string, ...paths: string[]) {
   return resolvedPath
 }
 
+export function resolveRelativePath(...paths: string[]) {
+  const normalizedSegments = paths.map((segment) => segment.replaceAll("\\", "/"))
+  const hasParentTraversal = normalizedSegments.some((segment) =>
+    segment.split("/").some((part) => part === "..")
+  )
+
+  if (hasParentTraversal) {
+    throw new Error("Invalid relative path")
+  }
+
+  const normalizedRelativePath = path.posix.normalize(path.posix.join(...normalizedSegments))
+
+  if (
+    !normalizedRelativePath ||
+    normalizedRelativePath === "." ||
+    normalizedRelativePath === ".." ||
+    normalizedRelativePath.startsWith("../") ||
+    path.posix.isAbsolute(normalizedRelativePath)
+  ) {
+    throw new Error("Invalid relative path")
+  }
+
+  return normalizedRelativePath
+}
+
 export function normalizeBackupFilePath(filePath: string) {
   const normalizedInputPath = filePath.replaceAll("\\", "/")
   const strippedUploadsPrefix = normalizedInputPath.replace(/^.*\/uploads\//, "").replace(/^\/+/, "")
