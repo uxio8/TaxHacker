@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
-import { PROVIDERS } from "@/lib/llm-providers"
 import { hasSelfHostedAccess } from "@/lib/security"
 import { getSelfHostedUser } from "@/models/users"
 import { ShieldAlert } from "lucide-react"
@@ -34,7 +33,7 @@ export default async function SelfHostedWelcomePage({
             To use TaxHacker in self-hosted mode, please set <code className="font-bold">SELF_HOSTED_MODE=true</code> in
             your environment.
           </p>
-          <p>In self-hosted mode you can use your own ChatGPT API key and store your data on your own server.</p>
+          <p>In self-hosted mode you can use your own AI providers, including Pool Cloud, and store your data on your own server.</p>
         </CardDescription>
       </Card>
     )
@@ -70,12 +69,6 @@ export default async function SelfHostedWelcomePage({
     redirect(config.selfHosted.redirectUrl)
   }
 
-  const defaultProvider = PROVIDERS[0].key
-  const defaultApiKeys: Record<string, string> = {
-    openai: config.ai.openaiApiKey ?? "",
-    google: config.ai.googleApiKey ?? "",
-    mistral: config.ai.mistralApiKey ?? "",
-  }
   const requiresSetup = !user
   const errorMessage = params.error ? SELF_HOSTED_ERROR_MESSAGES[params.error] : null
 
@@ -97,11 +90,7 @@ export default async function SelfHostedWelcomePage({
           <p className="text-sm text-red-600 text-center">{errorMessage}</p>
         </CardContent>
       ) : null}
-      <SelfHostedSetupFormClient
-        defaultProvider={defaultProvider}
-        defaultApiKeys={defaultApiKeys}
-        requiresSetup={requiresSetup}
-      />
+      <SelfHostedSetupFormClient requiresSetup={requiresSetup} />
     </Card>
   )
 }

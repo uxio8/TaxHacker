@@ -1,7 +1,7 @@
 "use client"
 
 import { useNotification } from "@/app/(app)/context"
-import { analyzeFileAction, deleteUnsortedFileAction, saveFileAsTransactionAction } from "@/app/(app)/unsorted/actions"
+import { deleteUnsortedFileAction, saveFileAsTransactionAction, startAnalysisJobAction } from "@/app/(app)/unsorted/actions"
 import { CurrencyConverterTool } from "@/components/agents/currency-converter"
 import { ItemsDetectTool } from "@/components/agents/items-detect"
 import ToolWindow from "@/components/agents/tool-window"
@@ -17,6 +17,15 @@ import { Category, Currency, Field, File, Project } from "@/prisma/client"
 import { format } from "date-fns"
 import { ArrowDownToLine, Brain, Loader2, Trash2 } from "lucide-react"
 import { startTransition, useActionState, useMemo, useState } from "react"
+
+const ANALYSIS_JOB_POLL_INTERVAL_MS = 1500
+const ANALYSIS_JOB_TIMEOUT_MS = 10 * 60 * 1000
+
+type AnalysisJobResponse = {
+  status: string
+  error?: string | null
+  result?: Record<string, string> | null
+}
 
 export default function AnalyzeForm({
   file,
@@ -114,24 +123,50 @@ export default function AnalyzeForm({
     })
   }
 
+  async function pollAnalysisJob(jobId: string) {
+    const startedAt = Date.now()
+
+    while (Date.now() - startedAt < ANALYSIS_JOB_TIMEOUT_MS) {
+      const response = await fetch(`/api/analysis-jobs/${jobId}`, {
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to read analysis job status")
+      }
+
+      const job = (await response.json()) as AnalysisJobResponse
+      setAnalyzeStep(getAnalyzeStepLabel(job.status))
+
+      if (job.status === "succeeded") {
+        return job.result || {}
+      }
+
+      if (job.status === "failed" || job.status === "cancelled") {
+        throw new Error(job.error || "Analysis failed")
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, ANALYSIS_JOB_POLL_INTERVAL_MS))
+    }
+
+    throw new Error("Analysis timed out. Check that the analysis worker is running.")
+  }
+
   const startAnalyze = async () => {
     setIsAnalyzing(true)
     setAnalyzeError("")
     try {
-      setAnalyzeStep("Analyzing...")
-      const results = await analyzeFileAction(file, settings, fields, categories, projects)
+      setAnalyzeStep("Queueing...")
+      const results = await startAnalysisJobAction(file, settings, fields, categories, projects)
 
-      console.log("Analysis results:", results)
-
-      if (!results.success) {
+      if (!results.success || !results.data) {
         setAnalyzeError(results.error ? results.error : "Something went wrong...")
       } else {
+        const output = await pollAnalysisJob(results.data.jobId)
         const nonEmptyFields = Object.fromEntries(
-          Object.entries(results.data?.output || {}).filter(
-            ([_, value]) => value !== null && value !== undefined && value !== ""
-          )
+          Object.entries(output).filter(([_, value]) => value !== null && value !== undefined && value !== "")
         )
-        setFormData({ ...formData, ...nonEmptyFields })
+        setFormData((prev) => ({ ...prev, ...nonEmptyFields }))
       }
     } catch (error) {
       console.error("Analysis failed:", error)
@@ -352,4 +387,19 @@ export default function AnalyzeForm({
       </form>
     </>
   )
+}
+
+function getAnalyzeStepLabel(status: string) {
+  switch (status) {
+    case "queued":
+      return "Queued..."
+    case "acquiring_lease":
+      return "Acquiring Pool lease..."
+    case "running":
+      return "Analyzing..."
+    case "persisting_result":
+      return "Saving results..."
+    default:
+      return "Analyzing..."
+  }
 }

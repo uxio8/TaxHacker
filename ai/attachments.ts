@@ -9,6 +9,7 @@ export type AnalyzeAttachment = {
   filename: string
   contentType: string
   base64: string
+  filePath: string
 }
 
 export const loadAttachmentsForAI = async (user: User, file: File): Promise<AnalyzeAttachment[]> => {
@@ -25,6 +26,7 @@ export const loadAttachmentsForAI = async (user: User, file: File): Promise<Anal
       filename: file.filename,
       contentType: contentType,
       base64: await loadFileAsBase64(preview),
+      filePath: preview,
     }))
   )
 }

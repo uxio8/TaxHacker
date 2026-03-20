@@ -1,6 +1,5 @@
 "use server"
 
-import { AnalysisResult, analyzeTransaction } from "@/ai/analyze"
 import { AnalyzeAttachment, loadAttachmentsForAI } from "@/ai/attachments"
 import { buildLLMPrompt } from "@/ai/prompt"
 import { fieldsToJsonSchema } from "@/ai/schema"
@@ -16,7 +15,10 @@ import {
   unsortedFilePath,
 } from "@/lib/files"
 import { DEFAULT_PROMPT_ANALYSE_NEW_FILE } from "@/models/defaults"
+import { createAnalysisJob, findActiveAnalysisJobForFile } from "@/models/analysis-jobs"
 import { createFile, deleteFile, getFileById, updateFile } from "@/models/files"
+import { toStoredAnalysisJobAttachments } from "@/lib/analysis-jobs"
+import { getLLMSettings } from "@/models/settings"
 import { createTransaction, TransactionData, updateTransactionFiles } from "@/models/transactions"
 import { updateUser } from "@/models/users"
 import { Category, Field, File, Project, Transaction } from "@/prisma/client"
@@ -25,13 +27,18 @@ import { mkdir, readFile, rename, writeFile } from "fs/promises"
 import { revalidatePath } from "next/cache"
 import path from "path"
 
-export async function analyzeFileAction(
+export type StartAnalysisJobResult = {
+  jobId: string
+  status: string
+}
+
+export async function startAnalysisJobAction(
   file: File,
   settings: Record<string, string>,
   fields: Field[],
   categories: Category[],
   projects: Project[]
-): Promise<ActionState<AnalysisResult>> {
+): Promise<ActionState<StartAnalysisJobResult>> {
   const user = await getCurrentUser()
 
   if (!file || file.userId !== user.id) {
@@ -75,16 +82,40 @@ export async function analyzeFileAction(
   )
 
   const schema = fieldsToJsonSchema(fields)
+  const llmSettings = getLLMSettings(settings)
 
-  const results = await analyzeTransaction(prompt, schema, attachments, file.id, user.id)
-
-  console.log("Analysis results:", results)
-
-  if (results.data?.tokensUsed && results.data.tokensUsed > 0) {
-    await updateUser(user.id, { aiBalance: { decrement: 1 } })
+  if (llmSettings.providers.length === 0) {
+    return {
+      success: false,
+      error: "No AI provider is configured for analysis.",
+    }
   }
 
-  return results
+  const activeJob = await findActiveAnalysisJobForFile(user.id, file.id)
+  if (activeJob) {
+    return {
+      success: true,
+      data: {
+        jobId: activeJob.id,
+        status: activeJob.status,
+      },
+    }
+  }
+
+  const job = await createAnalysisJob(user.id, file.id, {
+    prompt,
+    schema,
+    attachments: toStoredAnalysisJobAttachments(attachments),
+    providers: llmSettings.providers,
+  })
+
+  return {
+    success: true,
+    data: {
+      jobId: job.id,
+      status: job.status,
+    },
+  }
 }
 
 export async function saveFileAsTransactionAction(

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 7331 --turbopack",
+    "worker:analysis": "node --experimental-strip-types ./scripts/analysis-worker.ts",
     "build": "next build",
     "start": "prisma migrate deploy && next start",
     "lint": "next lint"

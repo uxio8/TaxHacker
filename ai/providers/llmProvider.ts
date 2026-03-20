@@ -3,7 +3,7 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
 import { ChatMistralAI } from "@langchain/mistralai"
 import { BaseMessage, HumanMessage } from "@langchain/core/messages"
 
-export type LLMProvider = "openai" | "google" | "mistral"
+export type LLMProvider = "openai" | "google" | "mistral" | "pool_cloud"
 
 export interface LLMConfig {
   provider: LLMProvider
@@ -50,6 +50,12 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
         model: config.model,
         temperature: temperature,
       })
+    } else if (config.provider === "pool_cloud") {
+      return {
+        output: {},
+        provider: config.provider,
+        error: "pool_cloud must be executed by the analysis worker",
+      }
     } else {
       return {
         output: {},
@@ -89,6 +95,10 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
 
 export async function requestLLM(settings: LLMSettings, req: LLMRequest): Promise<LLMResponse> {
   for (const config of settings.providers) {
+    if (config.provider === "pool_cloud") {
+      continue
+    }
+
     if (!config.apiKey || !config.model) {
       console.info("Skipping provider:", config.provider)
       continue

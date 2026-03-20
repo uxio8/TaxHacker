@@ -40,6 +40,7 @@ model User {
   sessions            Session[]
   appData             AppData[]
   progress            Progress[]
+  analysisJobs        AnalysisJob[]
 
   @@map("users")
 }
@@ -163,6 +164,7 @@ model File {
   isSplitted        Boolean  @default(false) @map("is_splitted")
   cachedParseResult Json?    @map("cached_parse_result")
   createdAt         DateTime @default(now()) @map("created_at")
+  analysisJobs      AnalysisJob[]
 
   @@map("files")
 }
@@ -236,4 +238,29 @@ model Progress {
 
   @@index([userId])
   @@map("progress")
+}
+
+model AnalysisJob {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileId           String   @map("file_id") @db.Uuid
+  file             File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  status           String
+  prompt           String
+  schema           Json
+  attachments      Json
+  providers        Json
+  selectedProvider String?  @map("selected_provider")
+  tokensUsed       Int      @default(0) @map("tokens_used")
+  result           Json?
+  error            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  startedAt        DateTime? @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([fileId, status])
+  @@map("analysis_jobs")
 }

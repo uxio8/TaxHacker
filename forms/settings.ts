@@ -1,3 +1,4 @@
+import { getDefaultProviderOrder } from "@/lib/llm-providers"
 import { randomHexColor } from "@/lib/utils"
 import { z } from "zod"
 
@@ -12,7 +13,7 @@ export const settingsFormSchema = z.object({
   google_model_name: z.string().default("gemini-2.5-flash"),
   mistral_api_key: z.string().optional(),
   mistral_model_name: z.string().default("mistral-medium-latest"),
-  llm_providers: z.string().default('openai,google,mistral'),
+  llm_providers: z.string().default(getDefaultProviderOrder(false).join(",")),
   prompt_analyse_new_file: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
 })

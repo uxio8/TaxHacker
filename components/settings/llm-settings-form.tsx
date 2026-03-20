@@ -24,42 +24,70 @@ import {
   useSortable,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
-import { PROVIDERS } from "@/lib/llm-providers";
+import { getDefaultProviderOrder, PROVIDERS, type ProviderMetadata } from "@/lib/llm-providers"
 
+type ProviderValues = {
+  apiKey: string
+  model: string
+}
 
-function getInitialProviderOrder(settings: Record<string, string>) {
-  let order: string[] = []
-  if (!settings.llm_providers) {
-    order = ['openai', 'google', 'mistral']
-  } else {
-    order = settings.llm_providers.split(",").map(p => p.trim())
+function getAvailableProviders(isPoolCloudEnabled: boolean) {
+  return PROVIDERS.filter((provider) => isPoolCloudEnabled || !provider.managedByEnvironment)
+}
+
+function normalizeProviderOrder(providerOrder: string[], providers: ProviderMetadata[]) {
+  const allowedProviderKeys = new Set(providers.map((provider) => provider.key))
+  const normalizedOrder = providerOrder.filter(
+    (providerKey, index) => allowedProviderKeys.has(providerKey as ProviderMetadata["key"]) && providerOrder.indexOf(providerKey) === index
+  )
+
+  const missingProviders = providers
+    .map((provider) => provider.key)
+    .filter((providerKey) => !normalizedOrder.includes(providerKey))
+
+  return [...normalizedOrder, ...missingProviders]
+}
+
+function getInitialProviderOrder(settings: Record<string, string>, providers: ProviderMetadata[], isPoolCloudEnabled: boolean) {
+  const providerOrder = settings.llm_providers
+    ? settings.llm_providers.split(",").map((provider) => provider.trim()).filter(Boolean)
+    : getDefaultProviderOrder(isPoolCloudEnabled)
+
+  return normalizeProviderOrder(providerOrder, providers)
+}
+
+function getInitialProviderValues(settings: Record<string, string>, providers: ProviderMetadata[]) {
+  const values: Record<string, ProviderValues> = {}
+
+  for (const provider of providers) {
+    values[provider.key] = {
+      apiKey: provider.apiKeyName ? settings[provider.apiKeyName] || "" : "",
+      model: provider.modelName ? settings[provider.modelName] || provider.defaultModelName || "" : "",
+    }
   }
-  // Remove duplicates and keep only valid providers
-  return order.filter((key, idx) => PROVIDERS.some(p => p.key === key) && order.indexOf(key) === idx)
+
+  return values
 }
 
 export default function LLMSettingsForm({
   settings,
   fields,
+  isPoolCloudEnabled,
+  showApiKey = false,
 }: {
   settings: Record<string, string>
   fields: Field[]
+  isPoolCloudEnabled: boolean
   showApiKey?: boolean
 }) {
+  const providers = getAvailableProviders(isPoolCloudEnabled)
   const [saveState, saveAction, pending] = useActionState(saveSettingsAction, null)
-  const [providerOrder, setProviderOrder] = useState<string[]>(getInitialProviderOrder(settings))
-
-  // Controlled values for each provider
-  const [providerValues, setProviderValues] = useState(() => {
-    const values: Record<string, { apiKey: string; model: string }> = {}
-    PROVIDERS.forEach((provider) => {
-      values[provider.key] = {
-        apiKey: settings[provider.apiKeyName],
-        model: settings[provider.modelName] || provider.defaultModelName,
-      }
-    })
-    return values
-  })
+  const [providerOrder, setProviderOrder] = useState<string[]>(() =>
+    getInitialProviderOrder(settings, providers, isPoolCloudEnabled)
+  )
+  const [providerValues, setProviderValues] = useState<Record<string, ProviderValues>>(() =>
+    getInitialProviderValues(settings, providers)
+  )
 
   function handleProviderValueChange(providerKey: string, field: "apiKey" | "model", value: string) {
     setProviderValues((prev) => ({
@@ -77,14 +105,23 @@ export default function LLMSettingsForm({
 
         <div className="space-y-2">
           <label className="text-sm font-medium">LLM providers</label>
+          <p className="text-sm text-muted-foreground">
+            {isPoolCloudEnabled
+              ? "Reorder provider priority. Pool Cloud is configured through server environment variables, while direct providers use the API key and model saved here."
+              : showApiKey
+                ? "Reorder provider priority. In self-hosted mode, direct providers use the API key and model saved here."
+                : "Reorder provider priority. The first configured provider will be tried first."}
+          </p>
           <DndProviderBlocks
+            providers={providers}
             providerOrder={providerOrder}
             setProviderOrder={setProviderOrder}
             providerValues={providerValues}
             handleProviderValueChange={handleProviderValueChange}
+            showApiKey={showApiKey}
           />
           <small className="text-muted-foreground">
-            Drag provider blocks to reorder. First is highest priority.
+            Drag provider blocks to reorder. The first available provider has the highest priority.
           </small>
         </div>
         <input type="hidden" name="llm_providers" value={providerOrder.join(",")} />
@@ -139,14 +176,24 @@ export default function LLMSettingsForm({
 }
 
 type DndProviderBlocksProps = {
-  providerOrder: string[];
-  setProviderOrder: React.Dispatch<React.SetStateAction<string[]>>;
-  providerValues: Record<string, { apiKey: string; model: string }>;
-  handleProviderValueChange: (providerKey: string, field: "apiKey" | "model", value: string) => void;
-};
+  providers: ProviderMetadata[]
+  providerOrder: string[]
+  setProviderOrder: React.Dispatch<React.SetStateAction<string[]>>
+  providerValues: Record<string, ProviderValues>
+  handleProviderValueChange: (providerKey: string, field: "apiKey" | "model", value: string) => void
+  showApiKey: boolean
+}
 
-function DndProviderBlocks({ providerOrder, setProviderOrder, providerValues, handleProviderValueChange }: DndProviderBlocksProps) {
+function DndProviderBlocks({
+  providers,
+  providerOrder,
+  setProviderOrder,
+  providerValues,
+  handleProviderValueChange,
+  showApiKey,
+}: DndProviderBlocksProps) {
   const sensors = useSensors(useSensor(PointerSensor))
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -162,9 +209,10 @@ function DndProviderBlocks({ providerOrder, setProviderOrder, providerValues, ha
             key={providerKey}
             id={providerKey}
             idx={idx}
-            providerKey={providerKey}
-            value={providerValues[providerKey]}
+            provider={providers.find((provider) => provider.key === providerKey)}
+            value={providerValues[providerKey] || { apiKey: "", model: "" }}
             handleValueChange={handleProviderValueChange}
+            showApiKey={showApiKey}
           />
         ))}
       </SortableContext>
@@ -173,18 +221,19 @@ function DndProviderBlocks({ providerOrder, setProviderOrder, providerValues, ha
 }
 
 type SortableProviderBlockProps = {
-  id: string;
-  idx: number;
-  providerKey: string;
-  value: { apiKey: string; model: string };
-  handleValueChange: (providerKey: string, field: "apiKey" | "model", value: string) => void;
-};
+  id: string
+  idx: number
+  provider?: ProviderMetadata
+  value: ProviderValues
+  handleValueChange: (providerKey: string, field: "apiKey" | "model", value: string) => void
+  showApiKey: boolean
+}
 
-function SortableProviderBlock({ id, idx, providerKey, value, handleValueChange }: SortableProviderBlockProps) {
+function SortableProviderBlock({ id, idx, provider, value, handleValueChange, showApiKey }: SortableProviderBlockProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
 
-  const provider = PROVIDERS.find(p => p.key === providerKey)
   if (!provider) return null
+
   return (
     <div
       ref={setNodeRef}
@@ -196,7 +245,6 @@ function SortableProviderBlock({ id, idx, providerKey, value, handleValueChange 
       className={`bg-muted rounded-lg p-4 shadow flex flex-col gap-2 mb-2`}
     >
       <div className="flex flex-row items-center gap-2 mb-2">
-        {/* Drag handle */}
         <span
           {...attributes}
           {...listeners}
@@ -206,34 +254,54 @@ function SortableProviderBlock({ id, idx, providerKey, value, handleValueChange 
           <GripVertical className="w-5 h-5 text-muted-foreground" />
         </span>
         <span className="font-semibold">{provider.label}</span>
+        <span className="text-xs text-muted-foreground">#{idx + 1}</span>
       </div>
-      <div className="flex flex-row gap-4 items-center">
-        <input
-          type="text"
-          name={provider.apiKeyName}
-          value={value.apiKey}
-          onChange={e => handleValueChange(provider.key, "apiKey", e.target.value)}
-          className="flex-1 border rounded px-2 py-1"
-          placeholder="API key"
-        />
-        <input
-          type="text"
-          name={provider.modelName}
-          value={value.model}
-          onChange={e => handleValueChange(provider.key, "model", e.target.value)}
-          className="flex-1 border rounded px-2 py-1"
-          placeholder="Model name"
-        />
-      </div>
-      {provider.apiDoc && (
+
+      {provider.managedByEnvironment ? (
+        <div className="rounded-md border border-dashed bg-background/70 p-3 text-sm text-muted-foreground">
+          <p>
+            Pool Cloud is managed through environment variables on the server. No API key or model needs to be saved in
+            these settings.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              type="text"
+              name={provider.apiKeyName}
+              value={value.apiKey}
+              onChange={(event) => handleValueChange(provider.key, "apiKey", event.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              placeholder={provider.placeholder || "API key"}
+            />
+            <input
+              type="text"
+              name={provider.modelName}
+              value={value.model}
+              onChange={(event) => handleValueChange(provider.key, "model", event.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              placeholder={provider.defaultModelName || "Model name"}
+            />
+          </div>
+          <small className="text-muted-foreground">
+            {showApiKey
+              ? "This provider uses the API key and model configured in this account."
+              : "Set the credentials and model name to enable this provider for your account."}
+          </small>
+        </div>
+      )}
+
+      {provider.help && (
         <small className="text-muted-foreground">
-          Get your API key from{" "}
+          {provider.managedByEnvironment ? "Setup guide:" : "Setup:"}{" "}
           <a
-            href={provider.apiDoc}
+            href={provider.help.url}
             target="_blank"
+            rel="noreferrer"
             className="underline"
           >
-            {provider.apiDocLabel}
+            {provider.help.label}
           </a>
         </small>
       )}

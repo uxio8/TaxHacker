@@ -44,19 +44,6 @@ export async function selfHostedGetStartedAction(formData: FormData) {
   }
 
   if (!existingUser) {
-  const apiKeys = [
-    "openai_api_key",
-    "google_api_key",
-    "mistral_api_key"
-  ]
-
-    for (const key of apiKeys) {
-      const value = formData.get(key)
-      if (value) {
-        await updateSettings(user.id, key, value as string)
-      }
-    }
-
     const defaultCurrency = formData.get("default_currency")
     if (defaultCurrency) {
       await updateSettings(user.id, "default_currency", defaultCurrency as string)

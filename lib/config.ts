@@ -17,7 +17,7 @@ const envSchema = z.object({
     .min(16, "Auth secret must be at least 16 characters")
     .default("please-set-your-key-here"),
   DISABLE_SIGNUP: z.enum(["true", "false"]).default("false"),
-  RESEND_API_KEY: z.string().default("please-set-your-resend-api-key-here"),
+  RESEND_API_KEY: z.string().default(""),
   RESEND_FROM_EMAIL: z.string().default("TaxHacker <user@localhost>"),
   RESEND_AUDIENCE_ID: z.string().default(""),
   STRIPE_SECRET_KEY: z.string().default(""),

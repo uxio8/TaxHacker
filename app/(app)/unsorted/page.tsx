@@ -12,7 +12,7 @@ import { getCurrencies } from "@/models/currencies"
 import { getFields } from "@/models/fields"
 import { getUnsortedFiles } from "@/models/files"
 import { getProjects } from "@/models/projects"
-import { getSettings } from "@/models/settings"
+import { getLLMSettings, getSettings } from "@/models/settings"
 import { FileText, PartyPopper, Settings, Upload } from "lucide-react"
 import { Metadata } from "next"
 import Link from "next/link"
@@ -30,6 +30,10 @@ export default async function UnsortedPage() {
   const currencies = await getCurrencies(user.id)
   const fields = await getFields(user.id)
   const settings = await getSettings(user.id)
+  const llmSettings = getLLMSettings(settings)
+  const hasConfiguredLlmProvider = llmSettings.providers.some(
+    (provider) => provider.provider === "pool_cloud" || Boolean(provider.apiKey && provider.model)
+  )
 
   return (
     <>
@@ -38,21 +42,19 @@ export default async function UnsortedPage() {
         {files.length > 1 && <AnalyzeAllButton />}
       </header>
 
-      {config.selfHosted.isEnabled &&
-        !settings.openai_api_key &&
-        !settings.google_api_key &&
-        !settings.mistral_api_key && (
+      {config.selfHosted.isEnabled && !hasConfiguredLlmProvider && (
           <Alert>
             <Settings className="h-4 w-4 mt-2" />
             <div className="flex flex-row justify-between pt-2">
               <div className="flex flex-col">
-                <AlertTitle>LLM provider API Key is required for analyzing files</AlertTitle>
+                <AlertTitle>Configure at least one LLM provider to analyze files</AlertTitle>
                 <AlertDescription>
-                  Please set your LLM provider API key in the settings to use the analyze form.
+                  In self-hosted mode you can add your own OpenAI, Google, or Mistral credentials, or enable Pool
+                  Cloud with server environment variables.
                 </AlertDescription>
               </div>
               <Link href="/settings/llm">
-                <Button>Go to Settings</Button>
+                <Button>Open LLM Settings</Button>
               </Link>
             </div>
           </Alert>
