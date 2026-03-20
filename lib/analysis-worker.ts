@@ -18,6 +18,7 @@ import {
   POOL_CLOUD_LEASE_OUTCOME,
 } from "./pool-cloud-client.ts"
 import { buildPoolCloudCodexCommand } from "./pool-cloud-codex-command.ts"
+import { withTimeout } from "./promise-timeout.ts"
 
 const WORKER_POLL_INTERVAL_MS = 1500
 const POOL_CLOUD_LEASE_TTL_SEC = 300
@@ -138,24 +139,30 @@ async function processAnalysisJob(prisma: PrismaClient, job: AnalysisJobRecord) 
         })
 
         response = await requestPoolCloudAnalysis(job.id, job.prompt, schema, attachments)
-      } else {
-        await prisma.analysisJob.update({
-          where: { id: job.id },
-          data: {
+        } else {
+          await prisma.analysisJob.update({
+            where: { id: job.id },
+            data: {
             status: ANALYSIS_JOB_STATUS.RUNNING,
             selectedProvider: provider.provider,
             error: null,
           },
         })
 
-        response = await requestLLM(
+        response = await withTimeout(
+          requestLLM(
+            {
+              providers: [provider],
+            },
+            {
+              prompt: job.prompt,
+              schema,
+              attachments: await hydrateAttachmentsForDirectProviders(attachments),
+            }
+          ),
           {
-            providers: [provider],
-          },
-          {
-            prompt: job.prompt,
-            schema,
-            attachments: await hydrateAttachmentsForDirectProviders(attachments),
+            timeoutMs: ANALYSIS_TIMEOUT_MS,
+            errorMessage: `${provider.provider} analysis timed out`,
           }
         )
       }

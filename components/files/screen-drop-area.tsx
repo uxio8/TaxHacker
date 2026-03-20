@@ -3,18 +3,22 @@
 import { useNotification } from "@/app/(app)/context"
 import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { uploadTransactionFilesAction } from "@/app/(app)/transactions/actions"
+import { getUploadFlowState } from "@/lib/upload-flow"
 import { AlertCircle, CloudUpload, Loader2 } from "lucide-react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 export default function ScreenDropArea({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { showNotification } = useNotification()
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
   const dragCounter = useRef(0)
-  const { transactionId } = useParams()
+  const params = useParams()
+  const rawTransactionId = params.transactionId
+  const transactionId = Array.isArray(rawTransactionId) ? rawTransactionId[0] : rawTransactionId
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -82,10 +86,20 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
             : await uploadFilesAction(formData)
 
           if (result.success) {
-            showNotification({ code: "sidebar.unsorted", message: "new" })
-            setTimeout(() => showNotification({ code: "sidebar.unsorted", message: "" }), 3000)
-            if (!transactionId) {
-              router.push("/unsorted")
+            const uploadFlow = getUploadFlowState({
+              currentPath: pathname,
+              destination: transactionId ? "transaction" : "unsorted",
+            })
+
+            showNotification({ code: uploadFlow.notificationCode, message: "new" })
+            setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
+
+            if (uploadFlow.redirectPath) {
+              router.push(uploadFlow.redirectPath)
+            }
+
+            if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
+              router.refresh()
             }
           } else {
             setUploadError(result.error ? result.error : "Something went wrong...")
@@ -98,7 +112,7 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
         }
       }
     },
-    [transactionId, router, showNotification]
+    [pathname, transactionId, router, showNotification]
   )
 
   // Add event listeners to document body

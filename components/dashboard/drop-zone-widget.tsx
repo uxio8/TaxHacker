@@ -4,40 +4,62 @@ import { useNotification } from "@/app/(app)/context"
 import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { FormError } from "@/components/forms/error"
 import config from "@/lib/config"
+import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
 import { Camera, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { startTransition, useState } from "react"
 
 export default function DashboardDropZoneWidget() {
   const router = useRouter()
+  const pathname = usePathname()
   const { showNotification } = useNotification()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget
+    const files = input.files
+
+    if (!files || files.length === 0) {
+      resetFileInputValue(input)
+      return
+    }
+
     setIsUploading(true)
     setUploadError("")
-    if (e.target.files && e.target.files.length > 0) {
-      const formData = new FormData()
+    const formData = new FormData()
 
-      // Append all selected files to the FormData
-      for (let i = 0; i < e.target.files.length; i++) {
-        formData.append("files", e.target.files[i])
-      }
+    for (let i = 0; i < files.length; i++) {
+      formData.append("files", files[i])
+    }
 
-      // Submit the files using the server action
-      startTransition(async () => {
+    startTransition(async () => {
+      try {
         const result = await uploadFilesAction(formData)
         if (result.success) {
-          showNotification({ code: "sidebar.unsorted", message: "new" })
-          setTimeout(() => showNotification({ code: "sidebar.unsorted", message: "" }), 3000)
-          router.push("/unsorted")
+          const uploadFlow = getUploadFlowState({
+            currentPath: pathname,
+            destination: "unsorted",
+          })
+
+          showNotification({ code: uploadFlow.notificationCode, message: "new" })
+          setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
+
+          if (uploadFlow.redirectPath) {
+            router.push(uploadFlow.redirectPath)
+          }
+
+          if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
+            router.refresh()
+          }
         } else {
           setUploadError(result.error ? result.error : "Something went wrong...")
         }
+      } finally {
+        resetFileInputValue(input)
         setIsUploading(false)
-      })
-    }
+      }
+    })
   }
 
   return (

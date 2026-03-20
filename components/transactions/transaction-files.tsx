@@ -1,30 +1,70 @@
 "use client"
 
+import { useNotification } from "@/app/(app)/context"
 import { deleteTransactionFileAction, uploadTransactionFilesAction } from "@/app/(app)/transactions/actions"
+import { FormError } from "@/components/forms/error"
 import { FilePreview } from "@/components/files/preview"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import config from "@/lib/config"
+import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
 import { File, Transaction } from "@/prisma/client"
 import { Loader2, Upload, X } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 
 export default function TransactionFiles({ transaction, files }: { transaction: Transaction; files: File[] }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { showNotification } = useNotification()
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState("")
 
   const handleDeleteFile = async (fileId: string) => {
     await deleteTransactionFileAction(transaction.id, fileId)
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget
+    const files = input.files
+
+    if (!files || files.length === 0) {
+      resetFileInputValue(input)
+      return
+    }
+
     setIsUploading(true)
-    if (e.target.files && e.target.files.length > 0) {
+    setUploadError("")
+    try {
       const formData = new FormData()
       formData.append("transactionId", transaction.id)
-      for (let i = 0; i < e.target.files.length; i++) {
-        formData.append("files", e.target.files[i])
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i])
       }
-      await uploadTransactionFilesAction(formData)
+
+      const result = await uploadTransactionFilesAction(formData)
+      if (!result.success) {
+        setUploadError(result.error ? result.error : "Something went wrong...")
+        return
+      }
+
+      const uploadFlow = getUploadFlowState({
+        currentPath: pathname,
+        destination: "transaction",
+      })
+
+      showNotification({ code: uploadFlow.notificationCode, message: "new" })
+      setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
+
+      if (uploadFlow.redirectPath) {
+        router.push(uploadFlow.redirectPath)
+      }
+
+      if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
+        router.refresh()
+      }
+    } finally {
+      resetFileInputValue(input)
       setIsUploading(false)
     }
   }
@@ -64,6 +104,7 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
               <Upload className="w-8 h-8 text-gray-400" />
               <p className="text-sm text-gray-500">Add more files to this invoice</p>
               <p className="text-xs text-gray-500">(or just drop them on this page)</p>
+              {uploadError && <FormError>{uploadError}</FormError>}
             </>
           )}
           <input

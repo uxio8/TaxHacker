@@ -120,24 +120,33 @@ export function resolveLlmProviderConfigs(
     return requestedOrder.indexOf(provider) === index
   })
 
-  return normalizedOrder.map((providerKey) => {
+  return normalizedOrder.flatMap((providerKey) => {
     const provider = providerByKey.get(providerKey as LLMProviderKey)
     if (!provider) {
       throw new Error(`Unknown provider ${providerKey}`)
     }
 
     if (provider.managedByEnvironment) {
-      return {
-        provider: provider.key,
-        apiKey: "",
-        model: "",
-      }
+      return [
+        {
+          provider: provider.key,
+          apiKey: "",
+          model: "",
+        },
+      ]
     }
 
-    return {
-      provider: provider.key,
-      apiKey: provider.apiKeyName ? settings[provider.apiKeyName] || "" : "",
-      model: provider.modelName ? settings[provider.modelName] || provider.defaultModelName || "" : "",
+    const apiKey = provider.apiKeyName ? settings[provider.apiKeyName] || "" : ""
+    const model = provider.modelName ? settings[provider.modelName] || provider.defaultModelName || "" : ""
+
+    if (!apiKey || !model) {
+      return []
     }
+
+    return [{
+      provider: provider.key,
+      apiKey,
+      model,
+    }]
   })
 }

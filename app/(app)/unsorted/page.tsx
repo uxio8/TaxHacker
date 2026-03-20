@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { AnalyzeAllButton } from "@/components/unsorted/analyze-all-button"
 import AnalyzeForm from "@/components/unsorted/analyze-form"
+import { canAnalyzeFileMimeType } from "@/lib/analysis-support"
 import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
 import { getCategories } from "@/models/categories"
@@ -31,6 +32,7 @@ export default async function UnsortedPage() {
   const fields = await getFields(user.id)
   const settings = await getSettings(user.id)
   const llmSettings = getLLMSettings(settings)
+  const analyzableFilesCount = files.filter((file) => !file.isSplitted && canAnalyzeFileMimeType(file.mimetype)).length
   const hasConfiguredLlmProvider = llmSettings.providers.some(
     (provider) => provider.provider === "pool_cloud" || Boolean(provider.apiKey && provider.model)
   )
@@ -39,7 +41,7 @@ export default async function UnsortedPage() {
     <>
       <header className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">You have {files.length} unsorted files</h2>
-        {files.length > 1 && <AnalyzeAllButton />}
+        {analyzableFilesCount > 1 && <AnalyzeAllButton />}
       </header>
 
       {config.selfHosted.isEnabled && !hasConfiguredLlmProvider && (

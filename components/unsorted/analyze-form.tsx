@@ -13,6 +13,7 @@ import { FormSelectType } from "@/components/forms/select-type"
 import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { canAnalyzeFileMimeType, getAnalyzeMimeTypeError } from "@/lib/analysis-support"
 import { Category, Currency, Field, File, Project } from "@/prisma/client"
 import { format } from "date-fns"
 import { ArrowDownToLine, Brain, Loader2, Trash2 } from "lucide-react"
@@ -49,6 +50,7 @@ export default function AnalyzeForm({
   const [deleteState, deleteAction, isDeleting] = useActionState(deleteUnsortedFileAction, null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const canAnalyzeCurrentFile = canAnalyzeFileMimeType(file.mimetype)
 
   const fieldMap = useMemo(() => {
     return fields.reduce(
@@ -182,6 +184,10 @@ export default function AnalyzeForm({
       {file.isSplitted ? (
         <div className="flex justify-end">
           <Badge variant="outline">This file has been split up</Badge>
+        </div>
+      ) : !canAnalyzeCurrentFile ? (
+        <div className="mb-6 rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {getAnalyzeMimeTypeError(file.mimetype)}
         </div>
       ) : (
         <Button className="w-full mb-6 py-6 text-lg" onClick={startAnalyze} disabled={isAnalyzing} data-analyze-button>
