@@ -6,6 +6,7 @@ import fs from "fs/promises"
 import path from "path"
 import { fromPath } from "pdf2pic"
 import config from "../config"
+import { assertPdfRuntimeDependencies } from "../pdf-runtime-dependencies"
 
 export async function pdfToImages(user: User, origFilePath: string): Promise<{ contentType: string; pages: string[] }> {
   const userPreviewsDirectory = getUserPreviewsDirectory(user)
@@ -40,6 +41,7 @@ export async function pdfToImages(user: User, origFilePath: string): Promise<{ c
   }
 
   try {
+    await assertPdfRuntimeDependencies()
     const convert = fromPath(origFilePath, pdf2picOptions)
     const results = await convert.bulk(-1, { responseType: "image" }) // TODO: respect MAX_PAGES here too
     const paths = results.filter((result) => result && result.path).map((result) => result.path) as string[]
