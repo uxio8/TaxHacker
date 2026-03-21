@@ -1,11 +1,13 @@
 import { addCategoryAction, deleteCategoryAction, editCategoryAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { randomHexColor } from "@/lib/utils"
 import { getCategories } from "@/models/categories"
 import { Prisma } from "@/prisma/client"
 
 export default async function CategoriesSettingsPage() {
+  const t = createTranslator()
   const user = await getCurrentUser()
   const categories = await getCategories(user.id)
   const categoriesWithActions = categories.map((category) => ({
@@ -16,18 +18,15 @@ export default async function CategoriesSettingsPage() {
 
   return (
     <div className="container">
-      <h1 className="text-2xl font-bold mb-2">Categories</h1>
-      <p className="text-sm text-gray-500 mb-6 max-w-prose">
-        Create your own categories that better reflect the type of income and expenses you have. Define an LLM Prompt so
-        that AI can determine this category automatically.
-      </p>
+      <h1 className="text-2xl font-bold mb-2">{t("settings.categories.title")}</h1>
+      <p className="text-sm text-gray-500 mb-6 max-w-prose">{t("settings.categories.description")}</p>
 
       <CrudTable
         items={categoriesWithActions}
         columns={[
-          { key: "name", label: "Name", editable: true },
-          { key: "llm_prompt", label: "LLM Prompt", editable: true },
-          { key: "color", label: "Color", type: "color", defaultValue: randomHexColor(), editable: true },
+          { key: "name", label: t("settings.columns.name"), editable: true },
+          { key: "llm_prompt", label: t("settings.columns.llmPrompt"), editable: true },
+          { key: "color", label: t("settings.columns.color"), type: "color", defaultValue: randomHexColor(), editable: true },
         ]}
         onDelete={async (code) => {
           "use server"

@@ -4,6 +4,7 @@ import { BulkActionsMenu } from "@/components/transactions/bulk-actions"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { type Translator, useI18n } from "@/lib/i18n"
 import { calcNetTotalPerCurrency, calcTotalPerCurrency, isTransactionIncomplete } from "@/lib/stats"
 import { cn, formatCurrency } from "@/lib/utils"
 import { Category, Field, Project, Transaction } from "@/prisma/client"
@@ -25,21 +26,22 @@ type FieldWithRenderer = Field & {
   renderer: FieldRenderer
 }
 
-export const standardFieldRenderers: Record<string, FieldRenderer> = {
-  name: {
-    name: "Name",
+function getStandardFieldRenderers(t: Translator): Record<string, FieldRenderer> {
+  return {
+    name: {
+      name: t("transactions.columns.name"),
     code: "name",
     classes: "font-medium min-w-[120px] max-w-[300px] overflow-hidden",
     sortable: true,
   },
   merchant: {
-    name: "Merchant",
+      name: t("transactions.columns.merchant"),
     code: "merchant",
     classes: "min-w-[120px] max-w-[250px] overflow-hidden",
     sortable: true,
   },
   issuedAt: {
-    name: "Date",
+      name: t("transactions.date"),
     code: "issuedAt",
     classes: "min-w-[100px]",
     sortable: true,
@@ -47,7 +49,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
       transaction.issuedAt ? formatDate(transaction.issuedAt, "yyyy-MM-dd") : "",
   },
   projectCode: {
-    name: "Project",
+      name: t("transactions.columns.project"),
     code: "projectCode",
     sortable: true,
     formatValue: (transaction: Transaction & { project: Project }) =>
@@ -60,7 +62,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
       ),
   },
   categoryCode: {
-    name: "Category",
+      name: t("transactions.columns.category"),
     code: "categoryCode",
     sortable: true,
     formatValue: (transaction: Transaction & { category: Category }) =>
@@ -73,7 +75,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
       ),
   },
   files: {
-    name: "Files",
+      name: t("transactions.columns.files"),
     code: "files",
     sortable: false,
     formatValue: (transaction: Transaction) => (
@@ -84,7 +86,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     ),
   },
   total: {
-    name: "Total",
+      name: t("transactions.columns.total"),
     code: "total",
     classes: "text-right",
     sortable: true,
@@ -118,7 +120,9 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
       return (
         <div className="flex flex-col gap-3 text-right">
           <dl className="space-y-1">
-            <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Net Total</dt>
+              <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("transactions.netTotal")}
+              </dt>
             {Object.entries(netTotalPerCurrency).map(([currency, total]) => (
               <dd
                 key={`net-${currency}`}
@@ -129,7 +133,9 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
             ))}
           </dl>
           <dl className="space-y-1">
-            <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Turnover</dt>
+              <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("transactions.turnover")}
+              </dt>
             {Object.entries(turnoverPerCurrency).map(([currency, total]) => (
               <dd key={`turnover-${currency}`} className="text-sm text-muted-foreground">
                 {formatCurrency(total, currency)}
@@ -141,7 +147,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     },
   },
   convertedTotal: {
-    name: "Converted Total",
+      name: t("transactions.columns.convertedTotal"),
     code: "convertedTotal",
     classes: "text-right",
     sortable: true,
@@ -159,14 +165,15 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     ),
   },
   currencyCode: {
-    name: "Currency",
+      name: t("transactions.columns.currency"),
     code: "currencyCode",
     classes: "text-right",
     sortable: true,
   },
 }
+}
 
-const getFieldRenderer = (field: Field): FieldRenderer => {
+const getFieldRenderer = (field: Field, standardFieldRenderers: Record<string, FieldRenderer>): FieldRenderer => {
   if (standardFieldRenderers[field.code as keyof typeof standardFieldRenderers]) {
     return standardFieldRenderers[field.code as keyof typeof standardFieldRenderers]
   } else {
@@ -181,8 +188,10 @@ const getFieldRenderer = (field: Field): FieldRenderer => {
 
 export function TransactionList({ transactions, fields = [] }: { transactions: Transaction[]; fields?: Field[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const { t } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const standardFieldRenderers = useMemo(() => getStandardFieldRenderers(t), [t])
 
   const [sorting, setSorting] = useState<{ field: string | null; direction: "asc" | "desc" | null }>(() => {
     const ordering = searchParams.get("ordering")
@@ -200,9 +209,9 @@ export function TransactionList({ transactions, fields = [] }: { transactions: T
         .filter((field) => field.isVisibleInList)
         .map((field) => ({
           ...field,
-          renderer: getFieldRenderer(field),
+          renderer: getFieldRenderer(field, standardFieldRenderers),
         })),
-    [fields]
+    [fields, standardFieldRenderers]
   )
 
   const toggleAllRows = () => {

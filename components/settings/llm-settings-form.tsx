@@ -6,10 +6,9 @@ import { FormError } from "@/components/forms/error"
 import { FormTextarea } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
 import { Card, CardTitle } from "@/components/ui/card"
+import { useI18n } from "@/lib/i18n"
+import { getDefaultProviderOrder, PROVIDERS, type ProviderMetadata } from "@/lib/llm-providers"
 import { Field } from "@/prisma/client"
-import { CircleCheckBig, Edit, GripVertical } from "lucide-react"
-import Link from "next/link"
-import { useState, useActionState } from "react"
 import {
   DndContext,
   closestCenter,
@@ -17,14 +16,16 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core"
-import type { DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core"
 import {
   arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
-import { getDefaultProviderOrder, PROVIDERS, type ProviderMetadata } from "@/lib/llm-providers"
+import { CircleCheckBig, Edit, GripVertical } from "lucide-react"
+import Link from "next/link"
+import { useActionState, useState } from "react"
 
 type ProviderValues = {
   apiKey: string
@@ -80,6 +81,7 @@ export default function LLMSettingsForm({
   isPoolCloudEnabled: boolean
   showApiKey?: boolean
 }) {
+  const { t } = useI18n()
   const providers = getAvailableProviders(isPoolCloudEnabled)
   const [saveState, saveAction, pending] = useActionState(saveSettingsAction, null)
   const [providerOrder, setProviderOrder] = useState<string[]>(() =>
@@ -99,19 +101,18 @@ export default function LLMSettingsForm({
     }))
   }
 
+  const providerOrderDescription = isPoolCloudEnabled
+    ? t("settings.llm.providerOrderDescription.poolCloud")
+    : showApiKey
+      ? t("settings.llm.providerOrderDescription.selfHosted")
+      : t("settings.llm.providerOrderDescription.default")
+
   return (
     <>
       <form action={saveAction} className="space-y-4">
-
         <div className="space-y-2">
-          <label className="text-sm font-medium">LLM providers</label>
-          <p className="text-sm text-muted-foreground">
-            {isPoolCloudEnabled
-              ? "Reorder provider priority. Pool Cloud is configured through server environment variables, while direct providers use the API key and model saved here."
-              : showApiKey
-                ? "Reorder provider priority. In self-hosted mode, direct providers use the API key and model saved here."
-                : "Reorder provider priority. The first configured provider will be tried first."}
-          </p>
+          <label className="text-sm font-medium">{t("settings.llm.providerOrderTitle")}</label>
+          <p className="text-sm text-muted-foreground">{providerOrderDescription}</p>
           <DndProviderBlocks
             providers={providers}
             providerOrder={providerOrder}
@@ -120,14 +121,12 @@ export default function LLMSettingsForm({
             handleProviderValueChange={handleProviderValueChange}
             showApiKey={showApiKey}
           />
-          <small className="text-muted-foreground">
-            Drag provider blocks to reorder. The first available provider has the highest priority.
-          </small>
+          <small className="text-muted-foreground">{t("settings.llm.providerOrderHint")}</small>
         </div>
         <input type="hidden" name="llm_providers" value={providerOrder.join(",")} />
 
         <FormTextarea
-          title="Prompt for File Analysis Form"
+          title={t("settings.llm.promptTitle")}
           name="prompt_analyse_new_file"
           defaultValue={settings.prompt_analyse_new_file}
           className="h-96"
@@ -135,12 +134,12 @@ export default function LLMSettingsForm({
 
         <div className="flex flex-row items-center gap-4">
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving..." : "Save Settings"}
+            {pending ? t("settings.feedback.saving") : t("settings.general.saveSettings")}
           </Button>
           {saveState?.success && (
             <p className="text-green-500 flex flex-row items-center gap-2">
               <CircleCheckBig />
-              Saved!
+              {t("settings.feedback.saved")}
             </p>
           )}
         </div>
@@ -151,20 +150,21 @@ export default function LLMSettingsForm({
       <Card className="flex flex-col gap-4 p-4 bg-accent mt-20">
         <CardTitle className="flex flex-row justify-between items-center gap-2">
           <span className="text-md font-medium">
-            Current JSON Schema for{" "}
+            {t("settings.llm.schemaTitle")}{" "}
             <a
               href="https://platform.openai.com/docs/guides/structured-outputs?api-mode=responses&lang=javascript"
               target="_blank"
+              rel="noreferrer"
               className="underline"
             >
-              structured output
+              {t("settings.llm.structuredOutput")}
             </a>
           </span>
           <Link
             href="/settings/fields"
             className="text-xs underline inline-flex flex-row items-center gap-1 text-muted-foreground"
           >
-            <Edit className="w-4 h-4" /> Edit Fields
+            <Edit className="w-4 h-4" /> {t("settings.llm.editFields")}
           </Link>
         </CardTitle>
         <pre className="text-xs overflow-hidden text-ellipsis">
@@ -230,6 +230,7 @@ type SortableProviderBlockProps = {
 }
 
 function SortableProviderBlock({ id, idx, provider, value, handleValueChange, showApiKey }: SortableProviderBlockProps) {
+  const { t } = useI18n()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
 
   if (!provider) return null
@@ -249,7 +250,7 @@ function SortableProviderBlock({ id, idx, provider, value, handleValueChange, sh
           {...attributes}
           {...listeners}
           className="cursor-grab p-1 rounded hover:bg-accent transition inline-flex items-center"
-          aria-label="Drag to reorder"
+          aria-label={t("settings.llm.dragHandle")}
         >
           <GripVertical className="w-5 h-5 text-muted-foreground" />
         </span>
@@ -259,10 +260,7 @@ function SortableProviderBlock({ id, idx, provider, value, handleValueChange, sh
 
       {provider.managedByEnvironment ? (
         <div className="rounded-md border border-dashed bg-background/70 p-3 text-sm text-muted-foreground">
-          <p>
-            Pool Cloud is managed through environment variables on the server. No API key or model needs to be saved in
-            these settings.
-          </p>
+          <p>{t("settings.llm.providerManagedByEnvironment")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -273,7 +271,7 @@ function SortableProviderBlock({ id, idx, provider, value, handleValueChange, sh
               value={value.apiKey}
               onChange={(event) => handleValueChange(provider.key, "apiKey", event.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              placeholder={provider.placeholder || "API key"}
+              placeholder={provider.placeholder || t("settings.llm.providersApiKeyPlaceholder")}
             />
             <input
               type="text"
@@ -281,20 +279,20 @@ function SortableProviderBlock({ id, idx, provider, value, handleValueChange, sh
               value={value.model}
               onChange={(event) => handleValueChange(provider.key, "model", event.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              placeholder={provider.defaultModelName || "Model name"}
+              placeholder={provider.defaultModelName || t("settings.llm.providerModelPlaceholder")}
             />
           </div>
           <small className="text-muted-foreground">
             {showApiKey
-              ? "This provider uses the API key and model configured in this account."
-              : "Set the credentials and model name to enable this provider for your account."}
+              ? t("settings.llm.providerConfiguredForAccount")
+              : t("settings.llm.providerSetCredentials")}
           </small>
         </div>
       )}
 
       {provider.help && (
         <small className="text-muted-foreground">
-          {provider.managedByEnvironment ? "Setup guide:" : "Setup:"}{" "}
+          {provider.managedByEnvironment ? t("settings.llm.setupGuide") : t("settings.llm.setup")}{" "}
           <a
             href={provider.help.url}
             target="_blank"

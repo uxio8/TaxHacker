@@ -1,4 +1,5 @@
 import { FormError } from "@/components/forms/error"
+import { useI18n } from "@/lib/i18n"
 import { formatCurrency } from "@/lib/utils"
 import { format, startOfDay } from "date-fns"
 import { Loader2 } from "lucide-react"
@@ -12,7 +13,7 @@ async function getCurrencyRate(currencyCodeFrom: string, currencyCodeTo: string,
   if (!response.ok) {
     const errorData = await response.json()
     console.log("Currency API error:", errorData.error)
-    throw new Error(errorData.error || "Failed to fetch currency rate")
+    throw new Error(errorData.error || "No se ha podido obtener el tipo de cambio")
   }
 
   const data = await response.json()
@@ -32,6 +33,7 @@ export const CurrencyConverterTool = ({
   date?: Date | undefined
   onChange?: (value: number) => void
 }) => {
+  const { t } = useI18n()
   const normalizedDate = startOfDay(date || new Date(Date.now() - 24 * 60 * 60 * 1000))
   const normalizedDateString = format(normalizedDate, "yyyy-MM-dd")
   const [exchangeRate, setExchangeRate] = useState(0)
@@ -51,7 +53,7 @@ export const CurrencyConverterTool = ({
       console.error("Error fetching currency rates:", error)
       setExchangeRate(0)
       setConvertedTotal(0)
-      setError(error instanceof Error ? error.message : "Failed to fetch currency rate")
+      setError(error instanceof Error ? error.message : "No se ha podido obtener el tipo de cambio")
     } finally {
       setIsLoading(false)
     }
@@ -79,7 +81,7 @@ export const CurrencyConverterTool = ({
       {isLoading ? (
         <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <div className="font-semibold">Loading exchange rates...</div>
+          <div className="font-semibold">{t("currency.loadingRates")}</div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -99,14 +101,12 @@ export const CurrencyConverterTool = ({
               className="w-32 rounded-md border border-input px-2 py-1"
             />
           </div>
-          {!error && (
-            <div className="text-xs text-muted-foreground">The exchange rate will be added to the transaction</div>
-          )}
+          {!error && <div className="text-xs text-muted-foreground">{t("currency.rateWillBeAdded")}</div>}
           {error && (
             <div className="flex flex-row gap-2">
               <FormError className="mt-0 text-sm">{error}</FormError>
               <Button variant="outline" size="sm" className="text-xs" onClick={handleRestart}>
-                Retry
+                {t("common.actions.retry")}
               </Button>
             </div>
           )}

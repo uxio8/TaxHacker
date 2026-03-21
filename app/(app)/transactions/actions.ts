@@ -45,7 +45,7 @@ export async function createTransactionAction(
     return { success: true, data: transaction }
   } catch (error) {
     console.error("Failed to create transaction:", error)
-    return { success: false, error: "Failed to create transaction" }
+    return { success: false, error: "No se ha podido crear la transacción" }
   }
 }
 
@@ -68,7 +68,7 @@ export async function saveTransactionAction(
     return { success: true, data: transaction }
   } catch (error) {
     console.error("Failed to update transaction:", error)
-    return { success: false, error: "Failed to save transaction" }
+    return { success: false, error: "No se ha podido guardar la transacción" }
   }
 }
 
@@ -79,7 +79,7 @@ export async function deleteTransactionAction(
   try {
     const user = await getCurrentUser()
     const transaction = await getTransactionById(transactionId, user.id)
-    if (!transaction) throw new Error("Transaction not found")
+    if (!transaction) throw new Error("No se ha encontrado la transacción")
 
     await deleteTransaction(transaction.id, user.id)
 
@@ -88,7 +88,7 @@ export async function deleteTransactionAction(
     return { success: true, data: transaction }
   } catch (error) {
     console.error("Failed to delete transaction:", error)
-    return { success: false, error: "Failed to delete transaction" }
+    return { success: false, error: "No se ha podido eliminar la transacción" }
   }
 }
 
@@ -97,13 +97,13 @@ export async function deleteTransactionFileAction(
   fileId: string
 ): Promise<ActionState<Transaction>> {
   if (!fileId || !transactionId) {
-    return { success: false, error: "File ID and transaction ID are required" }
+    return { success: false, error: "El ID del archivo y el de la transacción son obligatorios" }
   }
 
   const user = await getCurrentUser()
   const transaction = await getTransactionById(transactionId, user.id)
   if (!transaction) {
-    return { success: false, error: "Transaction not found" }
+    return { success: false, error: "No se ha encontrado la transacción" }
   }
 
   await updateTransactionFiles(
@@ -128,13 +128,13 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
     const files = formData.getAll("files") as File[]
 
     if (!files || !transactionId) {
-      return { success: false, error: "No files or transaction ID provided" }
+      return { success: false, error: "Faltan los archivos o el ID de la transacción" }
     }
 
     const user = await getCurrentUser()
     const transaction = await getTransactionById(transactionId, user.id)
     if (!transaction) {
-      return { success: false, error: "Transaction not found" }
+      return { success: false, error: "No se ha encontrado la transacción" }
     }
 
     const userUploadsDirectory = getUserUploadsDirectory(user)
@@ -142,13 +142,13 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
     // Check limits
     const totalFileSize = files.reduce((acc, file) => acc + file.size, 0)
     if (!isEnoughStorageToUploadFile(user, totalFileSize)) {
-      return { success: false, error: `Insufficient storage to upload new files` }
+      return { success: false, error: "No hay almacenamiento suficiente para subir archivos nuevos" }
     }
 
     if (isSubscriptionExpired(user)) {
       return {
         success: false,
-        error: "Your subscription has expired, please upgrade your account or buy new subscription plan",
+        error: "Tu suscripción ha caducado. Amplía el plan o compra una nueva suscripción.",
       }
     }
 
@@ -198,7 +198,7 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
     return { success: true }
   } catch (error) {
     console.error("Upload error:", error)
-    return { success: false, error: `File upload failed: ${error}` }
+    return { success: false, error: `La subida de archivos ha fallado: ${error}` }
   }
 }
 
@@ -210,7 +210,7 @@ export async function bulkDeleteTransactionsAction(transactionIds: string[]) {
     return { success: true }
   } catch (error) {
     console.error("Failed to delete transactions:", error)
-    return { success: false, error: "Failed to delete transactions" }
+    return { success: false, error: "No se han podido eliminar las transacciones" }
   }
 }
 
@@ -223,6 +223,6 @@ export async function updateFieldVisibilityAction(fieldCode: string, isVisible: 
     return { success: true }
   } catch (error) {
     console.error("Failed to update field visibility:", error)
-    return { success: false, error: "Failed to update field visibility" }
+    return { success: false, error: "No se ha podido actualizar la visibilidad de la columna" }
   }
 }

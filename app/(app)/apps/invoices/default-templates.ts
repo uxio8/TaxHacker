@@ -65,7 +65,7 @@ export default function defaultTemplates(user: User, settings: SettingsMap): Inv
   }
 
   return [
-    { name: "Default", formData: defaultTemplate },
+    { name: "Predeterminada", formData: defaultTemplate },
     { name: "DE", formData: germanTemplate },
   ]
 }

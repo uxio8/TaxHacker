@@ -6,11 +6,11 @@ import { resend, sendNewsletterWelcomeEmail } from "@/lib/email"
 export async function subscribeToNewsletterAction(email: string) {
   try {
     if (!email || !email.includes("@")) {
-      return { success: false, error: "Invalid email address" }
+      return { success: false, error: "La dirección de correo no es válida" }
     }
 
     if (!resend || !config.email.audienceId) {
-      return { success: false, error: "Newsletter is not configured yet" }
+      return { success: false, error: "La newsletter todavía no está configurada" }
     }
 
     const existingContacts = await resend.contacts.list({
@@ -21,7 +21,7 @@ export async function subscribeToNewsletterAction(email: string) {
       const existingContact = existingContacts.data.data.find((contact: { email: string }) => contact.email === email)
 
       if (existingContact) {
-        return { success: false, error: "You are already subscribed to the newsletter" }
+        return { success: false, error: "Ya estás suscrito a la newsletter" }
       }
     }
 
@@ -36,6 +36,6 @@ export async function subscribeToNewsletterAction(email: string) {
     return { success: true }
   } catch (error) {
     console.error("Newsletter subscription error:", error)
-    return { error: "Failed to subscribe. Please try again later." }
+    return { error: "No se ha podido completar la suscripción. Inténtalo de nuevo más tarde." }
   }
 }

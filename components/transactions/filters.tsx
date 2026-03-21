@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { isFiltered, useTransactionFilters } from "@/hooks/use-transaction-filters"
+import { useI18n } from "@/lib/i18n"
 import { TransactionFilters } from "@/models/transactions"
 import { Category, Field, Project } from "@/prisma/client"
 import { X } from "lucide-react"
@@ -20,6 +21,7 @@ export function TransactionSearchAndFilters({
   fields: Field[]
 }) {
   const [filters, setFilters] = useTransactionFilters()
+  const { t } = useI18n()
 
   const handleFilterChange = (name: keyof TransactionFilters, value: any) => {
     setFilters((prev) => ({
@@ -33,7 +35,7 @@ export function TransactionSearchAndFilters({
       <div className="flex flex-wrap gap-4">
         <div className="flex-1 min-w-[200px]">
           <Input
-            placeholder="Search transactions..."
+            placeholder={t("transactions.filters.search")}
             defaultValue={filters.search}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -46,10 +48,10 @@ export function TransactionSearchAndFilters({
 
         <Select value={filters.categoryCode} onValueChange={(value) => handleFilterChange("categoryCode", value)}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t("transactions.allCategories")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="-">All categories</SelectItem>
+            <SelectItem value="-">{t("transactions.allCategories")}</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.code} value={category.code}>
                 <div className="flex items-center gap-2">
@@ -64,10 +66,10 @@ export function TransactionSearchAndFilters({
         {projects.length > 1 && (
           <Select value={filters.projectCode} onValueChange={(value) => handleFilterChange("projectCode", value)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All projects" />
+              <SelectValue placeholder={t("transactions.allProjects")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="-">All projects</SelectItem>
+              <SelectItem value="-">{t("transactions.allProjects")}</SelectItem>
               {projects.map((project) => (
                 <SelectItem key={project.code} value={project.code}>
                   <div className="flex items-center gap-2">
@@ -99,7 +101,7 @@ export function TransactionSearchAndFilters({
               setFilters({})
             }}
             className="text-muted-foreground hover:text-foreground"
-            title="Clear all filters"
+            title={t("transactions.clearFilters")}
           >
             <X className="h-4 w-4" />
           </Button>

@@ -11,7 +11,7 @@ import { TransactionFilters } from "@/models/transactions"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Panel",
   description: config.app.description,
 }
 

@@ -8,6 +8,7 @@ import { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useI18n } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function DateRangePicker({
@@ -19,25 +20,26 @@ export function DateRangePicker({
   defaultRange?: string
   onChange?: (date: DateRange | undefined) => void
 }) {
+  const { t } = useI18n()
   const predefinedRanges = [
     {
       code: "last-4-weeks",
-      label: "Last 4 weeks",
+      label: t("dateRange.last4Weeks"),
       range: { from: subWeeks(new Date(), 4), to: new Date() },
     },
     {
       code: "last-12-months",
-      label: "Last 12 months",
+      label: t("dateRange.last12Months"),
       range: { from: subMonths(new Date(), 12), to: new Date() },
     },
     {
       code: "month-to-date",
-      label: "Month to date",
+      label: t("dateRange.monthToDate"),
       range: { from: startOfMonth(new Date()), to: new Date() },
     },
     {
       code: "quarter-to-date",
-      label: "Quarter to date",
+      label: t("dateRange.quarterToDate"),
       range: { from: startOfQuarter(new Date()), to: new Date() },
     },
     {
@@ -58,7 +60,7 @@ export function DateRangePicker({
     },
     {
       code: "all-time",
-      label: "All time",
+      label: t("dateRange.allTime"),
       range: { from: undefined, to: undefined },
     },
   ]
@@ -77,12 +79,12 @@ export function DateRangePicker({
     if (rangeName === "custom") {
       if (dateRange?.from) {
         return dateRange.to
-          ? `${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to, "LLL dd, y")}`
-          : format(dateRange.from, "LLL dd, y")
+          ? `${format(dateRange.from, "dd/MM/y")} - ${format(dateRange.to, "dd/MM/y")}`
+          : format(dateRange.from, "dd/MM/y")
       }
-      return "Select dates"
+      return t("dateRange.selectDates")
     }
-    return predefinedRanges.find((range) => range.code === rangeName)?.label || "Select dates"
+    return predefinedRanges.find((range) => range.code === rangeName)?.label || t("dateRange.selectDates")
   }
 
   return (

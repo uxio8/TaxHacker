@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { normalizeBackupFilePath } from "@/lib/file-security"
 import { getUserUploadsDirectory, safePathJoin } from "@/lib/files"
+import { createTranslator } from "@/lib/i18n"
 import { MODEL_BACKUP, modelFromJSON } from "@/models/backups"
 import fs from "fs/promises"
 import JSZip from "jszip"
@@ -13,6 +14,8 @@ import path from "path"
 const SUPPORTED_BACKUP_VERSIONS = ["1.0"]
 const REMOVE_EXISTING_DATA = true
 const MAX_BACKUP_SIZE = 256 * 1024 * 1024 // 256MB
+
+const t = createTranslator()
 
 type BackupRestoreResult = {
   counters: Record<string, number>
@@ -27,11 +30,14 @@ export async function restoreBackupAction(
   const file = formData.get("file") as File
 
   if (!file || file.size === 0) {
-    return { success: false, error: "No file provided" }
+    return { success: false, error: t("settings.errors.backupNoFile") }
   }
 
   if (file.size > MAX_BACKUP_SIZE) {
-    return { success: false, error: `Backup file too large. Maximum size is ${MAX_BACKUP_SIZE / 1024 / 1024}MB` }
+    return {
+      success: false,
+      error: t("settings.errors.backupTooLarge", { size: MAX_BACKUP_SIZE / 1024 / 1024 }),
+    }
   }
 
   // Read zip archive
@@ -41,7 +47,10 @@ export async function restoreBackupAction(
     const fileData = Buffer.from(fileBuffer)
     zip = await JSZip.loadAsync(fileData)
   } catch (error) {
-    return { success: false, error: "Bad zip archive: " + (error as Error).message }
+    return {
+      success: false,
+      error: t("settings.errors.backupBadArchive", { message: (error as Error).message }),
+    }
   }
 
   // Check metadata and start restoring
@@ -54,9 +63,10 @@ export async function restoreBackupAction(
         if (!metadata.version || !SUPPORTED_BACKUP_VERSIONS.includes(metadata.version)) {
           return {
             success: false,
-            error: `Incompatible backup version: ${
-              metadata.version || "unknown"
-            }. Supported versions: ${SUPPORTED_BACKUP_VERSIONS.join(", ")}`,
+            error: t("settings.errors.backupIncompatibleVersion", {
+              version: metadata.version || "unknown",
+              supportedVersions: SUPPORTED_BACKUP_VERSIONS.join(", "),
+            }),
           }
         }
         console.log(`Restoring backup version ${metadata.version} created at ${metadata.timestamp}`)
@@ -131,12 +141,14 @@ export async function restoreBackupAction(
           },
         })
       }
-      counters["Uploaded attachments"] = restoredFilesCount
+      counters.uploadedAttachments = restoredFilesCount
     } catch (error) {
       console.error("Error restoring uploaded files:", error)
       return {
         success: false,
-        error: `Error restoring uploaded files: ${error instanceof Error ? error.message : String(error)}`,
+        error: t("settings.errors.backupRestoreUploadedFiles", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
       }
     }
 
@@ -145,7 +157,9 @@ export async function restoreBackupAction(
     console.error("Error restoring from backup:", error)
     return {
       success: false,
-      error: `Error restoring from backup: ${error instanceof Error ? error.message : String(error)}`,
+      error: t("settings.errors.backupRestore", {
+        message: error instanceof Error ? error.message : String(error),
+      }),
     }
   }
 }
@@ -160,16 +174,16 @@ async function validateBackupFilesArchive(zip: JSZip) {
   try {
     records = JSON.parse(await filesManifest.async("string"))
   } catch (error) {
-    throw new Error("Invalid files.json in backup")
+    throw new Error(t("settings.errors.backupInvalidFilesManifest"))
   }
 
   if (!Array.isArray(records)) {
-    throw new Error("Invalid files.json in backup")
+    throw new Error(t("settings.errors.backupInvalidFilesManifest"))
   }
 
   for (const record of records) {
     if (!record || typeof record !== "object") {
-      throw new Error("Invalid files.json record in backup")
+      throw new Error(t("settings.errors.backupInvalidFilesRecord"))
     }
 
     const maybePath = "path" in record ? record.path : ""
@@ -177,7 +191,7 @@ async function validateBackupFilesArchive(zip: JSZip) {
     const zipFilePath = toBackupZipPath(normalizedPath)
 
     if (!zip.file(zipFilePath)) {
-      throw new Error(`Missing uploaded file in backup: ${normalizedPath}`)
+      throw new Error(t("settings.errors.backupMissingUploadedFile", { path: normalizedPath }))
     }
   }
 }

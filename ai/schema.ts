@@ -1,4 +1,4 @@
-import { Field } from "@/prisma/client"
+import type { Field } from "@/prisma/client"
 
 export const fieldsToJsonSchema = (fields: Field[]) => {
   const fieldsWithPrompt = fields.filter((field) => field.llm_prompt)

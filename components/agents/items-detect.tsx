@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils"
+import { useI18n } from "@/lib/i18n"
 import { Save, Split } from "lucide-react"
 import { Button } from "../ui/button"
 import { TransactionData } from "@/models/transactions"
@@ -10,6 +11,7 @@ import { File } from "@/prisma/client"
 
 export const ItemsDetectTool = ({ file, data }: { file?: File; data: TransactionData }) => {
   const { showNotification } = useNotification()
+  const { t } = useI18n()
   const [isSplitting, setIsSplitting] = useState(false)
 
   const handleSplit = async () => {
@@ -26,15 +28,15 @@ export const ItemsDetectTool = ({ file, data }: { file?: File; data: Transaction
 
       const result = await splitFileIntoItemsAction(null, formData)
       if (result.success) {
-        showNotification({ code: "global.banner", message: "Split successful!", type: "success" })
+        showNotification({ code: "global.banner", message: t("analysis.splitSuccess"), type: "success" })
         showNotification({ code: "sidebar.unsorted", message: "new" })
         setTimeout(() => showNotification({ code: "sidebar.unsorted", message: "" }), 3000)
       } else {
-        showNotification({ code: "global.banner", message: result.error || "Failed to split", type: "failed" })
+        showNotification({ code: "global.banner", message: result.error || t("analysis.splitFailed"), type: "failed" })
       }
     } catch (error) {
       console.error("Failed to split items:", error)
-      showNotification({ code: "global.banner", message: "Failed to split items", type: "failed" })
+      showNotification({ code: "global.banner", message: t("analysis.splitFailed"), type: "failed" })
     } finally {
       setIsSplitting(false)
     }
@@ -64,12 +66,12 @@ export const ItemsDetectTool = ({ file, data }: { file?: File; data: Transaction
           {isSplitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Splitting...
+              {t("analysis.splitting")}
             </>
           ) : (
             <>
               <Split className="w-4 h-4 mr-2" />
-              Split into {data.items.length} individual transactions
+              {t("analysis.splitIntoTransactions", { count: data.items.length })}
             </>
           )}
         </Button>

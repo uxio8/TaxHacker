@@ -1,5 +1,6 @@
 "use client"
 
+import { useI18n } from "@/lib/i18n"
 import { formatBytes } from "@/lib/utils"
 import { File } from "@/prisma/client"
 import Image from "next/image"
@@ -7,6 +8,7 @@ import Link from "next/link"
 import { useState } from "react"
 
 export function FilePreview({ file }: { file: File }) {
+  const { t } = useI18n()
   const [isEnlarged, setIsEnlarged] = useState(false)
 
   const fileSize =
@@ -38,13 +40,13 @@ export function FilePreview({ file }: { file: File }) {
             <Link href={`/files/download/${file.id}`}>{file.filename}</Link>
           </h2>
           <p className="text-sm overflow-ellipsis">
-            <strong>Type:</strong> {file.mimetype}
+            <strong>{t("files.preview.type")}</strong> {file.mimetype}
           </p>
           {/* <p className="text-sm overflow-ellipsis">
             <strong>Uploaded:</strong> {format(file.createdAt, "MMM d, yyyy")}
           </p> */}
           <p className="text-sm">
-            <strong>Size:</strong> {formatBytes(fileSize)}
+            <strong>{t("files.preview.size")}</strong> {formatBytes(fileSize)}
           </p>
         </div>
       </div>

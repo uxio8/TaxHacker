@@ -7,6 +7,7 @@ import { FilePreview } from "@/components/files/preview"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import config from "@/lib/config"
+import { useI18n } from "@/lib/i18n"
 import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
 import { File, Transaction } from "@/prisma/client"
 import { Loader2, Upload, X } from "lucide-react"
@@ -17,6 +18,7 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
   const router = useRouter()
   const pathname = usePathname()
   const { showNotification } = useNotification()
+  const { t } = useI18n()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
 
@@ -44,7 +46,7 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
 
       const result = await uploadTransactionFilesAction(formData)
       if (!result.success) {
-        setUploadError(result.error ? result.error : "Something went wrong...")
+        setUploadError(result.error ? result.error : t("common.errors.generic"))
         return
       }
 
@@ -102,8 +104,8 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
           ) : (
             <>
               <Upload className="w-8 h-8 text-gray-400" />
-              <p className="text-sm text-gray-500">Add more files to this invoice</p>
-              <p className="text-xs text-gray-500">(or just drop them on this page)</p>
+              <p className="text-sm text-gray-500">{t("transactions.invoiceFiles.addMore")}</p>
+              <p className="text-xs text-gray-500">{t("transactions.invoiceFiles.dropHint")}</p>
               {uploadError && <FormError>{uploadError}</FormError>}
             </>
           )}

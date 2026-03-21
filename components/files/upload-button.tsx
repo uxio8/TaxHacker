@@ -4,6 +4,7 @@ import { useNotification } from "@/app/(app)/context"
 import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { Button } from "@/components/ui/button"
 import config from "@/lib/config"
+import { useI18n } from "@/lib/i18n"
 import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
 import { Loader2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -14,6 +15,7 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
   const router = useRouter()
   const pathname = usePathname()
   const { showNotification } = useNotification()
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -55,7 +57,7 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
             router.refresh()
           }
         } else {
-          setUploadError(result.error ? result.error : "Something went wrong...")
+          setUploadError(result.error ? result.error : t("common.errors.generic"))
         }
       } finally {
         resetFileInputValue(input)
@@ -85,7 +87,7 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
         {isUploading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Uploading...
+            {t("files.upload.uploading")}
           </>
         ) : (
           <>{children}</>

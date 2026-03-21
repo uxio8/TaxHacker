@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { getTransactionById } from "@/models/transactions"
 import { notFound } from "next/navigation"
 
@@ -9,6 +10,7 @@ export default async function TransactionLayout({
   children: React.ReactNode
   params: Promise<{ transactionId: string }>
 }) {
+  const t = createTranslator()
   const { transactionId } = await params
   const user = await getCurrentUser()
   const transaction = await getTransactionById(transactionId, user.id)
@@ -20,7 +22,7 @@ export default async function TransactionLayout({
   return (
     <>
       <header className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Transaction Details</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{t("transactions.details")}</h2>
       </header>
       <main>
         <div className="flex flex-1 flex-col gap-4 pt-0">{children}</div>

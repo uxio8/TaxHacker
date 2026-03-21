@@ -1,12 +1,15 @@
 import { Skeleton } from "@/components/ui/skeleton"
+import { createTranslator } from "@/lib/i18n"
 import { Loader2 } from "lucide-react"
 
 export default function Loading() {
+  const t = createTranslator()
+
   return (
     <>
       <header className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight flex flex-row gap-2">
-          <span>Loading unsorted files...</span>
+          <span>{t("unsorted.loading")}</span>
           <Loader2 className="h-10 w-10 animate-spin" />
         </h2>
       </header>

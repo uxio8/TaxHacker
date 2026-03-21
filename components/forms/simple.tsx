@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { t } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import { SelectProps } from "@radix-ui/react-select"
 import { format } from "date-fns"
@@ -167,7 +168,7 @@ export const FormSelect = ({
 export const FormDate = ({
   name,
   title,
-  placeholder = "Select date",
+  placeholder = t("dateRange.selectDates"),
   defaultValue,
   ...props
 }: {
@@ -268,7 +269,7 @@ export const FormAvatar = ({
             <img src={preview} alt="Avatar preview" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
-              <span className="text-muted-foreground">No image</span>
+              <span className="text-muted-foreground">{t("common.noImage")}</span>
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { SelectProps } from "@radix-ui/react-select"
+import { useI18n } from "@/lib/i18n"
 import { FormSelect } from "./simple"
 
 export const FormSelectType = ({
@@ -15,11 +16,12 @@ export const FormSelectType = ({
   hideIfEmpty?: boolean
   isRequired?: boolean
 } & SelectProps) => {
+  const { t } = useI18n()
   const items = [
-    { code: "expense", name: "Expense", badge: "↓" },
-    { code: "income", name: "Income", badge: "↑" },
-    { code: "pending", name: "Pending", badge: "⏲︎" },
-    { code: "other", name: "Other", badge: "?" },
+    { code: "expense", name: t("transactions.type.expense"), badge: "↓" },
+    { code: "income", name: t("transactions.type.income"), badge: "↑" },
+    { code: "pending", name: t("transactions.type.pending"), badge: "⏲︎" },
+    { code: "other", name: t("transactions.type.other"), badge: "?" },
   ]
 
   return (

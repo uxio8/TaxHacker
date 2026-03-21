@@ -2,12 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useI18n } from "@/lib/i18n"
 import { Plan } from "@/lib/stripe"
 import { Check, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { FormError } from "../forms/error"
 
 export function PricingCard({ plan, hideButton = false }: { plan: Plan; hideButton?: boolean }) {
+  const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,7 +27,7 @@ export function PricingCard({ plan, hideButton = false }: { plan: Plan; hideButt
         window.location.href = data.session.url
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An unknown error occurred")
+      setError(error instanceof Error ? error.message : t("common.errors.generic"))
     } finally {
       setIsLoading(false)
     }
@@ -52,7 +54,7 @@ export function PricingCard({ plan, hideButton = false }: { plan: Plan; hideButt
       <CardFooter className="flex flex-col gap-2 relative">
         {!hideButton && (
           <Button className="w-full" onClick={handleClick} disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get Started"}
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.pricing.getStarted")}
           </Button>
         )}
         {error && <FormError>{error}</FormError>}

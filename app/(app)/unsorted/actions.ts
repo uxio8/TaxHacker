@@ -18,7 +18,8 @@ import { DEFAULT_PROMPT_ANALYSE_NEW_FILE } from "@/models/defaults"
 import { createAnalysisJob, findActiveAnalysisJobForFile } from "@/models/analysis-jobs"
 import { createFile, deleteFile, getFileById, updateFile } from "@/models/files"
 import { toStoredAnalysisJobAttachments } from "@/lib/analysis-jobs"
-import { getLLMSettings } from "@/models/settings"
+import { getFields } from "@/models/fields"
+import { getLLMSettings, getSettings } from "@/models/settings"
 import { createTransaction, TransactionData, updateTransactionFiles } from "@/models/transactions"
 import { updateUser } from "@/models/users"
 import { Category, Field, File, Project, Transaction } from "@/prisma/client"
@@ -74,15 +75,18 @@ export async function startAnalysisJobAction(
     return { success: false, error: "Failed to retrieve files: " + error }
   }
 
+  const currentFields = await getFields(user.id)
+  const currentSettings = { ...settings, ...(await getSettings(user.id)) }
+
   const prompt = buildLLMPrompt(
-    settings.prompt_analyse_new_file || DEFAULT_PROMPT_ANALYSE_NEW_FILE,
-    fields,
+    currentSettings.prompt_analyse_new_file || DEFAULT_PROMPT_ANALYSE_NEW_FILE,
+    currentFields,
     categories,
     projects
   )
 
-  const schema = fieldsToJsonSchema(fields)
-  const llmSettings = getLLMSettings(settings)
+  const schema = fieldsToJsonSchema(currentFields)
+  const llmSettings = getLLMSettings(currentSettings)
 
   if (llmSettings.providers.length === 0) {
     return {

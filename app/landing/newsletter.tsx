@@ -21,21 +21,21 @@ export function NewsletterForm() {
       }
 
       setStatus("success")
-      setMessage("Thanks for subscribing! Check your email for confirmation.")
+      setMessage("Gracias por suscribirte. Revisa tu correo para confirmar la suscripción.")
       setEmail("")
     } catch (error) {
       setStatus("error")
-      setMessage(error instanceof Error ? error.message : "Failed to subscribe. Please try again.")
+      setMessage(error instanceof Error ? error.message : "No se ha podido completar la suscripción. Inténtalo otra vez.")
     }
   }
 
   return (
     <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-8 rounded-2xl shadow-sm ring-1 ring-gray-100">
       <div className="max-w-2xl mx-auto text-center">
-        <h3 className="text-2xl font-semibold mb-4">Stay Tuned</h3>
+        <h3 className="text-2xl font-semibold mb-4">Sigue de cerca el proyecto</h3>
         <p className="text-gray-600 mb-6">
-          We&apos;re working hard on making TaxHacker useful for everyone. Subscribe to our emails to get notified about
-          our plans and new features. No marketing, ads or spam.
+          Estamos trabajando a tope para que TaxHacker sea útil para cualquiera. Suscríbete para enterarte de nuestros
+          planes y de las nuevas funciones. Sin marketing, sin anuncios y sin spam.
         </p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-md mx-auto">
           <div className="flex flex-wrap items-center justify-center gap-4">
@@ -43,7 +43,7 @@ export function NewsletterForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder="Introduce tu correo"
               className="flex-1 px-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             />
@@ -52,7 +52,7 @@ export function NewsletterForm() {
               disabled={status === "loading"}
               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {status === "loading" ? "Subscribing..." : "Subscribe"}
+              {status === "loading" ? "Suscribiendo..." : "Suscribirse"}
             </button>
           </div>
           {message && (

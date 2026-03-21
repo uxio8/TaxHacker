@@ -1,11 +1,13 @@
 import { addProjectAction, deleteProjectAction, editProjectAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { randomHexColor } from "@/lib/utils"
 import { getProjects } from "@/models/projects"
 import { Prisma } from "@/prisma/client"
 
 export default async function ProjectsSettingsPage() {
+  const t = createTranslator()
   const user = await getCurrentUser()
   const projects = await getProjects(user.id)
   const projectsWithActions = projects.map((project) => ({
@@ -16,17 +18,14 @@ export default async function ProjectsSettingsPage() {
 
   return (
     <div className="container">
-      <h1 className="text-2xl font-bold mb-2">Projects</h1>
-      <p className="text-sm text-gray-500 mb-6 max-w-prose">
-        Use projects to differentiate between the type of activities you do For example: Freelancing, YouTube channel,
-        Blogging. Projects are just a convenient way to separate statistics.
-      </p>
+      <h1 className="text-2xl font-bold mb-2">{t("settings.projects.title")}</h1>
+      <p className="text-sm text-gray-500 mb-6 max-w-prose">{t("settings.projects.description")}</p>
       <CrudTable
         items={projectsWithActions}
         columns={[
-          { key: "name", label: "Name", editable: true },
-          { key: "llm_prompt", label: "LLM Prompt", editable: true },
-          { key: "color", label: "Color", type: "color", defaultValue: randomHexColor(), editable: true },
+          { key: "name", label: t("settings.columns.name"), editable: true },
+          { key: "llm_prompt", label: t("settings.columns.llmPrompt"), editable: true },
+          { key: "color", label: t("settings.columns.color"), type: "color", defaultValue: randomHexColor(), editable: true },
         ]}
         onDelete={async (code) => {
           "use server"

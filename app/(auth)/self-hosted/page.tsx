@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
+import { createTranslator } from "@/lib/i18n"
 import { hasSelfHostedAccess } from "@/lib/security"
 import { getSelfHostedUser } from "@/models/users"
 import { ShieldAlert } from "lucide-react"
@@ -9,31 +10,31 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import SelfHostedSetupFormClient from "./setup-form-client"
 
-const SELF_HOSTED_ERROR_MESSAGES = {
-  "invalid-token": "Invalid admin token.",
-  "missing-token": "SELF_HOSTED_ADMIN_TOKEN is not configured.",
-} as const
-
-type SelfHostedErrorCode = keyof typeof SELF_HOSTED_ERROR_MESSAGES
+type SelfHostedErrorCode = "invalid-token" | "missing-token"
 
 export default async function SelfHostedWelcomePage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: SelfHostedErrorCode }>
 }) {
+  const t = createTranslator()
+  const SELF_HOSTED_ERROR_MESSAGES = {
+    "invalid-token": t("auth.selfHosted.errors.invalidToken"),
+    "missing-token": t("auth.selfHosted.errors.missingToken"),
+  } as const
+
   if (!config.selfHosted.isEnabled) {
     return (
       <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-6">
         <CardTitle className="text-2xl font-bold flex items-center gap-2">
           <ShieldAlert className="w-6 h-6" />
-          <span>Self-Hosted Mode is not enabled</span>
+          <span>{t("auth.selfHosted.disabledTitle")}</span>
         </CardTitle>
         <CardDescription className="text-center text-lg flex flex-col gap-2">
           <p>
-            To use TaxHacker in self-hosted mode, please set <code className="font-bold">SELF_HOSTED_MODE=true</code> in
-            your environment.
+            {t("auth.selfHosted.disabledDescription")}
           </p>
-          <p>In self-hosted mode you can use your own AI providers, including Pool Cloud, and store your data on your own server.</p>
+          <p>{t("auth.selfHosted.disabledDescriptionSecondary")}</p>
         </CardDescription>
       </Card>
     )
@@ -44,13 +45,11 @@ export default async function SelfHostedWelcomePage({
       <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-6">
         <CardTitle className="text-2xl font-bold flex items-center gap-2">
           <ShieldAlert className="w-6 h-6" />
-          <span>Missing self-hosted admin token</span>
+          <span>{t("auth.selfHosted.missingTokenTitle")}</span>
         </CardTitle>
         <CardDescription className="text-center text-lg flex flex-col gap-2">
-          <p>
-            Set <code className="font-bold">SELF_HOSTED_ADMIN_TOKEN</code> to unlock this self-hosted instance safely.
-          </p>
-          <p>Without it, anyone who can reach the app could have taken over the singleton self-hosted account.</p>
+          <p>{t("auth.selfHosted.missingTokenDescription")}</p>
+          <p>{t("auth.selfHosted.missingTokenWarning")}</p>
         </CardDescription>
       </Card>
     )
@@ -74,16 +73,12 @@ export default async function SelfHostedWelcomePage({
 
   return (
     <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-4">
-      <Image src="/logo/512.png" alt="Logo" width={144} height={144} className="w-36 h-36" />
+      <Image src="/logo/512.png" alt={t("auth.logoAlt")} width={144} height={144} className="w-36 h-36" />
       <CardTitle className="text-3xl font-bold ">
-        <ColoredText>TaxHacker: Self-Hosted Edition</ColoredText>
+        <ColoredText>{t("auth.selfHosted.title")}</ColoredText>
       </CardTitle>
       <CardDescription className="flex flex-col gap-4 text-center text-lg">
-        <p>
-          {requiresSetup
-            ? "Unlock this instance with your admin token and finish the initial setup."
-            : "Unlock this instance with your admin token to access the self-hosted account."}
-        </p>
+        <p>{requiresSetup ? t("auth.selfHosted.setupDescription") : t("auth.selfHosted.unlockDescription")}</p>
       </CardDescription>
       {errorMessage ? (
         <CardContent className="w-full pt-0">

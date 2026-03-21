@@ -7,6 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getProjects } from "@/models/projects"
@@ -15,6 +16,7 @@ import { Button } from "../ui/button"
 import TransactionCreateForm from "./create"
 
 export async function NewTransactionDialog({ children }: { children: React.ReactNode }) {
+  const t = createTranslator()
   const user = await getCurrentUser()
   const categories = await getCategories(user.id)
   const currencies = await getCurrencies(user.id)
@@ -28,8 +30,8 @@ export async function NewTransactionDialog({ children }: { children: React.React
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">New Transaction</DialogTitle>
-          <DialogDescription>Create a new transaction</DialogDescription>
+          <DialogTitle className="text-2xl font-bold">{t("transactions.newTitle")}</DialogTitle>
+          <DialogDescription>{t("transactions.newDescription")}</DialogDescription>
         </DialogHeader>
 
         <TransactionCreateForm

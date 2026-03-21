@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useI18n } from "@/lib/i18n"
 import { Field } from "@/prisma/client"
 import { ColumnsIcon, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -17,6 +18,7 @@ import { useState } from "react"
 
 export function ColumnSelector({ fields, onChange }: { fields: Field[]; onChange?: () => void }) {
   const router = useRouter()
+  const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleToggle = async (fieldCode: string, isCurrentlyVisible: boolean) => {
@@ -41,12 +43,12 @@ export function ColumnSelector({ fields, onChange }: { fields: Field[]; onChange
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" title="Select table columns">
+        <Button variant="outline" size="icon" title={t("transactions.columnSelector.title")}>
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ColumnsIcon className="h-4 w-4" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Show Columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("transactions.columnSelector.show")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {fields.map((field) => (
           <DropdownMenuCheckboxItem

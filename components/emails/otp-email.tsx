@@ -6,8 +6,8 @@ interface OTPEmailProps {
 }
 
 export const OTPEmail: React.FC<OTPEmailProps> = ({ otp }) => (
-  <EmailLayout preview="Your TaxHacker verification code">
-    <h2 style={{ textAlign: "center", color: "#4f46e5" }}>🔑 Your TaxHacker verification code</h2>
+  <EmailLayout preview="Tu código de verificación de TaxHacker">
+    <h2 style={{ textAlign: "center", color: "#4f46e5" }}>🔑 Tu código de verificación de TaxHacker</h2>
     <div
       style={{
         margin: "20px 0",
@@ -17,7 +17,7 @@ export const OTPEmail: React.FC<OTPEmailProps> = ({ otp }) => (
         textAlign: "center",
       }}
     >
-      <p style={{ fontSize: "16px", marginBottom: "10px" }}>Your verification code is:</p>
+      <p style={{ fontSize: "16px", marginBottom: "10px" }}>Tu código de verificación es:</p>
       <p
         style={{
           fontSize: "24px",
@@ -30,9 +30,9 @@ export const OTPEmail: React.FC<OTPEmailProps> = ({ otp }) => (
         {otp}
       </p>
     </div>
-    <p style={{ fontSize: "14px", color: "#666", textAlign: "center" }}>This code will expire in 10 minutes.</p>
+    <p style={{ fontSize: "14px", color: "#666", textAlign: "center" }}>Este código caduca en 10 minutos.</p>
     <p style={{ fontSize: "14px", color: "#666", textAlign: "center" }}>
-      If you didn&apos;t request this code, please ignore this email.
+      Si no has solicitado este código, puedes ignorar este correo.
     </p>
   </EmailLayout>
 )

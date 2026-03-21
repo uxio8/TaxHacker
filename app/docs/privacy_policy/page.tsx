@@ -4,31 +4,31 @@ export default async function PrivacyPolicy() {
   return (
     <div className="prose prose-slate max-w-none">
       <h2 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">
-        <strong>Privacy Policy</strong>
+        <strong>Política de privacidad</strong>
       </h2>
 
       <p className="text-slate-700 mb-6 leading-relaxed bg-yellow-50 p-3 border-l-4 border-yellow-400">
-        <strong className="text-slate-800">TL;DR:</strong> If you really care about privacy of your data, use our
-        self-hosted version instead. No cloud is safe. Use the platform is at your own risk.
+        <strong className="text-slate-800">Resumen:</strong> Si te importa de verdad la privacidad de tus datos, usa la
+        versión self-hosted. Ninguna nube es infalible. Utilizas la plataforma bajo tu propia responsabilidad.
       </p>
 
       <p className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-        <strong className="text-slate-700">Effective Date</strong>: April 22, 2025
+        <strong className="text-slate-700">Fecha de entrada en vigor</strong>: 22 de abril de 2025
         <br />
-        <strong className="text-slate-700">Contact Email</strong>:{" "}
+        <strong className="text-slate-700">Correo de contacto</strong>:{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
         <br />
-        <strong className="text-slate-700">Domain</strong>:{" "}
+        <strong className="text-slate-700">Dominio</strong>:{" "}
         <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
           https://taxhacker.app
         </a>
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your privacy. This
-        Privacy Policy describes how we collect, use, store, and protect your personal data when you use our services at{" "}
+        TaxHacker (&quot;nosotros&quot;) se compromete a proteger tu privacidad. Esta Política de privacidad describe
+        cómo recopilamos, usamos, almacenamos y protegemos tus datos personales cuando utilizas nuestros servicios en{" "}
         <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
           taxhacker.app
         </a>
@@ -38,149 +38,149 @@ export default async function PrivacyPolicy() {
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        1. <strong>What Data We Collect</strong>
+        1. <strong>Qué datos recopilamos</strong>
       </h3>
-      <p className="text-slate-700 mb-3">We collect the following types of data when you use TaxHacker:</p>
+      <p className="text-slate-700 mb-3">Recopilamos los siguientes tipos de datos cuando usas TaxHacker:</p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          <strong className="text-slate-800">Account Data</strong>: Email address, display name, optional avatar image.
-          No passwords are stored.
+          <strong className="text-slate-800">Datos de la cuenta</strong>: correo electrónico, nombre visible y avatar
+          opcional. No almacenamos contraseñas.
         </li>
         <li>
-          <strong className="text-slate-800">Communication Data</strong>: Email messages we send for verification,
-          updates, or newsletters.
+          <strong className="text-slate-800">Datos de comunicación</strong>: correos que enviamos para verificación,
+          novedades o newsletter.
         </li>
         <li>
-          <strong className="text-slate-800">Uploaded Files</strong>: Invoices, receipts and any other files that you
-          upload, which may contain sensitive personal or financial information.
+          <strong className="text-slate-800">Archivos subidos</strong>: facturas, tickets y cualquier otro archivo que
+          subas, que puede contener información personal o financiera sensible.
         </li>
         <li>
-          <strong className="text-slate-800">Session Metadata</strong>: IP address, browser type, and timestamps for
-          session security.
+          <strong className="text-slate-800">Metadatos de sesión</strong>: dirección IP, tipo de navegador y marcas de
+          tiempo relacionadas con la seguridad de la sesión.
         </li>
         <li>
-          <strong className="text-slate-800">Service Usage Data</strong>: Metadata related to your activity within the
-          platform (e.g. number of uploaded files, AI tokens usage).
+          <strong className="text-slate-800">Datos de uso del servicio</strong>: metadatos relacionados con tu actividad
+          dentro de la plataforma, como número de archivos subidos o consumo de tokens de IA.
         </li>
       </ul>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        2. <strong>How We Use Your Data</strong>
+        2. <strong>Cómo usamos tus datos</strong>
       </h3>
-      <p className="text-slate-700 mb-3">We use your data to:</p>
+      <p className="text-slate-700 mb-3">Usamos tus datos para:</p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
-        <li>Create and manage your TaxHacker account</li>
-        <li>Store and analyze your uploaded files</li>
-        <li>Improve your financial organization through AI-powered insights</li>
-        <li>Communicate with you about your account and service updates</li>
-        <li>Comply with legal obligations</li>
+        <li>Crear y gestionar tu cuenta de TaxHacker</li>
+        <li>Almacenar y analizar los archivos que subes</li>
+        <li>Mejorar tu organización financiera mediante insights basados en IA</li>
+        <li>Comunicarnos contigo sobre tu cuenta y sobre novedades del servicio</li>
+        <li>Cumplir obligaciones legales</li>
       </ul>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        3. <strong>AI-Powered Processing</strong>
+        3. <strong>Procesamiento con IA</strong>
       </h3>
       <p className="text-slate-700 mb-3">
-        We use external AI services, specifically <strong className="text-slate-800">OpenAI (ChatGPT)</strong>, to:
+        Utilizamos servicios externos de IA, concretamente <strong className="text-slate-800">OpenAI (ChatGPT)</strong>,
+        para:
       </p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>Extract and interpret information from invoices using OCR</li>
-        <li>Analyze financial data for better user insights</li>
+        <li>Extraer e interpretar información de facturas mediante OCR</li>
+        <li>Analizar datos financieros para ofrecer mejores insights</li>
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        By using TaxHacker, you consent to the transfer of relevant data to these third-party providers for the purpose
-        of processing. These providers may operate outside the EU, in compliance with appropriate safeguards under GDPR
-        (e.g., SCCs).
+        Al usar TaxHacker, consientes la transferencia de los datos necesarios a estos proveedores terceros para su
+        procesamiento. Estos proveedores pueden operar fuera de la UE, con las salvaguardas adecuadas conforme al RGPD
+        (por ejemplo, cláusulas contractuales tipo).
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        4. <strong>Cookies and Tracking</strong>
+        4. <strong>Cookies y seguimiento</strong>
       </h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker does <strong className="text-slate-800">not use tracking cookies</strong> or third-party analytics. We
-        only collect aggregate access logs and usage statistics via{" "}
-        <strong className="text-slate-800">Cloudflare</strong> for infrastructure performance and security.
+        TaxHacker <strong className="text-slate-800">no usa cookies de seguimiento</strong> ni analítica de terceros.
+        Solo recopilamos registros agregados de acceso y estadísticas de uso mediante{" "}
+        <strong className="text-slate-800">Cloudflare</strong> para rendimiento y seguridad de la infraestructura.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        5. <strong>Data Storage and Security</strong>
+        5. <strong>Almacenamiento y seguridad de los datos</strong>
       </h3>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
         <li>
-          All data is stored on servers in <strong className="text-slate-800">Germany</strong>, hosted by{" "}
+          Todos los datos se almacenan en servidores de <strong className="text-slate-800">Alemania</strong> alojados en{" "}
           <strong className="text-slate-800">Hetzner Cloud</strong>.
         </li>
-        <li>Files and personal data are stored in an unencrypted form.</li>
-        <li>Access to personal data is limited to authorized team members for debugging or support purposes only.</li>
+        <li>Los archivos y datos personales se almacenan sin cifrado.</li>
+        <li>El acceso a datos personales se limita a miembros autorizados del equipo para depuración o soporte.</li>
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed bg-yellow-50 p-3 border-l-4 border-yellow-400">
-        While we strive to maintain reasonable safeguards, no system is completely secure. Use the platform at your own
-        risk.
+        Aunque intentamos mantener salvaguardas razonables, ningún sistema es completamente seguro. Utiliza la
+        plataforma bajo tu propia responsabilidad.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        6. <strong>Legal Basis for Processing</strong>
+        6. <strong>Base jurídica del tratamiento</strong>
       </h3>
-      <p className="text-slate-700 mb-3">We process personal data based on:</p>
+      <p className="text-slate-700 mb-3">Tratamos datos personales sobre la base de:</p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
         <li>
-          <strong className="text-slate-800">Your consent</strong>, which you grant when you create an account or upload
-          data
+          <strong className="text-slate-800">Tu consentimiento</strong>, que otorgas al crear una cuenta o subir datos
         </li>
         <li>
-          <strong className="text-slate-800">Our contractual obligations</strong> to provide the services you signed up
-          for
+          <strong className="text-slate-800">Nuestras obligaciones contractuales</strong> para prestar los servicios a
+          los que te has apuntado
         </li>
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        You can withdraw consent at any time by deleting your account or contacting us directly.
+        Puedes retirar el consentimiento en cualquier momento eliminando tu cuenta o contactando con nosotros.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        7. <strong>Data Retention</strong>
+        7. <strong>Conservación de los datos</strong>
       </h3>
-      <p className="text-slate-700 mb-3">We retain your data:</p>
+      <p className="text-slate-700 mb-3">Conservamos tus datos:</p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>As long as your account remains active</li>
-        <li>Until you request deletion</li>
+        <li>Mientras tu cuenta siga activa</li>
+        <li>Hasta que solicites su eliminación</li>
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        Once deleted, your data is removed from our systems, though some residual logs may remain for a short time due
-        to backups or operational needs.
+        Una vez eliminados, tus datos se borran de nuestros sistemas, aunque algunos registros residuales pueden
+        permanecer durante un tiempo limitado por copias de seguridad o necesidades operativas.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        8. <strong>Your Rights (under GDPR and similar laws)</strong>
+        8. <strong>Tus derechos (RGPD y normativas similares)</strong>
       </h3>
-      <p className="text-slate-700 mb-3">As a user, you have the right to:</p>
+      <p className="text-slate-700 mb-3">Como usuario, tienes derecho a:</p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>Access and review your personal data</li>
-        <li>Correct or update inaccurate information</li>
-        <li>Download a full backup of your data</li>
-        <li>Request permanent deletion of your account and associated data</li>
-        <li>Object to certain forms of processing</li>
-        <li>Lodge a complaint with a data protection authority</li>
+        <li>Acceder y revisar tus datos personales</li>
+        <li>Corregir o actualizar información inexacta</li>
+        <li>Descargar una copia completa de tus datos</li>
+        <li>Solicitar la eliminación permanente de tu cuenta y de los datos asociados</li>
+        <li>Oponerte a determinadas formas de tratamiento</li>
+        <li>Presentar una reclamación ante una autoridad de protección de datos</li>
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        To exercise your rights, contact us at{" "}
+        Para ejercer tus derechos, escríbenos a{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
@@ -190,21 +190,21 @@ export default async function PrivacyPolicy() {
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        9. <strong>Children's Privacy</strong>
+        9. <strong>Privacidad de menores</strong>
       </h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker is <strong className="text-slate-800">not intended for users under the age of 18</strong>. We do not
-        knowingly collect or store data from minors.
+        TaxHacker <strong className="text-slate-800">no está dirigido a menores de 18 años</strong>. No recopilamos ni
+        almacenamos conscientemente datos de menores.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        10. <strong>Changes to This Policy</strong>
+        10. <strong>Cambios en esta política</strong>
       </h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        We may update this Privacy Policy from time to time. Any changes will be published on this page with an updated
-        &quot;Effective Date.&quot; We encourage you to review the policy periodically.
+        Podemos actualizar esta Política de privacidad de vez en cuando. Cualquier cambio se publicará en esta página con
+        la &quot;Fecha de entrada en vigor&quot; actualizada. Te recomendamos revisarla periódicamente.
       </p>
     </div>
   )

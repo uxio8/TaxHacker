@@ -1,4 +1,6 @@
 import config from "@/lib/config"
+import { getI18nConfig } from "@/lib/i18n"
+import { I18nProvider } from "@/lib/i18n/provider"
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
 
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(config.app.baseURL),
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "es_ES",
     url: config.app.baseURL,
     title: config.app.title,
     description: config.app.description,
@@ -43,9 +45,15 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const i18n = getI18nConfig()
+
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-white antialiased">{children}</body>
+    <html lang={i18n.locale}>
+      <body className="min-h-screen bg-white antialiased">
+        <I18nProvider locale={i18n.locale} messages={i18n.messages}>
+          {children}
+        </I18nProvider>
+      </body>
     </html>
   )
 }

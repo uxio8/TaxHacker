@@ -1,14 +1,16 @@
 import Link from "next/link"
+import { createTranslator } from "@/lib/i18n"
 import { getApps } from "./common"
 
 export default async function AppsPage() {
+  const t = createTranslator()
   const apps = await getApps()
 
   return (
     <>
       <header className="flex flex-wrap items-center justify-between gap-2 mb-8">
         <h2 className="flex flex-row gap-3 md:gap-5">
-          <span className="text-3xl font-bold tracking-tight">Apps</span>
+          <span className="text-3xl font-bold tracking-tight">{t("common.apps")}</span>
           <span className="text-3xl tracking-tight opacity-20">{apps.length}</span>
         </h2>
       </header>

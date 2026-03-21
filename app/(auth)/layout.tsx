@@ -1,11 +1,15 @@
+import { createTranslator } from "@/lib/i18n"
 import { X } from "lucide-react"
 import Link from "next/link"
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = createTranslator()
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col relative">
       <Link
         href="/"
+        aria-label={t("common.actions.close")}
         className="absolute top-4 right-4 flex items-center justify-center w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
       >
         <span className="text-gray-300 font-bold text-xl">

@@ -2,11 +2,11 @@ import React from "react"
 import { EmailLayout } from "./email-layout"
 
 export const NewsletterWelcomeEmail: React.FC = () => (
-  <EmailLayout preview="Welcome to TaxHacker Newsletter!">
-    <h2 style={{ color: "#4f46e5" }}>👋 Welcome to TaxHacker!</h2>
+  <EmailLayout preview="Bienvenido a la newsletter de TaxHacker">
+    <h2 style={{ color: "#4f46e5" }}>👋 Te damos la bienvenida a TaxHacker</h2>
 
     <p style={{ fontSize: "16px", lineHeight: "1.5", color: "#333" }}>
-      Thank you for subscribing to our updates. We&apos;ll keep you updated about:
+      Gracias por suscribirte a nuestras novedades. Te iremos contando:
     </p>
     <ul
       style={{
@@ -16,15 +16,15 @@ export const NewsletterWelcomeEmail: React.FC = () => (
         color: "#333",
       }}
     >
-      <li>New features and improvements</li>
-      <li>Our plans and timelines</li>
-      <li>Updates about our SaaS version</li>
+      <li>Nuevas funciones y mejoras</li>
+      <li>Nuestros planes y próximos pasos</li>
+      <li>Novedades sobre la versión SaaS</li>
     </ul>
     <div style={{ marginTop: "30px", borderTop: "1px solid #eee", paddingTop: "20px" }}>
       <p style={{ fontSize: "16px", color: "#333" }}>
-        Best regards,
+        Un saludo,
         <br />
-        The TaxHacker Team
+        El equipo de TaxHacker
       </p>
     </div>
   </EmailLayout>

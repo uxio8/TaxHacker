@@ -1,5 +1,6 @@
 "use client"
 
+import { useI18n } from "@/lib/i18n"
 import { formatCurrency, formatPeriodLabel } from "@/lib/utils"
 import { DetailedTimeSeriesData } from "@/models/stats"
 import { addDays, endOfMonth, format, startOfMonth } from "date-fns"
@@ -13,6 +14,7 @@ interface IncomeExpenseGraphProps {
 }
 
 export function IncomeExpenseGraph({ data, defaultCurrency }: IncomeExpenseGraphProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{
@@ -85,7 +87,7 @@ export function IncomeExpenseGraph({ data, defaultCurrency }: IncomeExpenseGraph
   if (!data.length) {
     return (
       <div className="w-full h-96 flex items-center justify-center text-muted-foreground">
-        No data available for the selected period
+        {t("dashboard.graph.noDataSelectedPeriod")}
       </div>
     )
   }
@@ -97,7 +99,7 @@ export function IncomeExpenseGraph({ data, defaultCurrency }: IncomeExpenseGraph
   if (maxValue === 0) {
     return (
       <div className="w-full h-96 flex items-center justify-center text-muted-foreground">
-        No transactions found for the selected period
+        {t("dashboard.graph.noTransactionsSelectedPeriod")}
       </div>
     )
   }

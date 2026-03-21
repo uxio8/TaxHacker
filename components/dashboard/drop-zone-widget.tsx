@@ -4,6 +4,7 @@ import { useNotification } from "@/app/(app)/context"
 import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { FormError } from "@/components/forms/error"
 import config from "@/lib/config"
+import { useI18n } from "@/lib/i18n"
 import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
 import { Camera, Loader2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -13,6 +14,7 @@ export default function DashboardDropZoneWidget() {
   const router = useRouter()
   const pathname = usePathname()
   const { showNotification } = useNotification()
+  const { t } = useI18n()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
 
@@ -53,7 +55,7 @@ export default function DashboardDropZoneWidget() {
             router.refresh()
           }
         } else {
-          setUploadError(result.error ? result.error : "Something went wrong...")
+          setUploadError(result.error ? result.error : t("common.errors.generic"))
         }
       } finally {
         resetFileInputValue(input)
@@ -81,12 +83,10 @@ export default function DashboardDropZoneWidget() {
           )}
           <div>
             <p className="text-lg font-medium">
-              {isUploading ? "Uploading..." : "Take a photo or drop your files here"}
+              {isUploading ? t("dashboard.dropzone.loading") : t("dashboard.dropzone.title")}
             </p>
             {!uploadError && (
-              <p className="text-sm text-muted-foreground">
-                upload receipts, invoices and any other documents for me to scan
-              </p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.dropzone.hint")}</p>
             )}
             {uploadError && <FormError>{uploadError}</FormError>}
           </div>

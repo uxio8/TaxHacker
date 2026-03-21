@@ -3,6 +3,7 @@ import TransactionEditForm from "@/components/transactions/edit"
 import TransactionFiles from "@/components/transactions/transaction-files"
 import { Card } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { incompleteTransactionFields } from "@/lib/stats"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
@@ -15,6 +16,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 export default async function TransactionPage({ params }: { params: Promise<{ transactionId: string }> }) {
+  const t = createTranslator()
   const { transactionId } = await params
   const user = await getCurrentUser()
   const transaction = await getTransactionById(transactionId, user.id)
@@ -36,12 +38,12 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
         {incompleteFields.length > 0 && (
           <div className="w-full flex flex-col gap-1 rounded-md bg-yellow-50 p-5">
             <span>
-              Some fields are incomplete: <strong>{incompleteFields.map((field) => field.name).join(", ")}</strong>
+              {t("transactions.incompleteFields", { fields: incompleteFields.map((field) => field.name).join(", ") })}
             </span>
             <span className="text-xs text-muted-foreground">
-              You can decide which fields are required for you in{" "}
+              {t("transactions.incompleteFieldsHelp")}{" "}
               <Link href="/settings/fields" className="underline">
-                Fields settings
+                {t("common.fields")}
               </Link>
               .
             </span>
@@ -59,7 +61,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
 
           {transaction.text && (
             <details className="mt-10">
-              <summary className="cursor-pointer text-sm font-medium">Recognized Text</summary>
+              <summary className="cursor-pointer text-sm font-medium">{t("transactions.recognizedText")}</summary>
               <Card className="flex items-stretch p-2 max-w-6xl">
                 <div className="flex-1">
                   <FormTextarea

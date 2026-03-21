@@ -1,10 +1,12 @@
 import { addFieldAction, deleteFieldAction, editFieldAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { getFields } from "@/models/fields"
 import { Prisma } from "@/prisma/client"
 
 export default async function FieldsSettingsPage() {
+  const t = createTranslator()
   const user = await getCurrentUser()
   const fields = await getFields(user.id)
   const fieldsWithActions = fields.map((field) => ({
@@ -15,42 +17,42 @@ export default async function FieldsSettingsPage() {
 
   return (
     <div className="container">
-      <h1 className="text-2xl font-bold mb-2">Custom Fields</h1>
-      <p className="text-sm text-gray-500 mb-6 max-w-prose">
-        You can add new fields to your transactions. Standard fields can&apos;t be removed but you can tweak their
-        prompts or hide them. If you don&apos;t want a field to be analyzed by AI but filled in by hand, leave the
-        &quot;LLM prompt&quot; empty.
-      </p>
+      <h1 className="text-2xl font-bold mb-2">{t("settings.fields.title")}</h1>
+      <p className="text-sm text-gray-500 mb-6 max-w-prose">{t("settings.fields.description")}</p>
       <CrudTable
         items={fieldsWithActions}
         columns={[
-          { key: "name", label: "Name", editable: true },
+          { key: "name", label: t("settings.columns.name"), editable: true },
           {
             key: "type",
-            label: "Type",
+            label: t("settings.columns.type"),
             type: "select",
-            options: ["string", "number", "boolean"],
+            options: [
+              { value: "string", label: t("settings.fieldTypes.string") },
+              { value: "number", label: t("settings.fieldTypes.number") },
+              { value: "boolean", label: t("settings.fieldTypes.boolean") },
+            ],
             defaultValue: "string",
             editable: true,
           },
-          { key: "llm_prompt", label: "LLM Prompt", editable: true },
+          { key: "llm_prompt", label: t("settings.columns.llmPrompt"), editable: true },
           {
             key: "isVisibleInList",
-            label: "Show in transactions table",
+            label: t("settings.columns.showInTransactions"),
             type: "checkbox",
             defaultValue: false,
             editable: true,
           },
           {
             key: "isVisibleInAnalysis",
-            label: "Show in analysis form",
+            label: t("settings.columns.showInAnalysis"),
             type: "checkbox",
             defaultValue: false,
             editable: true,
           },
           {
             key: "isRequired",
-            label: "Is required",
+            label: t("settings.columns.isRequired"),
             type: "checkbox",
             defaultValue: false,
             editable: true,

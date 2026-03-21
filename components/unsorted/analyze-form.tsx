@@ -14,6 +14,7 @@ import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { canAnalyzeFileMimeType, getAnalyzeMimeTypeError } from "@/lib/analysis-support"
+import { useI18n, type Translator } from "@/lib/i18n"
 import { Category, Currency, Field, File, Project } from "@/prisma/client"
 import { format } from "date-fns"
 import { ArrowDownToLine, Brain, Loader2, Trash2 } from "lucide-react"
@@ -21,6 +22,15 @@ import { startTransition, useActionState, useMemo, useState } from "react"
 
 const ANALYSIS_JOB_POLL_INTERVAL_MS = 1500
 const ANALYSIS_JOB_TIMEOUT_MS = 10 * 60 * 1000
+const INVOICE_FIELD_CODES = new Set(["invoice_number"])
+const BILLING_FIELD_CODES = new Set([
+  "billing_company_name",
+  "billing_tax_id",
+  "billing_address",
+  "billing_postal_code",
+  "billing_city",
+  "billing_country",
+])
 
 type AnalysisJobResponse = {
   status: string
@@ -44,6 +54,7 @@ export default function AnalyzeForm({
   settings: Record<string, string>
 }) {
   const { showNotification } = useNotification()
+  const { t } = useI18n()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState<string>("")
   const [analyzeError, setAnalyzeError] = useState<string>("")
@@ -63,6 +74,18 @@ export default function AnalyzeForm({
   }, [fields])
 
   const extraFields = useMemo(() => fields.filter((field) => field.isExtra), [fields])
+  const invoiceFields = useMemo(
+    () => extraFields.filter((field) => INVOICE_FIELD_CODES.has(field.code)),
+    [extraFields]
+  )
+  const billingFields = useMemo(
+    () => extraFields.filter((field) => BILLING_FIELD_CODES.has(field.code)),
+    [extraFields]
+  )
+  const remainingExtraFields = useMemo(
+    () => extraFields.filter((field) => !INVOICE_FIELD_CODES.has(field.code) && !BILLING_FIELD_CODES.has(field.code)),
+    [extraFields]
+  )
   const initialFormState = useMemo(() => {
     const baseState = {
       name: file.filename,
@@ -115,12 +138,12 @@ export default function AnalyzeForm({
       setIsSaving(false)
 
       if (result.success) {
-        showNotification({ code: "global.banner", message: "Saved!", type: "success" })
+        showNotification({ code: "global.banner", message: t("analysis.saved"), type: "success" })
         showNotification({ code: "sidebar.transactions", message: "new" })
         setTimeout(() => showNotification({ code: "sidebar.transactions", message: "" }), 3000)
       } else {
-        setSaveError(result.error ? result.error : "Something went wrong...")
-        showNotification({ code: "global.banner", message: "Failed to save", type: "failed" })
+        setSaveError(result.error ? result.error : t("common.errors.generic"))
+        showNotification({ code: "global.banner", message: t("analysis.saveFailed"), type: "failed" })
       }
     })
   }
@@ -134,35 +157,35 @@ export default function AnalyzeForm({
       })
 
       if (!response.ok) {
-        throw new Error("Failed to read analysis job status")
+        throw new Error(t("analysis.readStatusFailed"))
       }
 
       const job = (await response.json()) as AnalysisJobResponse
-      setAnalyzeStep(getAnalyzeStepLabel(job.status))
+      setAnalyzeStep(getAnalyzeStepLabel(job.status, t))
 
       if (job.status === "succeeded") {
         return job.result || {}
       }
 
       if (job.status === "failed" || job.status === "cancelled") {
-        throw new Error(job.error || "Analysis failed")
+        throw new Error(job.error || t("analysis.failed"))
       }
 
       await new Promise((resolve) => setTimeout(resolve, ANALYSIS_JOB_POLL_INTERVAL_MS))
     }
 
-    throw new Error("Analysis timed out. Check that the analysis worker is running.")
+    throw new Error(t("analysis.timeout"))
   }
 
   const startAnalyze = async () => {
     setIsAnalyzing(true)
     setAnalyzeError("")
     try {
-      setAnalyzeStep("Queueing...")
+      setAnalyzeStep(t("analysis.queueing"))
       const results = await startAnalysisJobAction(file, settings, fields, categories, projects)
 
       if (!results.success || !results.data) {
-        setAnalyzeError(results.error ? results.error : "Something went wrong...")
+        setAnalyzeError(results.error ? results.error : t("common.errors.generic"))
       } else {
         const output = await pollAnalysisJob(results.data.jobId)
         const nonEmptyFields = Object.fromEntries(
@@ -172,7 +195,7 @@ export default function AnalyzeForm({
       }
     } catch (error) {
       console.error("Analysis failed:", error)
-      setAnalyzeError(error instanceof Error ? error.message : "Analysis failed")
+      setAnalyzeError(error instanceof Error ? error.message : t("analysis.failed"))
     } finally {
       setIsAnalyzing(false)
       setAnalyzeStep("")
@@ -183,7 +206,7 @@ export default function AnalyzeForm({
     <>
       {file.isSplitted ? (
         <div className="flex justify-end">
-          <Badge variant="outline">This file has been split up</Badge>
+          <Badge variant="outline">{t("analysis.fileSplit")}</Badge>
         </div>
       ) : !canAnalyzeCurrentFile ? (
         <div className="mb-6 rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -199,7 +222,7 @@ export default function AnalyzeForm({
           ) : (
             <>
               <Brain className="mr-1 h-4 w-4" />
-              <span>Analyze with AI</span>
+              <span>{t("analysis.analyze")}</span>
             </>
           )}
         </Button>
@@ -271,7 +294,11 @@ export default function AnalyzeForm({
         </div>
 
         {formData.total != 0 && formData.currencyCode && formData.currencyCode !== settings.default_currency && (
-          <ToolWindow title={`Exchange rate on ${format(new Date(formData.issuedAt || Date.now()), "LLLL dd, yyyy")}`}>
+          <ToolWindow
+            title={t("analysis.exchangeRateOn", {
+              date: format(new Date(formData.issuedAt || Date.now()), "dd/MM/yyyy"),
+            })}
+          >
             <CurrencyConverterTool
               originalTotal={formData.total}
               originalCurrencyCode={formData.currencyCode}
@@ -302,7 +329,7 @@ export default function AnalyzeForm({
             name="categoryCode"
             value={formData.categoryCode}
             onValueChange={(value) => setFormData((prev) => ({ ...prev, categoryCode: value }))}
-            placeholder="Select Category"
+            placeholder={t("analysis.selectCategory")}
             hideIfEmpty={!fieldMap.categoryCode.isVisibleInAnalysis}
             required={fieldMap.categoryCode.isRequired}
           />
@@ -314,7 +341,7 @@ export default function AnalyzeForm({
               name="projectCode"
               value={formData.projectCode}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, projectCode: value }))}
-              placeholder="Select Project"
+              placeholder={t("analysis.selectProject")}
               hideIfEmpty={!fieldMap.projectCode.isVisibleInAnalysis}
               required={fieldMap.projectCode.isRequired}
             />
@@ -330,7 +357,49 @@ export default function AnalyzeForm({
           required={fieldMap.note.isRequired}
         />
 
-        {extraFields.map((field) => (
+        {invoiceFields.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("analysis.sectionInvoice")}
+            </h3>
+            {invoiceFields.map((field) => (
+              <FormInput
+                key={field.code}
+                type="text"
+                title={field.name}
+                name={field.code}
+                value={formData[field.code as keyof typeof formData]}
+                onChange={(e) => setFormData((prev) => ({ ...prev, [field.code]: e.target.value }))}
+                hideIfEmpty={!field.isVisibleInAnalysis}
+                required={field.isRequired}
+              />
+            ))}
+          </div>
+        )}
+
+        {billingFields.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("analysis.sectionBillingDetails")}
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              {billingFields.map((field) => (
+                <FormInput
+                  key={field.code}
+                  type="text"
+                  title={field.name}
+                  name={field.code}
+                  value={formData[field.code as keyof typeof formData]}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, [field.code]: e.target.value }))}
+                  hideIfEmpty={!field.isVisibleInAnalysis}
+                  required={field.isRequired}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {remainingExtraFields.map((field) => (
           <FormInput
             key={field.code}
             type="text"
@@ -344,7 +413,7 @@ export default function AnalyzeForm({
         ))}
 
         {formData.items && formData.items.length > 0 && (
-          <ToolWindow title="Detected items">
+          <ToolWindow title={t("analysis.detectedItems")}>
             <ItemsDetectTool file={file} data={formData} />
           </ToolWindow>
         )}
@@ -368,19 +437,19 @@ export default function AnalyzeForm({
             disabled={isDeleting}
           >
             <Trash2 className="h-4 w-4" />
-            {isDeleting ? "⏳ Deleting..." : "Delete"}
+            {isDeleting ? t("common.feedback.deleting") : t("common.actions.delete")}
           </Button>
 
           <Button type="submit" disabled={isSaving} data-save-button>
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("common.feedback.saving")}
               </>
             ) : (
               <>
                 <ArrowDownToLine className="h-4 w-4" />
-                Save as Transaction
+                {t("transactions.saveTransaction")}
               </>
             )}
           </Button>
@@ -395,17 +464,17 @@ export default function AnalyzeForm({
   )
 }
 
-function getAnalyzeStepLabel(status: string) {
+function getAnalyzeStepLabel(status: string, t: Translator) {
   switch (status) {
     case "queued":
-      return "Queued..."
+      return t("analysis.queued")
     case "acquiring_lease":
-      return "Acquiring Pool lease..."
+      return t("analysis.acquiringLease")
     case "running":
-      return "Analyzing..."
+      return t("analysis.analyzing")
     case "persisting_result":
-      return "Saving results..."
+      return t("analysis.savingResults")
     default:
-      return "Analyzing..."
+      return t("analysis.analyzing")
   }
 }

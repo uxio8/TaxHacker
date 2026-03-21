@@ -11,6 +11,7 @@ import {
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 import { UserProfile } from "@/lib/auth"
 import { authClient } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n"
 import { PLANS } from "@/lib/stripe"
 import { formatBytes } from "@/lib/utils"
 import { CreditCard, LogOut, MoreVertical, Settings, Sparkles, User } from "lucide-react"
@@ -18,6 +19,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 export default function SidebarUser({ profile, isSelfHosted }: { profile: UserProfile; isSelfHosted: boolean }) {
+  const { t } = useI18n()
   const signOut = async () => {
     await authClient.signOut({})
     redirect("/")
@@ -66,23 +68,25 @@ export default function SidebarUser({ profile, isSelfHosted }: { profile: UserPr
             <Link href="/settings/profile" className="flex items-center gap-2">
               <Sparkles />
               <span className="truncate">{PLANS[profile.membershipPlan as keyof typeof PLANS].name}</span>
-              <span className="ml-auto text-xs text-muted-foreground">{formatBytes(profile.storageUsed)} used</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {t("sidebar.storageUsed", { used: formatBytes(profile.storageUsed) })}
+              </span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </Link>
-          </DropdownMenuItem>
+              <Link href="/settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                {t("common.settings")}
+              </Link>
+            </DropdownMenuItem>
           {!isSelfHosted && (
             <DropdownMenuItem asChild>
               <Link href="/api/stripe/portal" className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
-                Billing
+                {t("common.billing")}
               </Link>
             </DropdownMenuItem>
           )}
@@ -93,7 +97,7 @@ export default function SidebarUser({ profile, isSelfHosted }: { profile: UserPr
             <DropdownMenuItem asChild>
               <span onClick={signOut} className="flex items-center gap-2 text-red-600 cursor-pointer">
                 <LogOut className="h-4 w-4" />
-                Log out
+                {t("common.logOut")}
               </span>
             </DropdownMenuItem>
           </>

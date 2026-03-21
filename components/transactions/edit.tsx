@@ -10,12 +10,23 @@ import { FormSelectProject } from "@/components/forms/select-project"
 import { FormSelectType } from "@/components/forms/select-type"
 import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/lib/i18n"
 import { TransactionData } from "@/models/transactions"
 import { Category, Currency, Field, Project, Transaction } from "@/prisma/client"
 import { format } from "date-fns"
 import { Loader2, Save, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { startTransition, useActionState, useEffect, useMemo, useState } from "react"
+
+const INVOICE_FIELD_CODES = new Set(["invoice_number"])
+const BILLING_FIELD_CODES = new Set([
+  "billing_company_name",
+  "billing_tax_id",
+  "billing_address",
+  "billing_postal_code",
+  "billing_city",
+  "billing_country",
+])
 
 export default function TransactionEditForm({
   transaction,
@@ -33,10 +44,17 @@ export default function TransactionEditForm({
   settings: Record<string, string>
 }) {
   const router = useRouter()
+  const { t } = useI18n()
   const [deleteState, deleteAction, isDeleting] = useActionState(deleteTransactionAction, null)
   const [saveState, saveAction, isSaving] = useActionState(saveTransactionAction, null)
 
   const extraFields = fields.filter((field) => field.isExtra)
+  const invoiceFields = useMemo(() => extraFields.filter((field) => INVOICE_FIELD_CODES.has(field.code)), [extraFields])
+  const billingFields = useMemo(() => extraFields.filter((field) => BILLING_FIELD_CODES.has(field.code)), [extraFields])
+  const remainingExtraFields = useMemo(
+    () => extraFields.filter((field) => !INVOICE_FIELD_CODES.has(field.code) && !BILLING_FIELD_CODES.has(field.code)),
+    [extraFields]
+  )
   const [formData, setFormData] = useState({
     name: transaction.name || "",
     merchant: transaction.merchant || "",
@@ -71,7 +89,7 @@ export default function TransactionEditForm({
   }, [fields])
 
   const handleDelete = async () => {
-    if (confirm("Are you sure? This will delete the transaction with all the files permanently")) {
+    if (confirm(t("transactions.deleteConfirm"))) {
       startTransition(async () => {
         await deleteAction(transaction.id)
         router.back()
@@ -152,7 +170,9 @@ export default function TransactionEditForm({
           <>
             {formData.convertedTotal !== null && (
               <FormInput
-                title={`Total converted to ${formData.convertedCurrencyCode || "UNKNOWN CURRENCY"}`}
+                title={t("transactions.convertedTotalTo", {
+                  currency: formData.convertedCurrencyCode || t("transactions.unknownCurrency"),
+                })}
                 type="number"
                 step="0.01"
                 name="convertedTotal"
@@ -163,7 +183,7 @@ export default function TransactionEditForm({
             )}
             {(!formData.convertedCurrencyCode || formData.convertedCurrencyCode !== settings.default_currency) && (
               <FormSelectCurrency
-                title="Convert to"
+                title={t("transactions.convertTo")}
                 name="convertedCurrencyCode"
                 defaultValue={formData.convertedCurrencyCode || settings.default_currency}
                 currencies={currencies}
@@ -202,22 +222,66 @@ export default function TransactionEditForm({
         isRequired={fieldMap.note.isRequired}
       />
 
-      <div className="flex flex-wrap gap-4">
-        {extraFields.map((field) => (
-          <FormInput
-            key={field.code}
-            type="text"
-            title={field.name}
-            name={field.code}
-            defaultValue={(formData[field.code as keyof typeof formData] as string) || ""}
-            isRequired={field.isRequired}
-            className={field.type === "number" ? "max-w-36" : "max-w-full"}
-          />
-        ))}
-      </div>
+      {invoiceFields.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("analysis.sectionInvoice")}
+          </h3>
+          <div className="flex flex-wrap gap-4">
+            {invoiceFields.map((field) => (
+              <FormInput
+                key={field.code}
+                type="text"
+                title={field.name}
+                name={field.code}
+                defaultValue={(formData[field.code as keyof typeof formData] as string) || ""}
+                isRequired={field.isRequired}
+                className={field.type === "number" ? "max-w-36" : "max-w-full"}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {billingFields.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("analysis.sectionBillingDetails")}
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            {billingFields.map((field) => (
+              <FormInput
+                key={field.code}
+                type="text"
+                title={field.name}
+                name={field.code}
+                defaultValue={(formData[field.code as keyof typeof formData] as string) || ""}
+                isRequired={field.isRequired}
+                className={field.type === "number" ? "max-w-36" : "max-w-full"}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {remainingExtraFields.length > 0 && (
+        <div className="flex flex-wrap gap-4">
+          {remainingExtraFields.map((field) => (
+            <FormInput
+              key={field.code}
+              type="text"
+              title={field.name}
+              name={field.code}
+              defaultValue={(formData[field.code as keyof typeof formData] as string) || ""}
+              isRequired={field.isRequired}
+              className={field.type === "number" ? "max-w-36" : "max-w-full"}
+            />
+          ))}
+        </div>
+      )}
 
       {formData.items && Array.isArray(formData.items) && formData.items.length > 0 && (
-        <ToolWindow title="Detected items">
+        <ToolWindow title={t("analysis.detectedItems")}>
           <ItemsDetectTool data={formData as TransactionData} />
         </ToolWindow>
       )}
@@ -226,7 +290,7 @@ export default function TransactionEditForm({
         <Button type="button" onClick={handleDelete} variant="destructive" disabled={isDeleting}>
           <>
             <Trash2 className="h-4 w-4" />
-            {isDeleting ? "⏳ Deleting..." : "Delete "}
+            {isDeleting ? t("common.feedback.deleting") : t("common.actions.delete")}
           </>
         </Button>
 
@@ -234,12 +298,12 @@ export default function TransactionEditForm({
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
+              {t("common.feedback.saving")}
             </>
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save Transaction
+              {t("transactions.saveTransaction")}
             </>
           )}
         </Button>

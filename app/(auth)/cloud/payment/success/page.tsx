@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
+import { createTranslator } from "@/lib/i18n"
 import { PLANS, stripeClient } from "@/lib/stripe"
 import { createUserDefaults, isDatabaseEmpty } from "@/models/defaults"
 import { getOrCreateCloudUser } from "@/models/users"
@@ -16,6 +17,7 @@ export default async function CloudPaymentSuccessPage({
 }: {
   searchParams: Promise<{ session_id: string }>
 }) {
+  const t = createTranslator()
   const { session_id: sessionId } = await searchParams
 
   if (!stripeClient || !sessionId) {
@@ -45,10 +47,10 @@ export default async function CloudPaymentSuccessPage({
       <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-4">
         <Cake className="w-36 h-36" />
         <CardTitle className="text-3xl font-bold ">
-          <ColoredText>Payment Successful</ColoredText>
+          <ColoredText>{t("auth.cloud.payment.successTitle")}</ColoredText>
         </CardTitle>
         <CardDescription className="text-center text-xl">
-          Welcome to TaxHacker, {user.name}. You can login to your account now
+          {t("auth.cloud.payment.successDescription", { name: user.name })}
         </CardDescription>
         <CardContent className="w-full">
           <LoginForm defaultEmail={user.email} />
@@ -59,11 +61,11 @@ export default async function CloudPaymentSuccessPage({
     return (
       <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-4">
         <Ghost className="w-36 h-36" />
-        <CardTitle className="text-3xl font-bold ">Payment Failed</CardTitle>
-        <CardDescription className="text-center text-xl">Please try again...</CardDescription>
+        <CardTitle className="text-3xl font-bold ">{t("auth.cloud.payment.failedTitle")}</CardTitle>
+        <CardDescription className="text-center text-xl">{t("auth.cloud.payment.failedDescription")}</CardDescription>
         <CardFooter>
           <Button asChild>
-            <Link href="/">Go Home</Link>
+            <Link href="/">{t("globalError.goHome")}</Link>
           </Button>
         </CardFooter>
       </Card>

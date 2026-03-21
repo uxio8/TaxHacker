@@ -8,6 +8,7 @@ import { FormSelectProject } from "@/components/forms/select-project"
 import { FormSelectType } from "@/components/forms/select-type"
 import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/lib/i18n"
 import { Category, Currency, Project } from "@/prisma/client"
 import { format } from "date-fns"
 import { Import, Loader2 } from "lucide-react"
@@ -27,6 +28,7 @@ export default function TransactionCreateForm({
   settings: Record<string, string>
 }) {
   const router = useRouter()
+  const { t } = useI18n()
   const [createState, createAction, isCreating] = useActionState(createTransactionAction, null)
   const [formData, setFormData] = useState({
     name: "",
@@ -51,33 +53,39 @@ export default function TransactionCreateForm({
 
   return (
     <form action={createAction} className="space-y-4">
-      <FormInput title="Name" name="name" defaultValue={formData.name} />
+      <FormInput title={t("transactions.columns.name")} name="name" defaultValue={formData.name} />
 
-      <FormInput title="Merchant" name="merchant" defaultValue={formData.merchant} />
+      <FormInput title={t("transactions.columns.merchant")} name="merchant" defaultValue={formData.merchant} />
 
-      <FormInput title="Description" name="description" defaultValue={formData.description} />
+      <FormInput title="Descripción" name="description" defaultValue={formData.description} />
 
       <div className="flex flex-row gap-4">
-        <FormInput title="Total" type="number" step="0.01" name="total" defaultValue={formData.total.toFixed(2)} />
+        <FormInput
+          title={t("transactions.columns.total")}
+          type="number"
+          step="0.01"
+          name="total"
+          defaultValue={formData.total.toFixed(2)}
+        />
 
         <FormSelectCurrency
-          title="Currency"
+          title={t("transactions.columns.currency")}
           name="currencyCode"
           currencies={currencies}
-          placeholder="Select Currency"
+          placeholder={t("transactions.selectCurrency")}
           value={formData.currencyCode}
           onValueChange={(value) => {
             setFormData({ ...formData, currencyCode: value })
           }}
         />
 
-        <FormSelectType title="Type" name="type" defaultValue={formData.type} />
+        <FormSelectType title="Tipo" name="type" defaultValue={formData.type} />
       </div>
 
       {formData.currencyCode !== settings.default_currency ? (
         <div className="flex flex-row gap-4">
           <FormInput
-            title={`Converted to ${settings.default_currency}`}
+            title={t("transactions.convertedTo", { currency: settings.default_currency })}
             type="number"
             step="0.01"
             name="convertedTotal"
@@ -89,28 +97,28 @@ export default function TransactionCreateForm({
       )}
 
       <div className="flex flex-row flex-grow gap-4">
-        <FormInput title="Issued At" type="date" name="issuedAt" defaultValue={formData.issuedAt} />
+        <FormInput title={t("transactions.date")} type="date" name="issuedAt" defaultValue={formData.issuedAt} />
       </div>
 
       <div className="flex flex-row gap-4">
         <FormSelectCategory
-          title="Category"
+          title="Categoría"
           categories={categories}
           name="categoryCode"
           defaultValue={formData.categoryCode}
-          placeholder="Select Category"
+          placeholder="Selecciona una categoría"
         />
 
         <FormSelectProject
-          title="Project"
+          title="Proyecto"
           projects={projects}
           name="projectCode"
           defaultValue={formData.projectCode}
-          placeholder="Select Project"
+          placeholder="Selecciona un proyecto"
         />
       </div>
 
-      <FormTextarea title="Note" name="note" defaultValue={formData.note} />
+      <FormTextarea title="Nota" name="note" defaultValue={formData.note} />
 
       <div className="flex justify-between space-x-4 pt-6">
         <Button type="button" variant="outline" className="aspect-square">
@@ -123,10 +131,10 @@ export default function TransactionCreateForm({
           {isCreating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
+              {t("common.feedback.processing")}
             </>
           ) : (
-            "Create and Add Files"
+            t("transactions.createAndAddFiles")
           )}
         </Button>
       </div>

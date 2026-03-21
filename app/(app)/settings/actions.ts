@@ -10,6 +10,7 @@ import {
 import { userFormSchema } from "@/forms/users"
 import { ActionState } from "@/lib/actions"
 import { getCurrentUser } from "@/lib/auth"
+import { createTranslator } from "@/lib/i18n"
 import { uploadStaticImage } from "@/lib/uploads"
 import { codeFromName, randomHexColor } from "@/lib/utils"
 import { createCategory, deleteCategory, updateCategory } from "@/models/categories"
@@ -21,6 +22,8 @@ import { updateUser } from "@/models/users"
 import { Prisma, User } from "@/prisma/client"
 import { revalidatePath } from "next/cache"
 import path from "path"
+
+const t = createTranslator()
 
 export async function saveSettingsAction(
   _prevState: ActionState<SettingsMap> | null,
@@ -63,7 +66,10 @@ export async function saveProfileAction(
       const uploadedAvatarPath = await uploadStaticImage(user, avatarFile, "avatar.webp", 500, 500)
       avatarUrl = `/files/static/${path.basename(uploadedAvatarPath)}`
     } catch (error) {
-      return { success: false, error: "Failed to upload avatar: " + error }
+      return {
+        success: false,
+        error: t("settings.errors.uploadAvatar", { message: error instanceof Error ? error.message : String(error) }),
+      }
     }
   }
 
@@ -75,7 +81,10 @@ export async function saveProfileAction(
       const uploadedBusinessLogoPath = await uploadStaticImage(user, businessLogoFile, "businessLogo.png", 500, 500)
       businessLogoUrl = `/files/static/${path.basename(uploadedBusinessLogoPath)}`
     } catch (error) {
-      return { success: false, error: "Failed to upload business logo: " + error }
+      return {
+        success: false,
+        error: t("settings.errors.uploadBusinessLogo", { message: error instanceof Error ? error.message : String(error) }),
+      }
     }
   }
 
@@ -137,7 +146,7 @@ export async function deleteProjectAction(userId: string, code: string) {
   try {
     await deleteProject(userId, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete project" + error }
+    return { success: false, error: t("settings.errors.deleteProject") }
   }
   revalidatePath("/settings/projects")
   return { success: true }
@@ -175,7 +184,7 @@ export async function deleteCurrencyAction(userId: string, code: string) {
   try {
     await deleteCurrency(userId, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete currency" + error }
+    return { success: false, error: t("settings.errors.deleteCurrency") }
   }
   revalidatePath("/settings/currencies")
   return { success: true }
@@ -203,10 +212,10 @@ export async function addCategoryAction(userId: string, data: Prisma.CategoryCre
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return {
         success: false,
-        error: `Category with the code "${code}" already exists. Try a different name.`,
+        error: t("settings.errors.categoryAlreadyExists", { code }),
       }
     }
-    return { success: false, error: "Failed to create category" }
+    return { success: false, error: t("settings.errors.createCategory") }
   }
 }
 
@@ -231,7 +240,7 @@ export async function deleteCategoryAction(userId: string, code: string) {
   try {
     await deleteCategory(userId, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete category" + error }
+    return { success: false, error: t("settings.errors.deleteCategory") }
   }
   revalidatePath("/settings/categories")
   return { success: true }
@@ -283,7 +292,7 @@ export async function deleteFieldAction(userId: string, code: string) {
   try {
     await deleteField(userId, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete field" + error }
+    return { success: false, error: t("settings.errors.deleteField") }
   }
   revalidatePath("/settings/fields")
   return { success: true }

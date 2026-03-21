@@ -8,6 +8,7 @@ import AnalyzeForm from "@/components/unsorted/analyze-form"
 import { canAnalyzeFileMimeType } from "@/lib/analysis-support"
 import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
+import { createTranslator } from "@/lib/i18n"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getFields } from "@/models/fields"
@@ -19,11 +20,12 @@ import { Metadata } from "next"
 import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "Unsorted",
-  description: "Analyze unsorted files",
+  title: "Sin revisar",
+  description: "Analiza archivos sin revisar",
 }
 
 export default async function UnsortedPage() {
+  const t = createTranslator()
   const user = await getCurrentUser()
   const files = await getUnsortedFiles(user.id)
   const categories = await getCategories(user.id)
@@ -40,7 +42,7 @@ export default async function UnsortedPage() {
   return (
     <>
       <header className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">You have {files.length} unsorted files</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{t("unsorted.title", { count: files.length })}</h2>
         {analyzableFilesCount > 1 && <AnalyzeAllButton />}
       </header>
 
@@ -49,14 +51,11 @@ export default async function UnsortedPage() {
             <Settings className="h-4 w-4 mt-2" />
             <div className="flex flex-row justify-between pt-2">
               <div className="flex flex-col">
-                <AlertTitle>Configure at least one LLM provider to analyze files</AlertTitle>
-                <AlertDescription>
-                  In self-hosted mode you can add your own OpenAI, Google, or Mistral credentials, or enable Pool
-                  Cloud with server environment variables.
-                </AlertDescription>
+                <AlertTitle>{t("unsorted.configureProviders.title")}</AlertTitle>
+                <AlertDescription>{t("unsorted.configureProviders.description")}</AlertDescription>
               </div>
               <Link href="/settings/llm">
-                <Button>Open LLM Settings</Button>
+                <Button>{t("unsorted.configureProviders.open")}</Button>
               </Link>
             </div>
           </Alert>
@@ -90,20 +89,20 @@ export default async function UnsortedPage() {
         {files.length == 0 && (
           <div className="flex flex-col items-center justify-center gap-2 h-full min-h-[600px]">
             <PartyPopper className="w-12 h-12 text-muted-foreground" />
-            <p className="pt-4 text-muted-foreground">Everything is clear! Congrats!</p>
+            <p className="pt-4 text-muted-foreground">{t("unsorted.empty.title")}</p>
             <p className="flex flex-row gap-2 text-muted-foreground">
-              <span>Drag and drop new files here to analyze</span>
+              <span>{t("unsorted.empty.hint")}</span>
               <Upload />
             </p>
 
             <div className="flex flex-row gap-5 mt-8">
               <UploadButton>
-                <Upload /> Upload New File
+                <Upload /> {t("unsorted.uploadNewFile")}
               </UploadButton>
               <Button variant="outline" asChild>
                 <Link href="/transactions">
                   <FileText />
-                  Go to Transactions
+                  {t("unsorted.goToTransactions")}
                 </Link>
               </Button>
             </div>

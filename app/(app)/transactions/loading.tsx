@@ -1,22 +1,25 @@
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { createTranslator } from "@/lib/i18n"
 import { Download, Loader2, Plus } from "lucide-react"
 
 export default function Loading() {
+  const t = createTranslator()
+
   return (
     <>
       <header className="flex items-center justify-between mb-12">
         <h2 className="flex flex-row gap-3 md:gap-5">
-          <span className="text-3xl font-bold tracking-tight">Transactions</span>
+          <span className="text-3xl font-bold tracking-tight">{t("transactions.title")}</span>
           <Loader2 className="h-10 w-10 animate-spin" />
         </h2>
         <div className="flex gap-2">
           <Button variant="outline">
             <Download />
-            Export
+            {t("common.actions.export")}
           </Button>
           <Button>
-            <Plus /> Add Transaction
+            <Plus /> {t("transactions.addTransaction")}
           </Button>
         </div>
       </header>

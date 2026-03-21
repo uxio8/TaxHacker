@@ -3,6 +3,7 @@ import { resolveLlmProviderConfigs } from "@/lib/llm-providers"
 import { isPoolCloudConfigured } from "@/lib/pool-cloud-env"
 import { cache } from "react"
 import { LLMProvider } from "@/ai/providers/llmProvider"
+import { ensureUserDefaultsVersion } from "./defaults"
 
 export type SettingsMap = Record<string, string>
 
@@ -21,6 +22,8 @@ export function getLLMSettings(settings: SettingsMap) {
 }
 
 export const getSettings = cache(async (userId: string): Promise<SettingsMap> => {
+  await ensureUserDefaultsVersion(userId)
+
   const settings = await prisma.setting.findMany({
     where: { userId },
   })

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createTranslator } from "@/lib/i18n"
 import { formatCurrency } from "@/lib/utils"
 import { ProjectStats } from "@/models/stats"
 import { Project } from "@/prisma/client"
@@ -13,6 +14,8 @@ export function ProjectsWidget({
   projects: Project[]
   statsPerProject: Record<string, ProjectStats>
 }) {
+  const t = createTranslator()
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {projects.map((project) => (
@@ -31,7 +34,7 @@ export function ProjectsWidget({
             <CardContent className="group-hover:translate-y-[-1px] transition-transform duration-300">
               <div className="flex flex-wrap gap-4 justify-between items-center">
                 <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/60 p-3 rounded-xl border border-green-100/50">
-                  <div className="text-sm font-medium text-muted-foreground">Income</div>
+                  <div className="text-sm font-medium text-muted-foreground">{t("dashboard.projects.income")}</div>
                   <div className="text-2xl font-bold text-green-500">
                     {Object.entries(statsPerProject[project.code]?.totalIncomePerCurrency).map(([currency, total]) => (
                       <div
@@ -47,7 +50,7 @@ export function ProjectsWidget({
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-red-50/80 to-rose-50/60 p-3 rounded-xl border border-red-100/50">
-                  <div className="text-sm font-medium text-muted-foreground">Expenses</div>
+                  <div className="text-sm font-medium text-muted-foreground">{t("dashboard.projects.expenses")}</div>
                   <div className="text-2xl font-bold text-red-500">
                     {Object.entries(statsPerProject[project.code]?.totalExpensesPerCurrency).map(
                       ([currency, total]) => (
@@ -65,7 +68,7 @@ export function ProjectsWidget({
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-violet-50/80 to-indigo-50/60 p-3 rounded-xl border border-violet-100/50">
-                  <div className="text-sm font-medium text-muted-foreground">Profit</div>
+                  <div className="text-sm font-medium text-muted-foreground">{t("dashboard.projects.profit")}</div>
                   <div className="text-2xl font-bold">
                     {Object.entries(statsPerProject[project.code]?.profitPerCurrency).map(([currency, total]) => (
                       <div
@@ -92,7 +95,7 @@ export function ProjectsWidget({
         className="flex items-center justify-center gap-2 border-dashed border-2 border-gradient-to-r rounded-lg p-6 text-muted-foreground transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
       >
         <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-        <span className="font-medium">Create New Project</span>
+        <span className="font-medium">{t("dashboard.projects.createNew")}</span>
       </Link>
     </div>
   )

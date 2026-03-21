@@ -3,60 +3,62 @@ import config from "@/lib/config"
 export default async function Cookie() {
   return (
     <div className="prose prose-slate max-w-none">
-      <h1 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">Cookie Policy</h1>
+      <h1 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">Política de cookies</h1>
       <p className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-        <strong className="text-slate-700">Effective Date:</strong> April 22, 2025
+        <strong className="text-slate-700">Fecha de entrada en vigor:</strong> 22 de abril de 2025
         <br />
-        <strong className="text-slate-700">Service:</strong>{" "}
+        <strong className="text-slate-700">Servicio:</strong>{" "}
         <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
           https://taxhacker.app
         </a>
         <br />
-        <strong className="text-slate-700">Contact:</strong>{" "}
+        <strong className="text-slate-700">Contacto:</strong>{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        This Cookie Policy explains how TaxHacker uses cookies and similar technologies when you visit our website or
-        use our services.
+        Esta Política de cookies explica cómo TaxHacker utiliza cookies y tecnologías similares cuando visitas nuestra
+        web o utilizas nuestros servicios.
       </p>
 
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">1. What Are Cookies?</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">1. ¿Qué son las cookies?</h2>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        Cookies are small text files stored on your device by your browser when you visit websites. They are widely used
-        to make websites work more efficiently and to provide information to site owners.
+        Las cookies son pequeños archivos de texto que el navegador guarda en tu dispositivo cuando visitas sitios web.
+        Se usan ampliamente para que las webs funcionen de forma más eficiente y para proporcionar información a sus
+        propietarios.
       </p>
 
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">2. How We Use Cookies</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">2. Cómo usamos las cookies</h2>
       <p className="text-slate-700 mb-3">
-        We use cookies <strong className="text-slate-800">strictly for essential purposes</strong>, including:
+        Usamos cookies <strong className="text-slate-800">únicamente para fines esenciales</strong>, entre ellos:
       </p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          Maintaining user <strong className="text-slate-800">sessions and authentication</strong>
+          Mantener las <strong className="text-slate-800">sesiones y la autenticación</strong> del usuario
         </li>
         <li>
-          Enabling <strong className="text-slate-800">caching and performance improvements</strong>
+          Habilitar <strong className="text-slate-800">caché y mejoras de rendimiento</strong>
         </li>
         <li>
-          Ensuring <strong className="text-slate-800">security</strong>, including DDoS and bot protection through
-          Cloudflare
+          Garantizar la <strong className="text-slate-800">seguridad</strong>, incluida la protección frente a DDoS y
+          bots a través de Cloudflare
         </li>
       </ul>
       <p className="text-slate-700 mb-3">
-        We do <strong className="text-slate-800">not</strong> use cookies for:
+        <strong className="text-slate-800">No</strong> usamos cookies para:
       </p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
-        <li>Advertising or behavioral tracking</li>
-        <li>Analytics or profiling</li>
-        <li>Third-party ad services</li>
+        <li>Publicidad o seguimiento del comportamiento</li>
+        <li>Analítica o perfilado</li>
+        <li>Servicios publicitarios de terceros</li>
       </ul>
 
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">3. Third-Party Infrastructure</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">3. Infraestructura de terceros</h2>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        We rely on a limited number of third-party services that may set their own cookies or use related technologies:
+        Dependemos de un número limitado de servicios de terceros que pueden establecer sus propias cookies o usar
+        tecnologías relacionadas:
       </p>
 
       <div className="overflow-x-auto mb-6">
@@ -64,13 +66,13 @@ export default async function Cookie() {
           <thead className="bg-slate-50">
             <tr>
               <th className="border border-slate-200 px-6 py-3 text-left text-sm font-semibold text-slate-700">
-                Provider
+                Proveedor
               </th>
               <th className="border border-slate-200 px-6 py-3 text-left text-sm font-semibold text-slate-700">
-                Purpose
+                Finalidad
               </th>
               <th className="border border-slate-200 px-6 py-3 text-left text-sm font-semibold text-slate-700">
-                Cookie Usage
+                Uso de cookies
               </th>
             </tr>
           </thead>
@@ -80,60 +82,60 @@ export default async function Cookie() {
                 <strong className="text-slate-800">Cloudflare</strong>
               </td>
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
-                CDN, caching, security, bot protection
+                CDN, caché, seguridad y protección frente a bots
               </td>
-              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Yes (essential)</td>
+              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Sí, esenciales</td>
             </tr>
             <tr className="bg-slate-50">
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
                 <strong className="text-slate-800">Stripe</strong>
               </td>
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
-                Payment processing (subscriptions, billing)
+                Procesamiento de pagos, suscripciones y facturación
               </td>
-              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Yes (essential)</td>
+              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Sí, esenciales</td>
             </tr>
             <tr className="bg-white">
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
                 <strong className="text-slate-800">GitHub</strong>
               </td>
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
-                Embedded resources or OAuth (if used)
+                Recursos embebidos u OAuth, si se utiliza
               </td>
-              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Possibly, if embedded</td>
+              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Posiblemente, si se incrusta</td>
             </tr>
             <tr className="bg-slate-50">
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
                 <strong className="text-slate-800">Sentry</strong>
               </td>
-              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Application error monitoring</td>
+              <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">Monitorización de errores</td>
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
-                No cookies, but may collect browser metadata
+                No usa cookies, pero puede recopilar metadatos del navegador
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">4. Your Cookie Choices</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">4. Tus opciones respecto a las cookies</h2>
       <p className="text-slate-700 mb-4 leading-relaxed">
-        We do not currently display a cookie banner because we only use cookies that are strictly necessary for the
-        operation of the website.
+        Actualmente no mostramos un banner de cookies porque solo utilizamos cookies estrictamente necesarias para el
+        funcionamiento del sitio.
       </p>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        If you prefer, you can block or delete cookies via your browser settings. However, doing so may affect the core
-        functionality of the site, including login and session persistence.
-      </p>
-
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">5. Updates to This Policy</h2>
-      <p className="text-slate-700 mb-6 leading-relaxed">
-        We may update this Cookie Policy from time to time. The latest version will always be available on this page,
-        with the "Effective Date" updated accordingly.
+        Si lo prefieres, puedes bloquear o eliminar las cookies desde la configuración del navegador. Eso sí, puede
+        afectar a funciones esenciales de la web, como el inicio de sesión o la persistencia de la sesión.
       </p>
 
-      <h2 className="text-2xl font-semibold text-slate-800 mb-4">6. Contact</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">5. Cambios en esta política</h2>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        For questions about our cookie usage, please contact us at{" "}
+        Podemos actualizar esta Política de cookies de vez en cuando. La versión más reciente estará siempre disponible
+        en esta página con la fecha de entrada en vigor actualizada.
+      </p>
+
+      <h2 className="text-2xl font-semibold text-slate-800 mb-4">6. Contacto</h2>
+      <p className="text-slate-700 mb-6 leading-relaxed">
+        Si tienes dudas sobre nuestro uso de cookies, escríbenos a{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>

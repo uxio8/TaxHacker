@@ -1,3 +1,5 @@
+import { t } from "./i18n/core.ts"
+
 const ANALYZEABLE_FILE_KINDS = {
   pdf: "application/pdf",
   imagePrefix: "image/",
@@ -8,5 +10,5 @@ export function canAnalyzeFileMimeType(mimeType: string) {
 }
 
 export function getAnalyzeMimeTypeError(mimeType: string) {
-  return `AI analysis does not support ${mimeType} yet. Upload an image or PDF instead.`
+  return t("analysis.unsupportedMimeType", { values: { mimeType } })
 }

@@ -3,14 +3,20 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useI18n } from "@/lib/i18n"
 import { Check, Edit, Trash2 } from "lucide-react"
 import { useOptimistic, useState } from "react"
+
+type CrudOption = {
+  label: string
+  value: string
+}
 
 interface CrudColumn<T> {
   key: keyof T
   label: string
   type?: "text" | "number" | "checkbox" | "select" | "color"
-  options?: string[]
+  options?: Array<string | CrudOption>
   defaultValue?: string | boolean
   editable?: boolean
 }
@@ -24,11 +30,15 @@ interface CrudProps<T> {
 }
 
 export function CrudTable<T extends { [key: string]: any }>({ items, columns, onDelete, onAdd, onEdit }: CrudProps<T>) {
+  const { t } = useI18n()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newItem, setNewItem] = useState<Partial<T>>(itemDefaults(columns))
   const [editingItem, setEditingItem] = useState<Partial<T>>(itemDefaults(columns))
   const [optimisticItems, addOptimisticItem] = useOptimistic(items, (state, newItem: T) => [...state, newItem])
+
+  const getOptionValue = (option: string | CrudOption) => (typeof option === "string" ? option : option.value)
+  const getOptionLabel = (option: string | CrudOption) => (typeof option === "string" ? option : option.label)
 
   const FormCell = (item: T, column: CrudColumn<T>) => {
     if (column.type === "checkbox") {
@@ -51,7 +61,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
       return (
         <input
           type="checkbox"
-          checked={editingItem[column.key]}
+          checked={Boolean(editingItem[column.key])}
           aria-label={String(column.label)}
           onChange={(e) =>
             setEditingItem({
@@ -64,7 +74,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
     } else if (column.type === "select") {
       return (
         <select
-          value={editingItem[column.key]}
+          value={String(editingItem[column.key] || "")}
           className="p-2 rounded-md border bg-transparent"
           aria-label={String(column.label)}
           onChange={(e) =>
@@ -75,8 +85,8 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
           }
         >
           {column.options?.map((option) => (
-            <option key={option} value={option}>
-              {option}
+            <option key={getOptionValue(option)} value={getOptionValue(option)}>
+              {getOptionLabel(option)}
             </option>
           ))}
         </select>
@@ -161,8 +171,8 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
           }
         >
           {column.options?.map((option) => (
-            <option key={option} value={option}>
-              {option}
+            <option key={getOptionValue(option)} value={getOptionValue(option)}>
+              {getOptionLabel(option)}
             </option>
           ))}
         </select>
@@ -224,7 +234,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
         setIsAdding(false)
         setNewItem(itemDefaults(columns))
       } else {
-        alert(result.error)
+        alert(result.error || t("common.feedback.processing"))
       }
     } catch (error) {
       console.error("Failed to add item:", error)
@@ -239,7 +249,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
         setEditingId(null)
         setEditingItem({})
       } else {
-        alert(result.error)
+        alert(result.error || t("common.feedback.processing"))
       }
     } catch (error) {
       console.error("Failed to edit item:", error)
@@ -255,7 +265,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
     try {
       const result = await onDelete(id)
       if (!result.success) {
-        alert(result.error)
+        alert(result.error || t("common.feedback.processing"))
       }
     } catch (error) {
       console.error("Failed to delete item:", error)
@@ -270,7 +280,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
             {columns.map((column) => (
               <TableHead key={String(column.key)}>{column.label}</TableHead>
             ))}
-            <TableHead className="w-[100px]">Actions</TableHead>
+            <TableHead className="w-[100px]">{t("settings.crud.actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -287,11 +297,11 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
                 <div className="flex gap-2">
                   {editingId === (item.code || item.id) ? (
                     <>
-                      <Button size="sm" onClick={() => handleEdit(item.code || item.id)} aria-label="Save changes">
-                        Save
+                      <Button size="sm" onClick={() => handleEdit(item.code || item.id)} aria-label={t("settings.crud.saveChanges")}>
+                        {t("common.actions.save")}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)} aria-label="Cancel editing">
-                        Cancel
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)} aria-label={t("settings.crud.cancelEditing")}>
+                        {t("common.actions.cancel")}
                       </Button>
                     </>
                   ) : (
@@ -304,7 +314,9 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
                             startEditing(item)
                             setIsAdding(false)
                           }}
-                          aria-label={`Edit ${String(item.name || item.code || 'item')}`}
+                          aria-label={t("settings.crud.editItem", {
+                            item: String(item.name || item.code || "elemento"),
+                          })}
                         >
                           <Edit />
                         </Button>
@@ -314,7 +326,9 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleDelete(item.code || item.id)}
-                          aria-label={`Delete ${String(item.name || item.code || 'item')}`}
+                          aria-label={t("settings.crud.deleteItem", {
+                            item: String(item.name || item.code || "elemento"),
+                          })}
                         >
                           <Trash2 />
                         </Button>
@@ -334,11 +348,11 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
               ))}
               <TableCell>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleAdd} aria-label="Save new item">
-                    Save
+                  <Button size="sm" onClick={handleAdd} aria-label={t("settings.crud.saveNewItem")}>
+                    {t("common.actions.save")}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} aria-label="Cancel adding new item">
-                    Cancel
+                  <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} aria-label={t("settings.crud.cancelAdding")}>
+                    {t("common.actions.cancel")}
                   </Button>
                 </div>
               </TableCell>
@@ -352,9 +366,9 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
             setIsAdding(true)
             setEditingId(null)
           }}
-          aria-label="Add new item"
+          aria-label={t("settings.crud.addNew")}
         >
-          Add New
+          {t("settings.crud.addNew")}
         </Button>
       )}
     </div>
