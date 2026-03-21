@@ -1,4 +1,7 @@
 import config from "@/lib/config"
+import { createPageMetadata } from "@/lib/i18n"
+
+export const metadata = createPageMetadata("docs.privacy.title")
 
 export default async function PrivacyPolicy() {
   return (

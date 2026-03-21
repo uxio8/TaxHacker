@@ -1,4 +1,7 @@
 import config from "@/lib/config"
+import { createPageMetadata } from "@/lib/i18n"
+
+export const metadata = createPageMetadata("docs.ai.title")
 
 export default async function AI() {
   return (
@@ -45,7 +48,7 @@ export default async function AI() {
       </p>
       <ul className="list-disc pl-6 space-y-2 mb-6 text-gray-700">
         <li>
-          <strong>gpt-4o-mini</strong> and <strong>gpt-4.1-mini</strong>
+          <strong>gpt-4o-mini</strong> y <strong>gpt-4.1-mini</strong>
         </li>
       </ul>
       <p className="text-gray-700 leading-relaxed mb-6">

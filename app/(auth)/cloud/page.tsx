@@ -1,10 +1,12 @@
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { Mail } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+
+export const metadata = createPageMetadata("auth.cloud.metadataTitle")
 
 export default async function ChoosePlanPage() {
   const t = createTranslator()

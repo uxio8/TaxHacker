@@ -24,4 +24,5 @@ export {
   type Translator,
 } from "./core.ts"
 
+export { createPageMetadata } from "./metadata.ts"
 export { I18nProvider, useI18n } from "./provider.tsx"

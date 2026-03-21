@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth"
+import { createPageMetadata } from "@/lib/i18n"
 import { getAppData } from "@/models/apps"
 import { getCurrencies } from "@/models/currencies"
 import { getSettings } from "@/models/settings"
@@ -9,6 +10,10 @@ import { manifest } from "./manifest"
 export type InvoiceAppData = {
   templates: InvoiceTemplate[]
 }
+
+export const metadata = createPageMetadata("apps.invoices.title", {
+  descriptionKey: "apps.invoices.description",
+})
 
 export default async function InvoicesApp() {
   const user = await getCurrentUser()

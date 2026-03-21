@@ -1,9 +1,12 @@
 import LLMSettingsForm from "@/components/settings/llm-settings-form"
 import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
+import { createPageMetadata } from "@/lib/i18n"
 import { isPoolCloudConfigured } from "@/lib/pool-cloud-env"
 import { getFields } from "@/models/fields"
 import { getSettings } from "@/models/settings"
+
+export const metadata = createPageMetadata("settings.llm")
 
 export default async function LlmSettingsPage() {
   const user = await getCurrentUser()

@@ -1,7 +1,10 @@
+import { createTranslator } from "@/lib/i18n"
 import { AppManifest } from "../common"
 
+const t = createTranslator()
+
 export const manifest: AppManifest = {
-  name: "Invoice Generator",
-  description: "Generate custom invoices and send them to your customers",
+  name: t("apps.invoices.title"),
+  description: t("apps.invoices.description"),
   icon: "🧾",
 }

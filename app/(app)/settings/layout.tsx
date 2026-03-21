@@ -1,15 +1,14 @@
 import { SideNav } from "@/components/settings/side-nav"
 import { Separator } from "@/components/ui/separator"
 import { createTranslator } from "@/lib/i18n"
-import { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "Ajustes",
-  description: "Personaliza aquí tus ajustes",
+const t = createTranslator()
+
+export const metadata = {
+  description: t("settings.description"),
 }
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
-  const t = createTranslator()
   const settingsCategories = [
     { title: t("settings.general"), href: "/settings" },
     { title: t("settings.profileAndPlan"), href: "/settings/profile" },

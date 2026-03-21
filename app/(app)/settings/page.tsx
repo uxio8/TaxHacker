@@ -1,8 +1,11 @@
 import GlobalSettingsForm from "@/components/settings/global-settings-form"
 import { getCurrentUser } from "@/lib/auth"
+import { createPageMetadata } from "@/lib/i18n"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getSettings } from "@/models/settings"
+
+export const metadata = createPageMetadata("settings.general")
 
 export default async function SettingsPage() {
   const user = await getCurrentUser()

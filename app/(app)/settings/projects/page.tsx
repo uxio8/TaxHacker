@@ -1,10 +1,12 @@
 import { addProjectAction, deleteProjectAction, editProjectAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { randomHexColor } from "@/lib/utils"
 import { getProjects } from "@/models/projects"
 import { Prisma } from "@/prisma/client"
+
+export const metadata = createPageMetadata("common.projects")
 
 export default async function ProjectsSettingsPage() {
   const t = createTranslator()

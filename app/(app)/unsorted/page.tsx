@@ -9,6 +9,7 @@ import { canAnalyzeFileMimeType } from "@/lib/analysis-support"
 import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
 import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata } from "@/lib/i18n"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getFields } from "@/models/fields"
@@ -16,13 +17,11 @@ import { getUnsortedFiles } from "@/models/files"
 import { getProjects } from "@/models/projects"
 import { getLLMSettings, getSettings } from "@/models/settings"
 import { FileText, PartyPopper, Settings, Upload } from "lucide-react"
-import { Metadata } from "next"
 import Link from "next/link"
 
-export const metadata: Metadata = {
-  title: "Sin revisar",
-  description: "Analiza archivos sin revisar",
-}
+export const metadata = createPageMetadata("common.unsorted", {
+  descriptionKey: "unsorted.description",
+})
 
 export default async function UnsortedPage() {
   const t = createTranslator()

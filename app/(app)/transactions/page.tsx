@@ -6,19 +6,17 @@ import { NewTransactionDialog } from "@/components/transactions/new"
 import { Pagination } from "@/components/transactions/pagination"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { getCategories } from "@/models/categories"
 import { getFields } from "@/models/fields"
 import { getProjects } from "@/models/projects"
 import { getTransactions, TransactionFilters } from "@/models/transactions"
 import { Download, Plus, Upload } from "lucide-react"
-import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-export const metadata: Metadata = {
-  title: "Transacciones",
-  description: "Gestiona tus transacciones",
-}
+export const metadata = createPageMetadata("transactions.title", {
+  descriptionKey: "transactions.description",
+})
 
 const TRANSACTIONS_PER_PAGE = 500
 

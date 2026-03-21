@@ -1,6 +1,8 @@
 import Link from "next/link"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { getApps } from "./common"
+
+export const metadata = createPageMetadata("common.apps")
 
 export default async function AppsPage() {
   const t = createTranslator()

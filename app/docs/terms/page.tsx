@@ -1,4 +1,7 @@
 import config from "@/lib/config"
+import { createPageMetadata } from "@/lib/i18n"
+
+export const metadata = createPageMetadata("docs.terms.title")
 
 export default async function Terms() {
   return (

@@ -2,9 +2,11 @@ import { LoginForm } from "@/components/auth/login-form"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import Image from "next/image"
 import { redirect } from "next/navigation"
+
+export const metadata = createPageMetadata("auth.enter.metadataTitle")
 
 export default async function LoginPage() {
   const t = createTranslator()

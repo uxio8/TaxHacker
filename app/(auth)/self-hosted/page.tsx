@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { hasSelfHostedAccess } from "@/lib/security"
 import { getSelfHostedUser } from "@/models/users"
 import { ShieldAlert } from "lucide-react"
@@ -11,6 +11,8 @@ import { redirect } from "next/navigation"
 import SelfHostedSetupFormClient from "./setup-form-client"
 
 type SelfHostedErrorCode = "invalid-token" | "missing-token"
+
+export const metadata = createPageMetadata("auth.selfHosted.metadataTitle")
 
 export default async function SelfHostedWelcomePage({
   searchParams,

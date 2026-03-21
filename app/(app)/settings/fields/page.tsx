@@ -1,9 +1,11 @@
 import { addFieldAction, deleteFieldAction, editFieldAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { getFields } from "@/models/fields"
 import { Prisma } from "@/prisma/client"
+
+export const metadata = createPageMetadata("common.fields")
 
 export default async function FieldsSettingsPage() {
   const t = createTranslator()

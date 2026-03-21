@@ -1,7 +1,9 @@
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { getTransactionById } from "@/models/transactions"
 import { notFound } from "next/navigation"
+
+export const metadata = createPageMetadata("transactions.details")
 
 export default async function TransactionLayout({
   children,

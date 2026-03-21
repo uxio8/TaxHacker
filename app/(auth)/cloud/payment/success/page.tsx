@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardTitle } from "@/components/ui/card"
 import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { PLANS, stripeClient } from "@/lib/stripe"
 import { createUserDefaults, isDatabaseEmpty } from "@/models/defaults"
 import { getOrCreateCloudUser } from "@/models/users"
@@ -11,6 +11,8 @@ import { Cake, Ghost } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import Stripe from "stripe"
+
+export const metadata = createPageMetadata("auth.cloud.payment.pageTitle")
 
 export default async function CloudPaymentSuccessPage({
   searchParams,

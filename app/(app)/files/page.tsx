@@ -1,9 +1,7 @@
-import { Metadata } from "next"
+import { createPageMetadata } from "@/lib/i18n"
 import { notFound } from "next/navigation"
 
-export const metadata: Metadata = {
-  title: "Uploading...",
-}
+export const metadata = createPageMetadata("files.upload.uploading")
 
 export default function UploadStatusPage() {
   notFound()

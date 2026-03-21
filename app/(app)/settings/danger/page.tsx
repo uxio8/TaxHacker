@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { resetFieldsAndCategories, resetLLMSettings } from "./actions"
+
+export const metadata = createPageMetadata("settings.dangerZone")
 
 export default async function DangerSettingsPage() {
   const t = createTranslator()

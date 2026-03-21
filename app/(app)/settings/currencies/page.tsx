@@ -1,8 +1,10 @@
 import { addCurrencyAction, deleteCurrencyAction, editCurrencyAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
 import { getCurrentUser } from "@/lib/auth"
-import { createTranslator } from "@/lib/i18n"
+import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { getCurrencies } from "@/models/currencies"
+
+export const metadata = createPageMetadata("settings.currencies")
 
 export default async function CurrenciesSettingsPage() {
   const t = createTranslator()
