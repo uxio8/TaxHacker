@@ -1,0 +1,1469 @@
+{
+  "dataset_id": "golden-quarter-2026-q1-es-sl-v1",
+  "dataset_version": 1,
+  "currency_code": "EUR",
+  "company": {
+    "company_name": "LedgerFlow Demo SL",
+    "company_tax_id": "B11223344",
+    "country_code": "ES"
+  },
+  "quarter": {
+    "fiscal_year": 2026,
+    "quarter": 1,
+    "period_key": "2026-Q1",
+    "from": "2026-01-01",
+    "to": "2026-03-31"
+  },
+  "documents": [
+    {
+      "case_id": "received-office-supplies",
+      "scenario": "Factura recibida con IVA 21% totalmente deducible.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_001",
+          "source_transaction_id": "tx_q1_001",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "REC-2026-001",
+          "invoice_series": null,
+          "issue_date": "2026-01-15",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_papeleria_centro_sl",
+          "counterparty_role": "supplier",
+          "counterparty_name": "Papeleria Centro SL",
+          "counterparty_tax_id": "B12345678",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 10000,
+          "total_vat_cents": 2100,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 12100,
+          "total_payable_cents": 12100,
+          "source_confidence": "manual",
+          "notes": null
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_001_l1",
+            "fiscal_document_id": "fd_q1_001",
+            "line_number": 1,
+            "concept": "Material de oficina",
+            "base_amount_cents": 10000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 2100,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "supplies",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_001_l1"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_001",
+            "line_id": "fd_q1_001_l1",
+            "line_number": 1,
+            "issue_date": "2026-01-15",
+            "invoice_number": "REC-2026-001",
+            "counterparty_id": "cp_papeleria_centro_sl",
+            "counterparty_name": "Papeleria Centro SL",
+            "counterparty_tax_id": "B12345678",
+            "concept": "Material de oficina",
+            "base_amount_cents": 10000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 2100,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 2100
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 10000,
+              "vat_cents": 2100
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": -2100
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "received-rent-withholding",
+      "scenario": "Factura de alquiler con IVA 21% y retención del 19%.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_002",
+          "source_transaction_id": "tx_q1_002",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "ALQ-2026-02",
+          "invoice_series": null,
+          "issue_date": "2026-02-01",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_inmuebles_gran_via_sl",
+          "counterparty_role": "landlord",
+          "counterparty_name": "Inmuebles Gran Via SL",
+          "counterparty_tax_id": "B76543210",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "manual_override",
+            "assigned_at": "2026-03-21T09:05:00Z"
+          },
+          "observed_amount_cents": 0,
+          "total_net_cents": 100000,
+          "total_vat_cents": 21000,
+          "total_withholding_cents": 19000,
+          "total_gross_cents": 121000,
+          "total_payable_cents": 102000,
+          "source_confidence": "manual",
+          "notes": null
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_002_l1",
+            "fiscal_document_id": "fd_q1_002",
+            "line_number": 1,
+            "concept": "Renta mensual del local",
+            "base_amount_cents": 100000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 21000,
+            "withholding_applicable": true,
+            "withholding_regime": "rent",
+            "withholding_base_cents": 100000,
+            "withholding_rate_bps": 1900,
+            "withholding_amount_cents": 19000,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "rent",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": true
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_002_l1"
+          ],
+          "ready_line_ids_for_withholding_books": [
+            "fd_q1_002_l1"
+          ]
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_002",
+            "line_id": "fd_q1_002_l1",
+            "line_number": 1,
+            "issue_date": "2026-02-01",
+            "invoice_number": "ALQ-2026-02",
+            "counterparty_id": "cp_inmuebles_gran_via_sl",
+            "counterparty_name": "Inmuebles Gran Via SL",
+            "counterparty_tax_id": "B76543210",
+            "concept": "Renta mensual del local",
+            "base_amount_cents": 100000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 21000,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 21000
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 100000,
+              "vat_cents": 21000
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": -21000
+        },
+        "model_115_contribution": {
+          "included": true,
+          "landlord_counterparty_ids": [
+            "cp_inmuebles_gran_via_sl"
+          ],
+          "rent_base_cents": 100000,
+          "withholding_cents": 19000
+        }
+      }
+    },
+    {
+      "case_id": "issued-services-invoice",
+      "scenario": "Factura emitida con IVA 21%.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_003",
+          "source_transaction_id": "tx_q1_003",
+          "document_kind": "issued_invoice",
+          "direction": "outgoing",
+          "invoice_number": "VEN-2026-007",
+          "invoice_series": "VEN",
+          "issue_date": "2026-03-10",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_cliente_demo_sl",
+          "counterparty_role": "customer",
+          "counterparty_name": "Cliente Demo SL",
+          "counterparty_tax_id": "B99887766",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 200000,
+          "total_vat_cents": 42000,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 242000,
+          "total_payable_cents": 242000,
+          "source_confidence": "manual",
+          "notes": null
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_003_l1",
+            "fiscal_document_id": "fd_q1_003",
+            "line_number": 1,
+            "concept": "Servicios profesionales",
+            "base_amount_cents": 200000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 42000,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 0,
+            "deductibility_reason": "not_applicable",
+            "expense_family": "services",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_003_l1"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "issued",
+            "fiscal_document_id": "fd_q1_003",
+            "line_id": "fd_q1_003_l1",
+            "line_number": 1,
+            "issue_date": "2026-03-10",
+            "invoice_number": "VEN-2026-007",
+            "counterparty_id": "cp_cliente_demo_sl",
+            "counterparty_name": "Cliente Demo SL",
+            "counterparty_tax_id": "B99887766",
+            "concept": "Servicios profesionales",
+            "base_amount_cents": 200000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 42000,
+            "deductibility_percent_bps": 0,
+            "deductible_vat_cents": 0
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 200000,
+              "vat_cents": 42000
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": 42000
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "received-team-meal-nondeductible",
+      "scenario": "Factura recibida con IVA 10% no deducible.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_004",
+          "source_transaction_id": "tx_q1_004",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "GASTO-2026-014",
+          "invoice_series": null,
+          "issue_date": "2026-02-12",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_restaurante_plaza_sl",
+          "counterparty_role": "supplier",
+          "counterparty_name": "Restaurante Plaza SL",
+          "counterparty_tax_id": "B33445566",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 18000,
+          "total_vat_cents": 1800,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 19800,
+          "total_payable_cents": 19800,
+          "source_confidence": "manual",
+          "notes": "Gasto de restauracion no deducible para IVA."
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_004_l1",
+            "fiscal_document_id": "fd_q1_004",
+            "line_number": 1,
+            "concept": "Comida de equipo",
+            "base_amount_cents": 18000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 1000,
+            "vat_amount_cents": 1800,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 0,
+            "deductibility_reason": "non_deductible",
+            "expense_family": "meals",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_004_l1"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_004",
+            "line_id": "fd_q1_004_l1",
+            "line_number": 1,
+            "issue_date": "2026-02-12",
+            "invoice_number": "GASTO-2026-014",
+            "counterparty_id": "cp_restaurante_plaza_sl",
+            "counterparty_name": "Restaurante Plaza SL",
+            "counterparty_tax_id": "B33445566",
+            "concept": "Comida de equipo",
+            "base_amount_cents": 18000,
+            "vat_rate_bps": 1000,
+            "vat_amount_cents": 1800,
+            "deductibility_percent_bps": 0,
+            "deductible_vat_cents": 0
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 18000,
+              "vat_cents": 1800
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": 0
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "received-mixed-vat-rates",
+      "scenario": "Factura recibida con una linea al 21% y otra al 4%, ambas deducibles.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_005",
+          "source_transaction_id": "tx_q1_005",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "MIX-IVA-2026-003",
+          "invoice_series": null,
+          "issue_date": "2026-03-05",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_editorial_y_oficina_sl",
+          "counterparty_role": "supplier",
+          "counterparty_name": "Editorial y Oficina SL",
+          "counterparty_tax_id": "B44556677",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 42000,
+          "total_vat_cents": 6780,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 48780,
+          "total_payable_cents": 48780,
+          "source_confidence": "manual",
+          "notes": null
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_005_l1",
+            "fiscal_document_id": "fd_q1_005",
+            "line_number": 1,
+            "concept": "Toner y consumibles",
+            "base_amount_cents": 30000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 6300,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "supplies",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          },
+          {
+            "line_id": "fd_q1_005_l2",
+            "fiscal_document_id": "fd_q1_005",
+            "line_number": 2,
+            "concept": "Manuales tecnicos",
+            "base_amount_cents": 12000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 400,
+            "vat_amount_cents": 480,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "supplies",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_005_l1",
+            "fd_q1_005_l2"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_005",
+            "line_id": "fd_q1_005_l1",
+            "line_number": 1,
+            "issue_date": "2026-03-05",
+            "invoice_number": "MIX-IVA-2026-003",
+            "counterparty_id": "cp_editorial_y_oficina_sl",
+            "counterparty_name": "Editorial y Oficina SL",
+            "counterparty_tax_id": "B44556677",
+            "concept": "Toner y consumibles",
+            "base_amount_cents": 30000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 6300,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 6300
+          },
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_005",
+            "line_id": "fd_q1_005_l2",
+            "line_number": 2,
+            "issue_date": "2026-03-05",
+            "invoice_number": "MIX-IVA-2026-003",
+            "counterparty_id": "cp_editorial_y_oficina_sl",
+            "counterparty_name": "Editorial y Oficina SL",
+            "counterparty_tax_id": "B44556677",
+            "concept": "Manuales tecnicos",
+            "base_amount_cents": 12000,
+            "vat_rate_bps": 400,
+            "vat_amount_cents": 480,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 480
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 12000,
+              "vat_cents": 480
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 30000,
+              "vat_cents": 6300
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": -6780
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "received-mixed-deductibility",
+      "scenario": "Factura recibida con una linea deducible y otra no deducible.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_006",
+          "source_transaction_id": "tx_q1_006",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "MIX-DED-2026-009",
+          "invoice_series": null,
+          "issue_date": "2026-03-18",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": "cp_centro_negocios_alameda_sl",
+          "counterparty_role": "supplier",
+          "counterparty_name": "Centro de Negocios Alameda SL",
+          "counterparty_tax_id": "B55667788",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-21T09:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 20000,
+          "total_vat_cents": 3650,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 23650,
+          "total_payable_cents": 23650,
+          "source_confidence": "manual",
+          "notes": null
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_006_l1",
+            "fiscal_document_id": "fd_q1_006",
+            "line_number": 1,
+            "concept": "Alquiler de sala de reuniones",
+            "base_amount_cents": 15000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 3150,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "services",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          },
+          {
+            "line_id": "fd_q1_006_l2",
+            "fiscal_document_id": "fd_q1_006",
+            "line_number": 2,
+            "concept": "Catering interno",
+            "base_amount_cents": 5000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 1000,
+            "vat_amount_cents": 500,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 0,
+            "deductibility_reason": "non_deductible",
+            "expense_family": "meals",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_006_l1",
+            "fd_q1_006_l2"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_006",
+            "line_id": "fd_q1_006_l1",
+            "line_number": 1,
+            "issue_date": "2026-03-18",
+            "invoice_number": "MIX-DED-2026-009",
+            "counterparty_id": "cp_centro_negocios_alameda_sl",
+            "counterparty_name": "Centro de Negocios Alameda SL",
+            "counterparty_tax_id": "B55667788",
+            "concept": "Alquiler de sala de reuniones",
+            "base_amount_cents": 15000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 3150,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 3150
+          },
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_006",
+            "line_id": "fd_q1_006_l2",
+            "line_number": 2,
+            "issue_date": "2026-03-18",
+            "invoice_number": "MIX-DED-2026-009",
+            "counterparty_id": "cp_centro_negocios_alameda_sl",
+            "counterparty_name": "Centro de Negocios Alameda SL",
+            "counterparty_tax_id": "B55667788",
+            "concept": "Catering interno",
+            "base_amount_cents": 5000,
+            "vat_rate_bps": 1000,
+            "vat_amount_cents": 500,
+            "deductibility_percent_bps": 0,
+            "deductible_vat_cents": 0
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 15000,
+              "vat_cents": 3150
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 5000,
+              "vat_cents": 500
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": -3150
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "payroll-placeholder-blocked",
+      "scenario": "Pago a empleado sin fuente estructurada de nomina.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_007",
+          "source_transaction_id": "tx_q1_007",
+          "document_kind": "payroll_placeholder",
+          "direction": "incoming",
+          "invoice_number": null,
+          "invoice_series": null,
+          "issue_date": "2026-01-31",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": null,
+          "counterparty_role": "employee",
+          "counterparty_name": "Nomina empleada 01",
+          "counterparty_tax_id": null,
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "blocked",
+          "review_reasons": [
+            "employee_payroll_source_missing"
+          ],
+          "vat_period_assignment": null,
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 185000,
+          "total_net_cents": 0,
+          "total_vat_cents": 0,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 0,
+          "total_payable_cents": 0,
+          "source_confidence": "manual",
+          "notes": "Placeholder de nomina; fuera de 111 hasta disponer de fuente estructurada."
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_007_l1",
+            "fiscal_document_id": "fd_q1_007",
+            "line_number": 1,
+            "concept": "Pago de nomina pendiente de fuente estructurada",
+            "base_amount_cents": 0,
+            "vat_treatment": "out_of_scope",
+            "vat_rate_bps": 0,
+            "vat_amount_cents": 0,
+            "withholding_applicable": true,
+            "withholding_regime": "salary",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 0,
+            "deductibility_reason": "not_applicable",
+            "expense_family": "payroll",
+            "is_ready_for_vat_books": false,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "blocked",
+          "review_reasons": [
+            "employee_payroll_source_missing"
+          ],
+          "ready_line_ids_for_vat_books": [],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [],
+        "model_303_contribution": {
+          "included": false,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": 0
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    },
+    {
+      "case_id": "received-missing-counterparty-relation",
+      "scenario": "Caso de control en needs_review por faltar la relacion fuerte con Counterparty.",
+      "document": {
+        "header": {
+          "fiscal_document_id": "fd_q1_008",
+          "source_transaction_id": "tx_q1_008",
+          "document_kind": "received_invoice",
+          "direction": "incoming",
+          "invoice_number": "CTRL-2026-021",
+          "invoice_series": null,
+          "issue_date": "2026-03-22",
+          "operation_date": null,
+          "currency_code": "EUR",
+          "counterparty_id": null,
+          "counterparty_role": "supplier",
+          "counterparty_name": "Suministros Luz Centro SA",
+          "counterparty_tax_id": "A55667788",
+          "counterparty_country_code": "ES",
+          "company_tax_id": "B11223344",
+          "review_status": "ready",
+          "review_reasons": [],
+          "vat_period_assignment": {
+            "fiscal_year": 2026,
+            "quarter": 1,
+            "period_key": "2026-Q1",
+            "basis": "issue_date",
+            "assigned_at": "2026-03-22T10:00:00Z"
+          },
+          "withholding_period_assignment": null,
+          "observed_amount_cents": 0,
+          "total_net_cents": 25000,
+          "total_vat_cents": 5250,
+          "total_withholding_cents": 0,
+          "total_gross_cents": 30250,
+          "total_payable_cents": 30250,
+          "source_confidence": "manual",
+          "notes": "Control de review_status: estructura fiscal completa, pero sin relacion fuerte al tercero."
+        },
+        "lines": [
+          {
+            "line_id": "fd_q1_008_l1",
+            "fiscal_document_id": "fd_q1_008",
+            "line_number": 1,
+            "concept": "Suministro electrico",
+            "base_amount_cents": 25000,
+            "vat_treatment": "taxable",
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 5250,
+            "withholding_applicable": false,
+            "withholding_regime": "none",
+            "withholding_base_cents": 0,
+            "withholding_rate_bps": 0,
+            "withholding_amount_cents": 0,
+            "deductibility_percent_bps": 10000,
+            "deductibility_reason": "fully_deductible",
+            "expense_family": "supplies",
+            "is_ready_for_vat_books": true,
+            "is_ready_for_withholding_books": false
+          }
+        ]
+      },
+      "expected": {
+        "review": {
+          "review_status": "ready",
+          "review_reasons": [],
+          "ready_line_ids_for_vat_books": [
+            "fd_q1_008_l1"
+          ],
+          "ready_line_ids_for_withholding_books": []
+        },
+        "vat_book_lines": [
+          {
+            "book_kind": "received",
+            "fiscal_document_id": "fd_q1_008",
+            "line_id": "fd_q1_008_l1",
+            "line_number": 1,
+            "issue_date": "2026-03-22",
+            "invoice_number": "CTRL-2026-021",
+            "counterparty_id": null,
+            "counterparty_name": "Suministros Luz Centro SA",
+            "counterparty_tax_id": "A55667788",
+            "concept": "Suministro electrico",
+            "base_amount_cents": 25000,
+            "vat_rate_bps": 2100,
+            "vat_amount_cents": 5250,
+            "deductibility_percent_bps": 10000,
+            "deductible_vat_cents": 5250
+          }
+        ],
+        "model_303_contribution": {
+          "included": true,
+          "output_vat_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "input_vat_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 25000,
+              "vat_cents": 5250
+            }
+          },
+          "input_vat_non_deductible_by_rate": {
+            "400": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "1000": {
+              "base_cents": 0,
+              "vat_cents": 0
+            },
+            "2100": {
+              "base_cents": 0,
+              "vat_cents": 0
+            }
+          },
+          "net_result_cents": -5250
+        },
+        "model_115_contribution": {
+          "included": false,
+          "landlord_counterparty_ids": [],
+          "rent_base_cents": 0,
+          "withholding_cents": 0
+        }
+      }
+    }
+  ],
+  "expected_quarter": {
+    "review_status_counts": {
+      "ready": 7,
+      "needs_review": 0,
+      "blocked": 1,
+      "pending": 0
+    },
+    "vat_books": {
+      "received": [
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_001",
+          "line_id": "fd_q1_001_l1",
+          "line_number": 1,
+          "issue_date": "2026-01-15",
+          "invoice_number": "REC-2026-001",
+          "counterparty_id": "cp_papeleria_centro_sl",
+          "counterparty_name": "Papeleria Centro SL",
+          "counterparty_tax_id": "B12345678",
+          "concept": "Material de oficina",
+          "base_amount_cents": 10000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 2100,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 2100
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_002",
+          "line_id": "fd_q1_002_l1",
+          "line_number": 1,
+          "issue_date": "2026-02-01",
+          "invoice_number": "ALQ-2026-02",
+          "counterparty_id": "cp_inmuebles_gran_via_sl",
+          "counterparty_name": "Inmuebles Gran Via SL",
+          "counterparty_tax_id": "B76543210",
+          "concept": "Renta mensual del local",
+          "base_amount_cents": 100000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 21000,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 21000
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_004",
+          "line_id": "fd_q1_004_l1",
+          "line_number": 1,
+          "issue_date": "2026-02-12",
+          "invoice_number": "GASTO-2026-014",
+          "counterparty_id": "cp_restaurante_plaza_sl",
+          "counterparty_name": "Restaurante Plaza SL",
+          "counterparty_tax_id": "B33445566",
+          "concept": "Comida de equipo",
+          "base_amount_cents": 18000,
+          "vat_rate_bps": 1000,
+          "vat_amount_cents": 1800,
+          "deductibility_percent_bps": 0,
+          "deductible_vat_cents": 0
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_005",
+          "line_id": "fd_q1_005_l1",
+          "line_number": 1,
+          "issue_date": "2026-03-05",
+          "invoice_number": "MIX-IVA-2026-003",
+          "counterparty_id": "cp_editorial_y_oficina_sl",
+          "counterparty_name": "Editorial y Oficina SL",
+          "counterparty_tax_id": "B44556677",
+          "concept": "Toner y consumibles",
+          "base_amount_cents": 30000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 6300,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 6300
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_005",
+          "line_id": "fd_q1_005_l2",
+          "line_number": 2,
+          "issue_date": "2026-03-05",
+          "invoice_number": "MIX-IVA-2026-003",
+          "counterparty_id": "cp_editorial_y_oficina_sl",
+          "counterparty_name": "Editorial y Oficina SL",
+          "counterparty_tax_id": "B44556677",
+          "concept": "Manuales tecnicos",
+          "base_amount_cents": 12000,
+          "vat_rate_bps": 400,
+          "vat_amount_cents": 480,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 480
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_006",
+          "line_id": "fd_q1_006_l1",
+          "line_number": 1,
+          "issue_date": "2026-03-18",
+          "invoice_number": "MIX-DED-2026-009",
+          "counterparty_id": "cp_centro_negocios_alameda_sl",
+          "counterparty_name": "Centro de Negocios Alameda SL",
+          "counterparty_tax_id": "B55667788",
+          "concept": "Alquiler de sala de reuniones",
+          "base_amount_cents": 15000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 3150,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 3150
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_006",
+          "line_id": "fd_q1_006_l2",
+          "line_number": 2,
+          "issue_date": "2026-03-18",
+          "invoice_number": "MIX-DED-2026-009",
+          "counterparty_id": "cp_centro_negocios_alameda_sl",
+          "counterparty_name": "Centro de Negocios Alameda SL",
+          "counterparty_tax_id": "B55667788",
+          "concept": "Catering interno",
+          "base_amount_cents": 5000,
+          "vat_rate_bps": 1000,
+          "vat_amount_cents": 500,
+          "deductibility_percent_bps": 0,
+          "deductible_vat_cents": 0
+        },
+        {
+          "book_kind": "received",
+          "fiscal_document_id": "fd_q1_008",
+          "line_id": "fd_q1_008_l1",
+          "line_number": 1,
+          "issue_date": "2026-03-22",
+          "invoice_number": "CTRL-2026-021",
+          "counterparty_id": null,
+          "counterparty_name": "Suministros Luz Centro SA",
+          "counterparty_tax_id": "A55667788",
+          "concept": "Suministro electrico",
+          "base_amount_cents": 25000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 5250,
+          "deductibility_percent_bps": 10000,
+          "deductible_vat_cents": 5250
+        }
+      ],
+      "issued": [
+        {
+          "book_kind": "issued",
+          "fiscal_document_id": "fd_q1_003",
+          "line_id": "fd_q1_003_l1",
+          "line_number": 1,
+          "issue_date": "2026-03-10",
+          "invoice_number": "VEN-2026-007",
+          "counterparty_id": "cp_cliente_demo_sl",
+          "counterparty_name": "Cliente Demo SL",
+          "counterparty_tax_id": "B99887766",
+          "concept": "Servicios profesionales",
+          "base_amount_cents": 200000,
+          "vat_rate_bps": 2100,
+          "vat_amount_cents": 42000,
+          "deductibility_percent_bps": 0,
+          "deductible_vat_cents": 0
+        }
+      ]
+    },
+    "model_303": {
+      "documents_included": [
+        "fd_q1_001",
+        "fd_q1_002",
+        "fd_q1_003",
+        "fd_q1_004",
+        "fd_q1_005",
+        "fd_q1_006",
+        "fd_q1_008"
+      ],
+      "output_vat_by_rate": {
+        "400": {
+          "base_cents": 0,
+          "vat_cents": 0
+        },
+        "1000": {
+          "base_cents": 0,
+          "vat_cents": 0
+        },
+        "2100": {
+          "base_cents": 200000,
+          "vat_cents": 42000
+        }
+      },
+      "input_vat_deductible_by_rate": {
+        "400": {
+          "base_cents": 12000,
+          "vat_cents": 480
+        },
+        "1000": {
+          "base_cents": 0,
+          "vat_cents": 0
+        },
+        "2100": {
+          "base_cents": 180000,
+          "vat_cents": 37800
+        }
+      },
+      "input_vat_non_deductible_by_rate": {
+        "400": {
+          "base_cents": 0,
+          "vat_cents": 0
+        },
+        "1000": {
+          "base_cents": 23000,
+          "vat_cents": 2300
+        },
+        "2100": {
+          "base_cents": 0,
+          "vat_cents": 0
+        }
+      },
+      "output_vat_total_cents": 42000,
+      "input_vat_deductible_total_cents": 38280,
+      "result_vat_payable_cents": 3720
+    },
+    "model_115": {
+      "documents_included": [
+        "fd_q1_002"
+      ],
+      "landlord_counterparty_ids": [
+        "cp_inmuebles_gran_via_sl"
+      ],
+      "perceptor_count": 1,
+      "rent_base_cents": 100000,
+      "withholding_cents": 19000
+    }
+  }
+}

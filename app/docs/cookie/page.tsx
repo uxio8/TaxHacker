@@ -4,6 +4,9 @@ import { createPageMetadata } from "@/lib/i18n"
 export const metadata = createPageMetadata("docs.cookie.title")
 
 export default async function Cookie() {
+  const appName = config.app.title
+  const appUrl = config.app.baseURL
+
   return (
     <div className="prose prose-slate max-w-none">
       <h1 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">Política de cookies</h1>
@@ -11,8 +14,8 @@ export default async function Cookie() {
         <strong className="text-slate-700">Fecha de entrada en vigor:</strong> 22 de abril de 2025
         <br />
         <strong className="text-slate-700">Servicio:</strong>{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
+        <a href={appUrl} className="text-blue-600 hover:text-blue-800">
+          {appUrl}
         </a>
         <br />
         <strong className="text-slate-700">Contacto:</strong>{" "}
@@ -22,7 +25,7 @@ export default async function Cookie() {
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        Esta Política de cookies explica cómo TaxHacker utiliza cookies y tecnologías similares cuando visitas nuestra
+        Esta Política de cookies explica cómo {appName} utiliza cookies y tecnologías similares cuando visitas nuestra
         web o utilizas nuestros servicios.
       </p>
 

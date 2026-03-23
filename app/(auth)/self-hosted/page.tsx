@@ -3,6 +3,7 @@ import { ColoredText } from "@/components/ui/colored-text"
 import config from "@/lib/config"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { hasSelfHostedAccess } from "@/lib/security"
+import { DEFAULT_CURRENCIES, DEFAULT_SETTINGS } from "@/models/defaults"
 import { getSelfHostedUser } from "@/models/users"
 import { ShieldAlert } from "lucide-react"
 import Image from "next/image"
@@ -72,6 +73,7 @@ export default async function SelfHostedWelcomePage({
 
   const requiresSetup = !user
   const errorMessage = params.error ? SELF_HOSTED_ERROR_MESSAGES[params.error] : null
+  const defaultCurrency = DEFAULT_SETTINGS.find((setting) => setting.code === "default_currency")?.value ?? "EUR"
 
   return (
     <Card className="w-full max-w-xl mx-auto p-8 flex flex-col items-center justify-center gap-4">
@@ -87,7 +89,11 @@ export default async function SelfHostedWelcomePage({
           <p className="text-sm text-red-600 text-center">{errorMessage}</p>
         </CardContent>
       ) : null}
-      <SelfHostedSetupFormClient requiresSetup={requiresSetup} />
+      <SelfHostedSetupFormClient
+        requiresSetup={requiresSetup}
+        defaultCurrency={defaultCurrency}
+        currencies={DEFAULT_CURRENCIES}
+      />
     </Card>
   )
 }

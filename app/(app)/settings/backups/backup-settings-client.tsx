@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useDownload } from "@/hooks/use-download"
 import { useI18n } from "@/lib/i18n"
+import config from "@/lib/config"
 import { useProgress } from "@/hooks/use-progress"
 import { Download, Loader2 } from "lucide-react"
 import { useActionState } from "react"
@@ -41,7 +42,7 @@ export default function BackupSettingsClient() {
     try {
       const progressId = await startProgress("backup")
       const downloadUrl = `/settings/backups/data?progressId=${progressId || ""}`
-      await download(downloadUrl, "taxhacker-backup.zip")
+      await download(downloadUrl, `${config.app.slug}-backup.zip`)
     } catch (error) {
       console.error("Failed to start backup:", error)
     }

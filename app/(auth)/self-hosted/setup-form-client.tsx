@@ -4,18 +4,21 @@ import { FormSelectCurrency } from "@/components/forms/select-currency"
 import { FormInput } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
-import { DEFAULT_CURRENCIES, DEFAULT_SETTINGS } from "@/models/defaults"
 import { selfHostedGetStartedAction } from "../actions"
 
 type Props = {
   requiresSetup: boolean
+  defaultCurrency: string
+  currencies: Array<{ code: string; name: string }>
 }
 
-export default function SelfHostedSetupFormClient({ requiresSetup }: Props) {
+export default function SelfHostedSetupFormClient({
+  requiresSetup,
+  defaultCurrency: initialDefaultCurrency,
+  currencies,
+}: Props) {
   const { t } = useI18n()
-  const [defaultCurrency, setDefaultCurrency] = useState(
-    DEFAULT_SETTINGS.find((setting) => setting.code === "default_currency")?.value ?? "EUR"
-  )
+  const [defaultCurrency, setDefaultCurrency] = useState(initialDefaultCurrency)
 
   return (
     <form action={selfHostedGetStartedAction} className="flex flex-col gap-8 pt-8">
@@ -34,7 +37,7 @@ export default function SelfHostedSetupFormClient({ requiresSetup }: Props) {
             name="default_currency"
             value={defaultCurrency}
             onValueChange={setDefaultCurrency}
-            currencies={DEFAULT_CURRENCIES}
+            currencies={currencies}
           />
         </div>
       ) : null}

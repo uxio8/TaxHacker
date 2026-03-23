@@ -2,7 +2,6 @@ import { FiltersWidget } from "@/components/dashboard/filters-widget"
 import { IncomeExpenseGraph } from "@/components/dashboard/income-expense-graph"
 import { ProjectsWidget } from "@/components/dashboard/projects-widget"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getCurrentUser } from "@/lib/auth"
 import { createTranslator } from "@/lib/i18n"
 import { formatCurrency } from "@/lib/utils"
 import { getProjects } from "@/models/projects"
@@ -12,18 +11,19 @@ import { TransactionFilters } from "@/models/transactions"
 import { ArrowDown, ArrowUp, BicepsFlexed } from "lucide-react"
 import Link from "next/link"
 
-export async function StatsWidget({ filters }: { filters: TransactionFilters }) {
+export async function StatsWidget({ filters, organizationId }: { filters: TransactionFilters; organizationId: string }) {
   const t = createTranslator()
-  const user = await getCurrentUser()
-  const projects = await getProjects(user.id)
-  const settings = await getSettings(user.id)
+  const projects = await getProjects(organizationId)
+  const settings = await getSettings(organizationId)
   const defaultCurrency = settings.default_currency || "EUR"
 
-  const stats = await getDashboardStats(user.id, filters)
-  const statsTimeSeries = await getDetailedTimeSeriesStats(user.id, filters, defaultCurrency)
+  const stats = await getDashboardStats(organizationId, filters)
+  const statsTimeSeries = await getDetailedTimeSeriesStats(organizationId, filters, defaultCurrency)
   const statsPerProject = Object.fromEntries(
     await Promise.all(
-      projects.map((project) => getProjectStats(user.id, project.code, filters).then((stats) => [project.code, stats]))
+      projects.map((project) =>
+        getProjectStats(organizationId, project.code, filters).then((stats) => [project.code, stats])
+      )
     )
   )
 

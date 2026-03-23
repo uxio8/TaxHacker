@@ -54,7 +54,7 @@ export function toStoredAnalysisJobAttachments(attachments: AnalyzeAttachment[])
   return attachments.map((attachment) => ({
     filename: attachment.filename,
     contentType: attachment.contentType,
-    filePath: attachment.filePath,
-    base64: "",
+    filePath: "",
+    base64: attachment.base64,
   }))
 }

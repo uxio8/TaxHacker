@@ -1,13 +1,15 @@
 import { getCurrentUser } from "@/lib/auth"
-import { fileExists, fullPathForFile } from "@/lib/files"
+import { getUserUploadsDirectory } from "@/lib/files"
+import { readStoredFileBuffer, storedPathExists } from "@/lib/storage/runtime"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { EXPORT_AND_IMPORT_FIELD_MAP, ExportFields, ExportFilters } from "@/models/export_and_import"
 import { getFields } from "@/models/fields"
 import { getFilesByTransactionId } from "@/models/files"
 import { updateProgress } from "@/models/progress"
 import { getTransactions } from "@/models/transactions"
+import { getUserById } from "@/models/users"
 import { format } from "@fast-csv/format"
 import { formatDate } from "date-fns"
-import fs from "fs/promises"
 import JSZip from "jszip"
 import { NextResponse } from "next/server"
 import path from "path"
@@ -25,8 +27,11 @@ export async function GET(request: Request) {
   const progressId = url.searchParams.get("progressId")
 
   const user = await getCurrentUser()
-  const { transactions } = await getTransactions(user.id, filters)
-  const existingFields = await getFields(user.id)
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
+  const { transactions } = await getTransactions(organizationId, filters)
+  const existingFields = await getFields(organizationId)
 
   try {
     const fieldKeys = fields.filter((field) => existingFields.some((f) => f.code === field))
@@ -57,7 +62,7 @@ export async function GET(request: Request) {
 
           const exportFieldSettings = EXPORT_AND_IMPORT_FIELD_MAP[field.code]
           if (exportFieldSettings && exportFieldSettings.export) {
-            row[field.code] = await exportFieldSettings.export(user.id, value)
+            row[field.code] = await exportFieldSettings.export(organizationId, value)
           } else {
             row[field.code] = value
           }
@@ -69,7 +74,7 @@ export async function GET(request: Request) {
 
     if (!includeAttachments) {
       const stream = Readable.from(csvStream)
-      return new NextResponse(stream as any, {
+      return new NextResponse(stream as unknown as BodyInit, {
         headers: {
           "Content-Type": "text/csv",
           "Content-Disposition": `attachment; filename="transactions.csv"`,
@@ -102,13 +107,13 @@ export async function GET(request: Request) {
 
     // First count total files to process
     for (const transaction of transactions) {
-      const transactionFiles = await getFilesByTransactionId(transaction.id, user.id)
+      const transactionFiles = await getFilesByTransactionId(transaction.id, organizationId)
       totalFilesToProcess += transactionFiles.length
     }
 
     // Update progress with total files if progressId is provided
     if (progressId) {
-      await updateProgress(user.id, progressId, { total: totalFilesToProcess })
+      await updateProgress(user.id, progressId, { total: totalFilesToProcess }, organizationId)
     }
 
     console.log(`Starting to process ${totalFilesToProcess} files in total`)
@@ -120,7 +125,7 @@ export async function GET(request: Request) {
       )
 
       for (const transaction of chunk) {
-        const transactionFiles = await getFilesByTransactionId(transaction.id, user.id)
+        const transactionFiles = await getFilesByTransactionId(transaction.id, organizationId)
 
         const transactionFolder = filesFolder.folder(
           path.join(
@@ -132,13 +137,24 @@ export async function GET(request: Request) {
         if (!transactionFolder) continue
 
         for (const file of transactionFiles) {
-          const fullFilePath = fullPathForFile(user, file)
-          if (await fileExists(fullFilePath)) {
+          const fileOwner = await getUserById(file.userId)
+          if (!fileOwner) {
+            console.log(`Skipping file without owner: ${file.filename} for transaction ${transaction.id}`)
+            continue
+          }
+
+          const fileLocation = {
+            ownerOrganizationId: file.organizationId,
+            ownerUploadsDirectory: getUserUploadsDirectory(fileOwner),
+            storedPath: file.path,
+          }
+
+          if (await storedPathExists(fileLocation)) {
             console.log(
               `Processing file ${++totalFilesProcessed}/${totalFilesToProcess}: ${file.filename} for transaction ${transaction.id}`
             )
-            const fileData = await fs.readFile(fullFilePath)
-            const fileExtension = path.extname(fullFilePath)
+            const fileData = await readStoredFileBuffer(fileLocation)
+            const fileExtension = path.extname(file.path || file.filename)
             transactionFolder.file(
               `${formatDate(transaction.issuedAt || new Date(), "yyyy-MM-dd")} - ${
                 transaction.name || transaction.id
@@ -149,7 +165,7 @@ export async function GET(request: Request) {
             // Update progress every PROGRESS_UPDATE_INTERVAL_MS milliseconds
             const now = Date.now()
             if (progressId && now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
-              await updateProgress(user.id, progressId, { current: totalFilesProcessed })
+              await updateProgress(user.id, progressId, { current: totalFilesProcessed }, organizationId)
               lastProgressUpdate = now
             }
           } else {
@@ -161,7 +177,7 @@ export async function GET(request: Request) {
 
     // Final progress update
     if (progressId) {
-      await updateProgress(user.id, progressId, { current: totalFilesToProcess })
+      await updateProgress(user.id, progressId, { current: totalFilesToProcess }, organizationId)
     }
 
     console.log(`Finished processing all ${totalFilesProcessed} files`)

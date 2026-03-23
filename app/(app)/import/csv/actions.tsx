@@ -2,6 +2,7 @@
 
 import { ActionState } from "@/lib/actions"
 import { getCurrentUser } from "@/lib/auth"
+import { requireCurrentWritableOrganizationId } from "@/lib/tenant"
 import { EXPORT_AND_IMPORT_FIELD_MAP } from "@/models/export_and_import"
 import { createTransaction } from "@/models/transactions"
 import { Transaction } from "@/prisma/client"
@@ -48,6 +49,9 @@ export async function saveTransactionsAction(
   formData: FormData
 ): Promise<ActionState<Transaction>> {
   const user = await getCurrentUser()
+  const organizationId = await requireCurrentWritableOrganizationId({
+    getCurrentUser: async () => user,
+  })
   try {
     const rows = JSON.parse(formData.get("rows") as string) as Record<string, unknown>[]
 
@@ -56,13 +60,13 @@ export async function saveTransactionsAction(
       for (const [fieldCode, value] of Object.entries(row)) {
         const fieldDef = EXPORT_AND_IMPORT_FIELD_MAP[fieldCode]
         if (fieldDef?.import) {
-          transactionData[fieldCode] = await fieldDef.import(user.id, value as string)
+          transactionData[fieldCode] = await fieldDef.import(organizationId, value as string)
         } else {
           transactionData[fieldCode] = value as string
         }
       }
 
-      await createTransaction(user.id, transactionData)
+      await createTransaction(user.id, organizationId, transactionData)
     }
 
     revalidatePath("/import/csv")

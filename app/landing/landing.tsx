@@ -4,6 +4,11 @@ import Image from "next/image"
 import Link from "next/link"
 
 export default function LandingPage() {
+  const contactHref = `mailto:${config.app.supportEmail}`
+  const repositoryUrl = config.links.repositoryUrl
+  const communityHref = repositoryUrl || contactHref
+  const selfHostedHref = repositoryUrl || contactHref
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
       <header className="py-6 px-4 md:px-8 bg-white/90 backdrop-blur-xl shadow-lg border-b border-gradient-to-r from-pink-200 to-indigo-200 fixed w-full z-50">
@@ -19,7 +24,7 @@ export default function LandingPage() {
               />
               <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-indigo-600 rounded-full opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300" />
             </div>
-            <ColoredText className="text-2xl font-bold">TaxHacker</ColoredText>
+            <ColoredText className="text-2xl font-bold">{config.app.title}</ColoredText>
           </Link>
           <Link
             href="/enter"
@@ -56,7 +61,7 @@ export default function LandingPage() {
                 Empezar ✨
               </Link>
               <Link
-                href="mailto:me@vas3k.com"
+                href={contactHref}
                 className="px-8 py-4 border-2 border-gradient-to-r from-pink-300 to-indigo-300 text-gray-800 font-bold rounded-full hover:bg-gradient-to-r hover:from-pink-50 hover:to-indigo-50 transition-all duration-300 hover:scale-105 bg-white/80"
               >
                 Contactar 💌
@@ -67,7 +72,13 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-pink-500/5 via-purple-500/5 to-indigo-500/10 z-10" />
             <video className="w-full h-auto" autoPlay loop muted playsInline poster="/landing/ai-scanner-big.webp">
               <source src="/landing/video.mp4" type="video/mp4" />
-              <Image src="/landing/ai-scanner-big.webp" alt="Vista previa de TaxHacker" width={1728} height={1080} priority />
+              <Image
+                src="/landing/ai-scanner-big.webp"
+                alt={`Vista previa de ${config.app.title}`}
+                width={1728}
+                height={1080}
+                priority
+              />
             </video>
           </div>
         </div>
@@ -83,7 +94,7 @@ export default function LandingPage() {
                 Que les den a los impuestos
               </span>
               <span className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                TaxHacker te ahorra tiempo, dinero y disgustos
+                {config.app.title} te ahorra tiempo, dinero y disgustos
               </span>
             </h2>
           </div>
@@ -248,7 +259,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-center">
                   <span className="text-violet-600 mr-3 text-lg">🔧</span>
-                  Amplía y mejora tu instancia de TaxHacker con prompts LLM personalizados
+                  Amplía y mejora tu instancia de {config.app.title} con prompts LLM personalizados
                 </li>
                 <li className="flex items-center">
                   <span className="text-violet-600 mr-3 text-lg">🔧</span>
@@ -285,7 +296,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-center">
                   <span className="text-orange-600 mr-3 text-lg">📤</span>
-                  Despliega tu propia instancia de TaxHacker con privacidad total
+                  Despliega tu propia instancia de {config.app.title} con privacidad total
                 </li>
                 <li className="flex items-center">
                   <span className="text-orange-600 mr-3 text-lg">📤</span>
@@ -318,7 +329,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
-              Elige tu versión de TaxHacker
+              Elige tu versión de {config.app.title}
             </h2>
           </div>
           <div className="grid md:grid-cols-2 gap-16">
@@ -349,11 +360,11 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Link
-                href="https://github.com/vas3k/TaxHacker"
-                target="_blank"
+                href={selfHostedHref}
+                target={repositoryUrl ? "_blank" : undefined}
                 className="block w-full text-center px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-full hover:from-violet-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-110"
               >
-                GitHub + Docker Compose 🐳
+                {repositoryUrl ? "Repositorio + Docker Compose 🐳" : "Contactar soporte 💌"}
               </Link>
             </div>
 
@@ -518,18 +529,20 @@ export default function LandingPage() {
             <div className="max-w-2xl mx-auto text-center">
               <h3 className="text-2xl font-semibold mb-4">Sigue de cerca el proyecto</h3>
               <p className="text-gray-600 mb-6">
-                Estamos trabajando a saco para que TaxHacker le resulte útil a cualquiera. Dale una estrella y sigue el
-                repositorio en GitHub para enterarte de nuevas funciones y lanzamientos.
+                Estamos trabajando a saco para que {config.app.title} le resulte útil a cualquiera.{" "}
+                {repositoryUrl
+                  ? "Sigue el repositorio para enterarte de nuevas funciones y lanzamientos."
+                  : "Escríbenos si quieres enterarte de nuevas funciones y lanzamientos."}
               </p>
               <div className="flex flex-col gap-4 max-w-md mx-auto">
                 <div className="flex flex-wrap items-center justify-center gap-4">
                   <a
-                    href="https://github.com/vas3k/TaxHacker"
-                    target="_blank"
-                    rel="noreferrer"
+                    href={communityHref}
+                    target={repositoryUrl ? "_blank" : undefined}
+                    rel={repositoryUrl ? "noreferrer" : undefined}
                     className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
                   >
-                    Abrir repositorio en GitHub
+                    {repositoryUrl ? "Abrir repositorio" : "Contactar soporte"}
                   </a>
                 </div>
               </div>
@@ -540,13 +553,7 @@ export default function LandingPage() {
 
       <footer className="py-8 px-8 bg-gradient-to-r from-pink-50 to-indigo-50 border-t-2 border-gradient-to-r from-pink-200 to-indigo-200">
         <div className="max-w-7xl mx-auto text-center text-sm text-gray-600">
-          Hecho con ❤️ en Berlín por{" "}
-          <Link
-            href="https://github.com/vas3k"
-            className="underline font-semibold hover:text-pink-600 transition-colors"
-          >
-            @vas3k
-          </Link>
+          Hecho para equipos pequeños que quieren menos fricción contable.
         </div>
 
         <section className="py-12 px-8">
@@ -579,13 +586,15 @@ export default function LandingPage() {
               >
                 Política de cookies
               </Link>
-              <Link
-                href="https://github.com/vas3k/TaxHacker"
-                target="_blank"
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Código fuente
-              </Link>
+              {repositoryUrl ? (
+                <Link
+                  href={repositoryUrl}
+                  target="_blank"
+                  className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
+                >
+                  Código fuente
+                </Link>
+              ) : null}
             </div>
           </div>
         </section>

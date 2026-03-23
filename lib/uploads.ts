@@ -1,60 +1,132 @@
-import { User } from "@/prisma/client"
-import { mkdir } from "fs/promises"
+import type { User } from "@/prisma/client"
 import path from "path"
 import sharp from "sharp"
-import config from "./config"
-import { getStaticDirectory, isEnoughStorageToUploadFile, safePathJoin } from "./files"
+import config from "./config.ts"
+import { getUserUploadsDirectory, isEnoughStorageToUploadFile } from "./files.ts"
+import { buildOrganizationStaticObjectKey } from "./storage/keys.ts"
+import { putStoredFileBuffer } from "./storage/runtime.ts"
 
-export async function uploadStaticImage(
-  user: User,
-  file: File,
-  saveFileName: string,
-  maxWidth: number = config.upload.images.maxWidth,
-  maxHeight: number = config.upload.images.maxHeight,
-  quality: number = config.upload.images.quality
-) {
-  const uploadDirectory = getStaticDirectory(user)
+type UploadStaticImageInput = {
+  user: User
+  organizationId: string
+  file: File
+  assetType: string
+  assetId: string
+  saveFileName: string
+  maxWidth?: number
+  maxHeight?: number
+  quality?: number
+}
 
-  if (!isEnoughStorageToUploadFile(user, file.size)) {
-    throw Error("Not enough space to upload the file")
+type UploadStaticImageDependencies = {
+  isEnoughStorageToUploadFile?: typeof isEnoughStorageToUploadFile
+  getUserUploadsDirectory?: typeof getUserUploadsDirectory
+  transformImage?: (input: {
+    buffer: Buffer
+    targetFormat: string
+    maxWidth: number
+    maxHeight: number
+    quality: number
+  }) => Promise<Buffer>
+  putStoredFileBuffer?: typeof putStoredFileBuffer
+}
+
+function getStaticImageContentType(targetFormat: string) {
+  switch (targetFormat) {
+    case "png":
+      return "image/png"
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg"
+    case "webp":
+      return "image/webp"
+    case "avif":
+      return "image/avif"
+    default:
+      throw Error(`Unsupported target format: ${targetFormat}`)
   }
+}
 
-  await mkdir(uploadDirectory, { recursive: true })
-
-  // Get target format from saveFileName extension
-  const targetFormat = path.extname(saveFileName).slice(1).toLowerCase()
-  if (!targetFormat) {
-    throw Error("Target filename must have an extension")
-  }
-
-  // Convert image and save to static folder
-  const uploadFilePath = safePathJoin(uploadDirectory, saveFileName)
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-
-  const sharpInstance = sharp(buffer).rotate().resize(maxWidth, maxHeight, {
+async function transformStaticImage(input: {
+  buffer: Buffer
+  targetFormat: string
+  maxWidth: number
+  maxHeight: number
+  quality: number
+}) {
+  const sharpInstance = sharp(input.buffer).rotate().resize(input.maxWidth, input.maxHeight, {
     fit: "inside",
     withoutEnlargement: true,
   })
 
-  // Set output format and quality
-  switch (targetFormat) {
+  switch (input.targetFormat) {
     case "png":
-      await sharpInstance.png().toFile(uploadFilePath)
-      break
+      return sharpInstance.png().toBuffer()
     case "jpg":
     case "jpeg":
-      await sharpInstance.jpeg({ quality }).toFile(uploadFilePath)
-      break
+      return sharpInstance.jpeg({ quality: input.quality }).toBuffer()
     case "webp":
-      await sharpInstance.webp({ quality }).toFile(uploadFilePath)
-      break
+      return sharpInstance.webp({ quality: input.quality }).toBuffer()
     case "avif":
-      await sharpInstance.avif({ quality }).toFile(uploadFilePath)
-      break
+      return sharpInstance.avif({ quality: input.quality }).toBuffer()
     default:
-      throw Error(`Unsupported target format: ${targetFormat}`)
+      throw Error(`Unsupported target format: ${input.targetFormat}`)
+  }
+}
+
+export function buildStaticAssetUrl(storedPath: string) {
+  return `/files/static/${storedPath}`
+}
+
+export async function uploadStaticImage(
+  input: UploadStaticImageInput,
+  dependencies: UploadStaticImageDependencies = {}
+) {
+  const deps = {
+    isEnoughStorageToUploadFile,
+    getUserUploadsDirectory,
+    transformImage: transformStaticImage,
+    putStoredFileBuffer,
+    ...dependencies,
   }
 
-  return uploadFilePath
+  const maxWidth = input.maxWidth ?? config.upload.images.maxWidth
+  const maxHeight = input.maxHeight ?? config.upload.images.maxHeight
+  const quality = input.quality ?? config.upload.images.quality
+
+  if (!(await deps.isEnoughStorageToUploadFile({ ...input.user, organizationId: input.organizationId }, input.file.size))) {
+    throw Error("Not enough space to upload the file")
+  }
+
+  const targetFormat = path.extname(input.saveFileName).slice(1).toLowerCase()
+  if (!targetFormat) {
+    throw Error("Target filename must have an extension")
+  }
+
+  const arrayBuffer = await input.file.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  const transformedBuffer = await deps.transformImage({
+    buffer,
+    targetFormat,
+    maxWidth,
+    maxHeight,
+    quality,
+  })
+  const storedPath = buildOrganizationStaticObjectKey(
+    input.organizationId,
+    input.assetType,
+    input.assetId,
+    input.saveFileName
+  )
+
+  await deps.putStoredFileBuffer({
+    ownerOrganizationId: input.organizationId,
+    ownerUploadsDirectory: deps.getUserUploadsDirectory(input.user),
+    storedPath,
+    body: transformedBuffer,
+    contentType: getStaticImageContentType(targetFormat),
+    kind: "static",
+  })
+
+  return storedPath
 }

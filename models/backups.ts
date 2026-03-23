@@ -1,11 +1,17 @@
-import { prisma } from "@/lib/db"
-import { normalizeBackupFilePath } from "@/lib/file-security"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { prisma } from "../lib/db.ts"
+import { normalizeBackupFilePath } from "../lib/file-security.ts"
+
+export type BackupContext = {
+  userId: string
+  organizationId: string
+}
 
 type BackupSetting = {
   filename: string
   model: any
-  backup: (userId: string, row: any) => Record<string, any>
-  restore: (userId: string, json: Record<string, any>) => any
+  backup: (context: BackupContext, row: any) => Record<string, any>
+  restore: (context: BackupContext, json: Record<string, any>) => any
 }
 
 // Ordering is important here
@@ -13,7 +19,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "settings.json",
     model: prisma.setting,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         code: row.code,
@@ -22,7 +28,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         value: row.value,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         code: json.code,
         name: json.name,
@@ -30,7 +36,12 @@ export const MODEL_BACKUP: BackupSetting[] = [
         value: json.value,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -39,20 +50,25 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "currencies.json",
     model: prisma.currency,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         code: row.code,
         name: row.name,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         code: json.code,
         name: json.name,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -61,7 +77,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "categories.json",
     model: prisma.category,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         code: row.code,
@@ -71,7 +87,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         createdAt: row.createdAt,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         code: json.code,
         name: json.name,
@@ -80,7 +96,12 @@ export const MODEL_BACKUP: BackupSetting[] = [
         createdAt: json.createdAt,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -89,7 +110,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "projects.json",
     model: prisma.project,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         code: row.code,
@@ -99,7 +120,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         createdAt: row.createdAt,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         code: json.code,
         name: json.name,
@@ -108,7 +129,12 @@ export const MODEL_BACKUP: BackupSetting[] = [
         createdAt: json.createdAt,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -117,7 +143,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "fields.json",
     model: prisma.field,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         code: row.code,
@@ -131,7 +157,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         isExtra: row.isExtra,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         code: json.code,
         name: json.name,
@@ -144,7 +170,12 @@ export const MODEL_BACKUP: BackupSetting[] = [
         isExtra: json.isExtra,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -153,7 +184,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "files.json",
     model: prisma.file,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         filename: row.filename,
@@ -164,7 +195,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         createdAt: row.createdAt,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         id: json.id,
         filename: json.filename,
@@ -174,7 +205,12 @@ export const MODEL_BACKUP: BackupSetting[] = [
         mimetype: json.mimetype,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
+          },
+        },
+        organization: {
+          connect: {
+            id: context.organizationId,
           },
         },
       }
@@ -183,7 +219,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
   {
     filename: "transactions.json",
     model: prisma.transaction,
-    backup: (userId: string, row: any) => {
+    backup: (_context: BackupContext, row: any) => {
       return {
         id: row.id,
         name: row.name,
@@ -205,7 +241,7 @@ export const MODEL_BACKUP: BackupSetting[] = [
         text: row.text,
       }
     },
-    restore: (userId: string, json: any) => {
+    restore: (context: BackupContext, json: any) => {
       return {
         id: json.id,
         name: json.name,
@@ -222,40 +258,59 @@ export const MODEL_BACKUP: BackupSetting[] = [
         issuedAt: json.issuedAt,
         user: {
           connect: {
-            id: userId,
+            id: context.userId,
           },
         },
-        category: {
+        organization: {
           connect: {
-            userId_code: { userId, code: json.categoryCode },
+            id: context.organizationId,
           },
         },
-        project: {
-          connect: {
-            userId_code: { userId, code: json.projectCode },
-          },
-        },
+        ...(json.categoryCode
+          ? {
+              category: {
+                connect: {
+                  organizationId_code: {
+                    organizationId: context.organizationId,
+                    code: json.categoryCode,
+                  },
+                },
+              },
+            }
+          : {}),
+        ...(json.projectCode
+          ? {
+              project: {
+                connect: {
+                  organizationId_code: {
+                    organizationId: context.organizationId,
+                    code: json.projectCode,
+                  },
+                },
+              },
+            }
+          : {}),
       }
     },
   },
 ]
 
-export async function modelToJSON(userId: string, backupSettings: BackupSetting): Promise<string> {
-  const data = await backupSettings.model.findMany({ where: { userId } })
+export async function modelToJSON(context: BackupContext, backupSettings: BackupSetting): Promise<string> {
+  const data = await backupSettings.model.findMany({ where: { organizationId: context.organizationId } })
 
   if (!data || data.length === 0) {
     return "[]"
   }
 
   return JSON.stringify(
-    data.map((row: any) => backupSettings.backup(userId, row)),
+    data.map((row: any) => backupSettings.backup(context, row)),
     null,
     2
   )
 }
 
 export async function modelFromJSON(
-  userId: string,
+  context: BackupContext,
   backupSettings: BackupSetting,
   jsonContent: string
 ): Promise<number> {
@@ -273,7 +328,7 @@ export async function modelFromJSON(
       const record = preprocessRowData(rawRecord)
 
       try {
-        const data = await backupSettings.restore(userId, record)
+        const data = await backupSettings.restore(context, record)
         await backupSettings.model.create({ data })
       } catch (error) {
         console.error(`Error importing record:`, error)
@@ -302,7 +357,7 @@ function preprocessRowData(row: Record<string, any>): Record<string, any> {
       try {
         processedRow[key] = JSON.parse(value)
         continue
-      } catch (e) {
+      } catch {
         // Not valid JSON, continue with normal processing
       }
     }

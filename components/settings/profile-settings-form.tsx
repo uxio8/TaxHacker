@@ -10,7 +10,16 @@ import { CircleCheckBig } from "lucide-react"
 import { useActionState } from "react"
 import { SubscriptionPlan } from "./subscription-plan"
 
-export default function ProfileSettingsForm({ user }: { user: User }) {
+type BillingProjection = {
+  membershipPlan: string
+  membershipExpiresAt: Date | null
+  stripeCustomerId?: string | null
+  storageLimit: number
+  storageUsed: number
+  aiBalance: number
+}
+
+export default function ProfileSettingsForm({ user, billing }: { user: User; billing: BillingProjection }) {
   const { t } = useI18n()
   const [saveState, saveAction, pending] = useActionState(saveProfileAction, null)
 
@@ -42,7 +51,7 @@ export default function ProfileSettingsForm({ user }: { user: User }) {
       </form>
 
       <div className="mt-10">
-        <SubscriptionPlan user={user} />
+        <SubscriptionPlan billing={billing} />
       </div>
     </div>
   )

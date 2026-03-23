@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button"
-import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { resetFieldsAndCategories, resetLLMSettings } from "./actions"
 
@@ -7,7 +6,6 @@ export const metadata = createPageMetadata("settings.dangerZone")
 
 export default async function DangerSettingsPage() {
   const t = createTranslator()
-  const user = await getCurrentUser()
 
   return (
     <div className="container">
@@ -20,7 +18,7 @@ export default async function DangerSettingsPage() {
           <form
             action={async () => {
               "use server"
-              await resetLLMSettings(user)
+              await resetLLMSettings()
             }}
           >
             <Button variant="destructive" type="submit">
@@ -34,7 +32,7 @@ export default async function DangerSettingsPage() {
           <form
             action={async () => {
               "use server"
-              await resetFieldsAndCategories(user)
+              await resetFieldsAndCategories()
             }}
           >
             <Button variant="destructive" type="submit">

@@ -1,5 +1,3 @@
-import { User } from "@/prisma/client"
-
 import { PricingCard } from "@/components/auth/pricing-card"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -12,9 +10,18 @@ import { BrainCog, CalendarSync, HardDrive } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "../ui/badge"
 
-export function SubscriptionPlan({ user }: { user: User }) {
+type BillingProjection = {
+  membershipPlan: string
+  membershipExpiresAt: Date | null
+  stripeCustomerId?: string | null
+  storageLimit: number
+  storageUsed: number
+  aiBalance: number
+}
+
+export function SubscriptionPlan({ billing }: { billing: BillingProjection }) {
   const t = createTranslator()
-  const plan = PLANS[user.membershipPlan as keyof typeof PLANS] || PLANS.unlimited
+  const plan = PLANS[billing.membershipPlan as keyof typeof PLANS] || PLANS.unlimited
 
   return (
     <div className="flex flex-wrap gap-5">
@@ -30,15 +37,15 @@ export function SubscriptionPlan({ user }: { user: User }) {
               <HardDrive className="h-4 w-4" />
               <span>
                 <strong className="font-semibold">{t("settings.subscription.storage")}:</strong>{" "}
-                {formatBytes(user.storageUsed)} /{" "}
-                {user.storageLimit > 0 ? formatBytes(user.storageLimit) : t("settings.subscription.unlimited")}
+                {formatBytes(billing.storageUsed)} /{" "}
+                {billing.storageLimit > 0 ? formatBytes(billing.storageLimit) : t("settings.subscription.unlimited")}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <BrainCog className="h-4 w-4" />
               <span>
                 <strong className="font-semibold">{t("settings.subscription.aiAnalyses")}:</strong>{" "}
-                {formatNumber(plan.limits.ai - user.aiBalance)} /{" "}
+                {formatNumber(plan.limits.ai - billing.aiBalance)} /{" "}
                 {plan.limits.ai > 0 ? formatNumber(plan.limits.ai) : t("settings.subscription.unlimited")}
               </span>
             </div>
@@ -46,19 +53,19 @@ export function SubscriptionPlan({ user }: { user: User }) {
               <CalendarSync className="h-4 w-4" />
               <span>
                 <strong className="font-semibold">{t("settings.subscription.expirationDate")}:</strong>{" "}
-                {user.membershipExpiresAt ? formatDate(user.membershipExpiresAt, "yyyy-MM-dd") : t("settings.subscription.never")}
+                {billing.membershipExpiresAt ? formatDate(billing.membershipExpiresAt, "yyyy-MM-dd") : t("settings.subscription.never")}
               </span>
             </div>
           </div>
 
           <div className="space-y-4 mt-6 text-center">
-            {user.stripeCustomerId && (
+            {billing.stripeCustomerId && (
               <Button asChild className="w-full">
                 <Link href="/api/stripe/portal">{t("settings.subscription.manage")}</Link>
               </Button>
             )}
 
-            {!user.stripeCustomerId && user.membershipExpiresAt && (
+            {!billing.stripeCustomerId && billing.membershipExpiresAt && (
               <Button asChild className="w-full">
                 <Link href="/cloud">{t("settings.subscription.buy")}</Link>
               </Button>

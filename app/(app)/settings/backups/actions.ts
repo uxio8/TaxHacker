@@ -4,12 +4,17 @@ import { ActionState } from "@/lib/actions"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { normalizeBackupFilePath } from "@/lib/file-security"
-import { getUserUploadsDirectory, safePathJoin } from "@/lib/files"
 import { createTranslator } from "@/lib/i18n"
+import { requireCurrentOrganizationId, requireCurrentTenantAdmin } from "@/lib/tenant"
 import { MODEL_BACKUP, modelFromJSON } from "@/models/backups"
-import fs from "fs/promises"
+import { syncOrganizationStorageUsageSnapshot } from "@/models/billing/usage"
 import JSZip from "jszip"
-import path from "path"
+
+import {
+  clearTenantStoredFiles,
+  restoreBackupStoredFilesFromZip,
+  toBackupZipPath,
+} from "./storage"
 
 const SUPPORTED_BACKUP_VERSIONS = ["1.0"]
 const REMOVE_EXISTING_DATA = true
@@ -26,7 +31,12 @@ export async function restoreBackupAction(
   formData: FormData
 ): Promise<ActionState<BackupRestoreResult>> {
   const user = await getCurrentUser()
-  const userUploadsDirectory = getUserUploadsDirectory(user)
+  await requireCurrentTenantAdmin({
+    getCurrentUser: async () => user,
+  })
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
   const file = formData.get("file") as File
 
   if (!file || file.size === 0) {
@@ -81,8 +91,14 @@ export async function restoreBackupAction(
 
     // Remove existing data
     if (REMOVE_EXISTING_DATA) {
-      await cleanupUserTables(user.id)
-      await fs.rm(userUploadsDirectory, { recursive: true, force: true })
+      await cleanupOrganizationTables(organizationId)
+      await clearTenantStoredFiles({
+        organizationId,
+        currentUser: {
+          id: user.id,
+          email: user.email,
+        },
+      })
     }
 
     const counters: Record<string, number> = {}
@@ -93,7 +109,14 @@ export async function restoreBackupAction(
         const jsonFile = zip.file(`data/${backup.filename}`)
         if (jsonFile) {
           const jsonContent = await jsonFile.async("string")
-          const restoredCount = await modelFromJSON(user.id, backup, jsonContent)
+          const restoredCount = await modelFromJSON(
+            {
+              userId: user.id,
+              organizationId,
+            },
+            backup,
+            jsonContent
+          )
           console.log(`Restored ${restoredCount} records from ${backup.filename}`)
           counters[backup.filename] = restoredCount
         }
@@ -104,43 +127,16 @@ export async function restoreBackupAction(
 
     // Restore files
     try {
-      let restoredFilesCount = 0
       const files = await prisma.file.findMany({
         where: {
-          userId: user.id,
+          organizationId,
         },
       })
 
-      const userUploadsDirectory = getUserUploadsDirectory(user)
-
-      for (const file of files) {
-        const filePathWithoutPrefix = normalizeBackupFilePath(file.path)
-        const zipFilePath = toBackupZipPath(filePathWithoutPrefix)
-        const zipFile = zip.file(zipFilePath)
-        if (!zipFile) {
-          console.log(`File ${file.path} not found in backup`)
-          continue
-        }
-
-        const fileContents = await zipFile.async("nodebuffer")
-        const fullFilePath = safePathJoin(userUploadsDirectory, filePathWithoutPrefix)
-
-        try {
-          await fs.mkdir(path.dirname(fullFilePath), { recursive: true })
-          await fs.writeFile(fullFilePath, fileContents)
-          restoredFilesCount++
-        } catch (error) {
-          console.error(`Error writing file ${fullFilePath}:`, error)
-          continue
-        }
-
-        await prisma.file.update({
-          where: { id: file.id },
-          data: {
-            path: filePathWithoutPrefix,
-          },
-        })
-      }
+      const restoredFilesCount = await restoreBackupStoredFilesFromZip(files, zip, {
+        id: user.id,
+        email: user.email,
+      })
       counters.uploadedAttachments = restoredFilesCount
     } catch (error) {
       console.error("Error restoring uploaded files:", error)
@@ -151,6 +147,12 @@ export async function restoreBackupAction(
         }),
       }
     }
+
+    await syncOrganizationStorageUsageSnapshot({
+      organizationId,
+      userId: user.id,
+      userEmailOrId: user.email || user.id,
+    })
 
     return { success: true, data: { counters } }
   } catch (error) {
@@ -173,7 +175,7 @@ async function validateBackupFilesArchive(zip: JSZip) {
   let records: unknown
   try {
     records = JSON.parse(await filesManifest.async("string"))
-  } catch (error) {
+  } catch {
     throw new Error(t("settings.errors.backupInvalidFilesManifest"))
   }
 
@@ -196,15 +198,11 @@ async function validateBackupFilesArchive(zip: JSZip) {
   }
 }
 
-function toBackupZipPath(relativeFilePath: string) {
-  return `data/uploads/${relativeFilePath.split(path.sep).join("/")}`
-}
-
-async function cleanupUserTables(userId: string) {
+async function cleanupOrganizationTables(organizationId: string) {
   // Delete in reverse order to handle foreign key constraints
   for (const { model } of [...MODEL_BACKUP].reverse()) {
     try {
-      await model.deleteMany({ where: { userId } })
+      await model.deleteMany({ where: { organizationId } })
     } catch (error) {
       console.error(`Error clearing table:`, error)
     }

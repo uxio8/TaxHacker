@@ -3,55 +3,49 @@ import { codeFromName } from "@/lib/utils"
 import { Prisma } from "@/prisma/client"
 import { cache } from "react"
 import { ensureUserDefaultsVersion } from "./defaults"
+import { buildOrganizationOwnedCodeWhere, buildOrganizationOwnedCreateData, buildOrganizationOwnedScope } from "./organization-owned"
 
 export type CategoryData = {
   [key: string]: unknown
 }
 
-export const getCategories = cache(async (userId: string) => {
-  await ensureUserDefaultsVersion(userId)
+export const getCategories = cache(async (organizationId: string) => {
+  await ensureUserDefaultsVersion(organizationId)
 
   return await prisma.category.findMany({
-    where: { userId },
+    where: buildOrganizationOwnedScope(organizationId),
     orderBy: {
       name: "asc",
     },
   })
 })
 
-export const getCategoryByCode = cache(async (userId: string, code: string) => {
+export const getCategoryByCode = cache(async (organizationId: string, code: string) => {
   return await prisma.category.findUnique({
-    where: { userId_code: { userId, code } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
   })
 })
 
-export const createCategory = async (userId: string, category: CategoryData) => {
+export const createCategory = async (organizationId: string, category: CategoryData) => {
   if (!category.code) {
     category.code = codeFromName(category.name as string)
   }
   return await prisma.category.create({
-    data: {
-      ...category,
-      user: {
-        connect: {
-          id: userId,
-        },
-      },
-    } as Prisma.CategoryCreateInput,
+    data: buildOrganizationOwnedCreateData(organizationId, category) as unknown as Prisma.CategoryUncheckedCreateInput,
   })
 }
 
-export const updateCategory = async (userId: string, code: string, category: CategoryData) => {
+export const updateCategory = async (organizationId: string, code: string, category: CategoryData) => {
   return await prisma.category.update({
-    where: { userId_code: { userId, code } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
     data: category,
   })
 }
 
-export const deleteCategory = async (userId: string, code: string) => {
+export const deleteCategory = async (organizationId: string, code: string) => {
   await prisma.transaction.updateMany({
     where: {
-      userId,
+      userId: organizationId,
       categoryCode: code,
     },
     data: {
@@ -60,6 +54,6 @@ export const deleteCategory = async (userId: string, code: string) => {
   })
 
   return await prisma.category.delete({
-    where: { userId_code: { userId, code } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
   })
 }

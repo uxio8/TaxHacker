@@ -1,19 +1,22 @@
 import { prisma } from "@/lib/db"
+import { Prisma } from "@/prisma/client"
 
 export const getOrCreateProgress = async (
   userId: string,
   id: string,
   type: string | null = null,
-  data: any = null,
-  total: number = 0
+  data: unknown = null,
+  total: number = 0,
+  organizationId = userId
 ) => {
   return await prisma.progress.upsert({
     where: { id },
     create: {
       id,
-      user: { connect: { id: userId } },
+      userId,
+      organizationId,
       type: type || "unknown",
-      data,
+      data: data as Prisma.InputJsonValue,
       total,
     },
     update: {
@@ -22,41 +25,45 @@ export const getOrCreateProgress = async (
   })
 }
 
-export const getProgressById = async (userId: string, id: string) => {
+export const getProgressById = async (userId: string, id: string, organizationId = userId) => {
   return await prisma.progress.findFirst({
-    where: { id, userId },
+    where: { id, userId, organizationId },
   })
 }
 
 export const updateProgress = async (
   userId: string,
   id: string,
-  fields: { current?: number; total?: number; data?: any }
+  fields: { current?: number; total?: number; data?: unknown },
+  organizationId = userId
 ) => {
   return await prisma.progress.updateMany({
-    where: { id, userId },
-    data: fields,
+    where: { id, userId, organizationId },
+    data: {
+      ...fields,
+      data: fields.data as Prisma.InputJsonValue | undefined,
+    },
   })
 }
 
-export const incrementProgress = async (userId: string, id: string, amount: number = 1) => {
+export const incrementProgress = async (userId: string, id: string, amount: number = 1, organizationId = userId) => {
   return await prisma.progress.updateMany({
-    where: { id, userId },
+    where: { id, userId, organizationId },
     data: {
       current: { increment: amount },
     },
   })
 }
 
-export const getAllProgressByUser = async (userId: string) => {
+export const getAllProgressByUser = async (userId: string, organizationId = userId) => {
   return await prisma.progress.findMany({
-    where: { userId },
+    where: { userId, organizationId },
     orderBy: { createdAt: "desc" },
   })
 }
 
-export const deleteProgress = async (userId: string, id: string) => {
+export const deleteProgress = async (userId: string, id: string, organizationId = userId) => {
   return await prisma.progress.deleteMany({
-    where: { id, userId },
+    where: { id, userId, organizationId },
   })
 }

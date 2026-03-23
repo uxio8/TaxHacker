@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getTransactionById } from "@/models/transactions"
 import { notFound } from "next/navigation"
 
@@ -15,7 +16,10 @@ export default async function TransactionLayout({
   const t = createTranslator()
   const { transactionId } = await params
   const user = await getCurrentUser()
-  const transaction = await getTransactionById(transactionId, user.id)
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
+  const transaction = await getTransactionById(transactionId, organizationId)
 
   if (!transaction) {
     notFound()

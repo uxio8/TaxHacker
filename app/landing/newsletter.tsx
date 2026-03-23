@@ -1,6 +1,7 @@
 "use client"
 
 import { subscribeToNewsletterAction } from "@/app/landing/actions"
+import config from "@/lib/config"
 import { useState } from "react"
 
 export function NewsletterForm() {
@@ -34,8 +35,8 @@ export function NewsletterForm() {
       <div className="max-w-2xl mx-auto text-center">
         <h3 className="text-2xl font-semibold mb-4">Sigue de cerca el proyecto</h3>
         <p className="text-gray-600 mb-6">
-          Estamos trabajando a tope para que TaxHacker sea útil para cualquiera. Suscríbete para enterarte de nuestros
-          planes y de las nuevas funciones. Sin marketing, sin anuncios y sin spam.
+          Estamos trabajando a tope para que {config.app.title} sea útil para cualquiera. Suscríbete para enterarte de
+          nuestros planes y de las nuevas funciones. Sin marketing, sin anuncios y sin spam.
         </p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-md mx-auto">
           <div className="flex flex-wrap items-center justify-center gap-4">

@@ -50,7 +50,7 @@ export default function TransactionEditForm({
 
   const extraFields = fields.filter((field) => field.isExtra)
   const invoiceFields = useMemo(() => extraFields.filter((field) => INVOICE_FIELD_CODES.has(field.code)), [extraFields])
-  const billingFields = useMemo(() => extraFields.filter((field) => BILLING_FIELD_CODES.has(field.code)), [extraFields])
+  const issuerFields = useMemo(() => extraFields.filter((field) => BILLING_FIELD_CODES.has(field.code)), [extraFields])
   const remainingExtraFields = useMemo(
     () => extraFields.filter((field) => !INVOICE_FIELD_CODES.has(field.code) && !BILLING_FIELD_CODES.has(field.code)),
     [extraFields]
@@ -71,10 +71,11 @@ export default function TransactionEditForm({
     items: transaction.items || [],
     ...extraFields.reduce(
       (acc, field) => {
-        acc[field.code] = transaction.extra?.[field.code as keyof typeof transaction.extra] || ""
+        const value = transaction.extra?.[field.code as keyof typeof transaction.extra]
+        acc[field.code] = typeof value === "string" ? value : ""
         return acc
       },
-      {} as Record<string, any>
+      {} as Record<string, string>
     ),
   })
 
@@ -243,13 +244,13 @@ export default function TransactionEditForm({
         </div>
       )}
 
-      {billingFields.length > 0 && (
+      {issuerFields.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
             {t("analysis.sectionBillingDetails")}
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
-            {billingFields.map((field) => (
+            {issuerFields.map((field) => (
               <FormInput
                 key={field.code}
                 type="text"

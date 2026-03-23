@@ -9,7 +9,7 @@ export type DefaultFieldSeed = {
   isExtra: boolean
 }
 
-export const DEFAULTS_SYNC_VERSION = 3
+export const DEFAULTS_SYNC_VERSION = 4
 export const DEFAULTS_SYNC_VERSION_SETTING_CODE = "defaults_sync_version"
 
 export const LEGACY_DEFAULT_PROMPT_ANALYSE_NEW_FILE = `You are an accountant and invoice analysis assistant. Extract following information from the given invoice: 
@@ -60,7 +60,7 @@ IMPORTANT RULES:
 - Keep billing details exactly as written on the invoice
 - Return only one object`
 
-export const CURRENT_DEFAULT_PROMPT_ANALYSE_NEW_FILE = `Eres un asistente de contabilidad y análisis de facturas. Extrae la siguiente información de la factura proporcionada:
+export const PREVIOUS_CURRENT_DEFAULT_PROMPT_ANALYSE_NEW_FILE = `Eres un asistente de contabilidad y análisis de facturas. Extrae la siguiente información de la factura proporcionada:
 
 {fields}
 
@@ -87,6 +87,37 @@ REGLAS IMPORTANTES:
 - No incluyas ningún otro texto en tu respuesta
 - Si no encuentras un dato, déjalo en blanco; NUNCA inventes información
 - Conserva los datos de facturación exactamente como aparecen en la factura
+- Devuelve un único objeto`
+
+export const CURRENT_DEFAULT_PROMPT_ANALYSE_NEW_FILE = `Eres un asistente de contabilidad y análisis de facturas. Extrae la siguiente información de la factura proporcionada:
+
+{fields}
+
+Presta especial atención a estos campos de nivel factura cuando aparezcan:
+- invoice_number
+- billing_company_name
+- billing_tax_id
+- billing_address
+- billing_postal_code
+- billing_city
+- billing_country
+
+Los campos billing_* representan siempre a la empresa emisora o proveedora de la factura, nunca a la empresa receptora o al cliente facturado.
+
+Intenta extraer también "items": todos los productos o conceptos separados que aparezcan en la factura
+
+Donde las categorías son:
+
+{categories}
+
+Y los proyectos son:
+
+{projects}
+
+REGLAS IMPORTANTES:
+- No incluyas ningún otro texto en tu respuesta
+- Si no encuentras un dato, déjalo en blanco; NUNCA inventes información
+- Conserva los datos del emisor exactamente como aparecen en la factura
 - Devuelve un único objeto`
 
 export const LEGACY_EXTRA_BILLING_DEFAULT_FIELDS: DefaultFieldSeed[] = [
@@ -162,13 +193,9 @@ export const LEGACY_EXTRA_BILLING_DEFAULT_FIELDS: DefaultFieldSeed[] = [
   },
 ]
 
-const EXTRA_BILLING_FIELD_LOCALIZATION: Partial<
+export const PREVIOUS_EXTRA_BILLING_FIELD_LOCALIZATION: Partial<
   Record<DefaultFieldSeed["code"], Pick<DefaultFieldSeed, "llm_prompt" | "name">>
 > = {
-  invoice_number: {
-    name: "Número de factura",
-    llm_prompt: "número de factura, id de factura, número de documento o número de serie",
-  },
   billing_company_name: {
     name: "Razón social de facturación",
     llm_prompt: "razón social completa del cliente facturado o nombre legal de la empresa facturada",
@@ -195,6 +222,39 @@ const EXTRA_BILLING_FIELD_LOCALIZATION: Partial<
   },
 }
 
+const EXTRA_BILLING_FIELD_LOCALIZATION: Partial<
+  Record<DefaultFieldSeed["code"], Pick<DefaultFieldSeed, "llm_prompt" | "name">>
+> = {
+  invoice_number: {
+    name: "Número de factura",
+    llm_prompt: "número de factura, id de factura, número de documento o número de serie",
+  },
+  billing_company_name: {
+    name: "Razón social del emisor",
+    llm_prompt: "razón social completa de la empresa emisora, proveedora o vendedora",
+  },
+  billing_tax_id: {
+    name: "NIF/CIF del emisor",
+    llm_prompt: "NIF, CIF, VAT number, identificador fiscal o número fiscal del emisor o proveedor",
+  },
+  billing_address: {
+    name: "Dirección del emisor",
+    llm_prompt: "dirección completa de la empresa emisora, proveedora o vendedora",
+  },
+  billing_postal_code: {
+    name: "Código postal del emisor",
+    llm_prompt: "código postal o ZIP del emisor o proveedor",
+  },
+  billing_city: {
+    name: "Ciudad del emisor",
+    llm_prompt: "ciudad o localidad del emisor o proveedor",
+  },
+  billing_country: {
+    name: "País del emisor",
+    llm_prompt: "nombre del país o código de país del emisor o proveedor",
+  },
+}
+
 export const EXTRA_BILLING_DEFAULT_FIELDS: DefaultFieldSeed[] = LEGACY_EXTRA_BILLING_DEFAULT_FIELDS.map((field) => ({
   ...field,
   ...EXTRA_BILLING_FIELD_LOCALIZATION[field.code],
@@ -211,6 +271,7 @@ export function shouldUpgradeDefaultAnalysisPrompt(prompt: string | null | undef
   return (
     !prompt ||
     prompt === LEGACY_DEFAULT_PROMPT_ANALYSE_NEW_FILE ||
-    prompt === PREVIOUS_DEFAULT_PROMPT_ANALYSE_NEW_FILE
+    prompt === PREVIOUS_DEFAULT_PROMPT_ANALYSE_NEW_FILE ||
+    prompt === PREVIOUS_CURRENT_DEFAULT_PROMPT_ANALYSE_NEW_FILE
   )
 }

@@ -21,7 +21,7 @@ export async function sendOTPCodeEmail({ email, otp }: { email: string; otp: str
   return await client.emails.send({
     from: config.email.from,
     to: email,
-    subject: "Your TaxHacker verification code",
+    subject: `Your ${config.app.title} verification code`,
     react: html,
   })
 }
@@ -33,7 +33,7 @@ export async function sendNewsletterWelcomeEmail(email: string) {
   return await client.emails.send({
     from: config.email.from,
     to: email,
-    subject: "Welcome to TaxHacker Newsletter!",
+    subject: `Welcome to ${config.app.title} Newsletter!`,
     react: html,
   })
 }

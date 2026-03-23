@@ -7,6 +7,9 @@ export const POOL_CLOUD_LEASE_OUTCOME = {
   FAILED: "failed",
   CANCELLED: "cancelled",
   TIMED_OUT: "timed_out",
+  USAGE_LIMITED: "usage_limited",
+  AUTH_INVALID: "auth_invalid",
+  WORKSPACE_INVALID: "workspace_invalid",
 } as const
 
 export type PoolCloudLeaseOutcome = (typeof POOL_CLOUD_LEASE_OUTCOME)[keyof typeof POOL_CLOUD_LEASE_OUTCOME]
@@ -41,6 +44,7 @@ type RenewLeaseResponse = {
 type CompleteLeaseParams = {
   outcome: PoolCloudLeaseOutcome
   message?: string
+  usageLimitRetryAt?: string
 }
 
 export function buildAcquireLeaseRequest(params: AcquireLeaseParams) {
@@ -56,7 +60,15 @@ export function getPoolCloudClientInstanceId(params: {
   configuredClientInstanceId?: string
   hostname: string
 }) {
-  return params.configuredClientInstanceId || params.hostname || "taxhacker-runner"
+  return params.configuredClientInstanceId || params.hostname || "ledgerflow-runner"
+}
+
+export function buildCompleteLeaseRequest(params: CompleteLeaseParams) {
+  return {
+    outcome: params.outcome,
+    ...(params.message ? { message: params.message } : {}),
+    ...(params.usageLimitRetryAt ? { usageLimitRetryAt: params.usageLimitRetryAt } : {}),
+  }
 }
 
 export class PoolCloudClient {
@@ -86,10 +98,7 @@ export class PoolCloudClient {
   async completeLease(leaseId: string, params: CompleteLeaseParams) {
     return this.request(`/v1/leases/${leaseId}/complete`, {
       method: "POST",
-      body: JSON.stringify({
-        outcome: params.outcome,
-        ...(params.message ? { message: params.message } : {}),
-      }),
+      body: JSON.stringify(buildCompleteLeaseRequest(params)),
     })
   }
 

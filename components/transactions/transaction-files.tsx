@@ -1,14 +1,14 @@
 "use client"
 
 import { useNotification } from "@/app/(app)/context"
-import { deleteTransactionFileAction, uploadTransactionFilesAction } from "@/app/(app)/transactions/actions"
+import { deleteTransactionFileAction } from "@/app/(app)/transactions/actions"
 import { FormError } from "@/components/forms/error"
 import { FilePreview } from "@/components/files/preview"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import config from "@/lib/config"
 import { useI18n } from "@/lib/i18n"
-import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
+import { notifyUploadSuccess, resetFileInputValue, uploadFilesWithHttp } from "@/lib/upload-flow"
 import { File, Transaction } from "@/prisma/client"
 import { Loader2, Upload, X } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -38,33 +38,23 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
     setIsUploading(true)
     setUploadError("")
     try {
-      const formData = new FormData()
-      formData.append("transactionId", transaction.id)
-      for (let i = 0; i < files.length; i++) {
-        formData.append("files", files[i])
-      }
-
-      const result = await uploadTransactionFilesAction(formData)
+      const result = await uploadFilesWithHttp({
+        files,
+        transactionId: transaction.id,
+      })
       if (!result.success) {
         setUploadError(result.error ? result.error : t("common.errors.generic"))
         return
       }
 
-      const uploadFlow = getUploadFlowState({
+      notifyUploadSuccess({
         currentPath: pathname,
         destination: "transaction",
+        router,
+        showNotification,
       })
-
-      showNotification({ code: uploadFlow.notificationCode, message: "new" })
-      setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
-
-      if (uploadFlow.redirectPath) {
-        router.push(uploadFlow.redirectPath)
-      }
-
-      if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
-        router.refresh()
-      }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : t("common.errors.generic"))
     } finally {
       resetFileInputValue(input)
       setIsUploading(false)

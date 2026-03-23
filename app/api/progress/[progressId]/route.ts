@@ -1,4 +1,5 @@
-import { getSession } from "@/lib/auth"
+import { getCurrentUser, getSession } from "@/lib/auth"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getOrCreateProgress, getProgressById } from "@/models/progress"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -11,16 +12,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prog
   }
 
   const userId = session.user.id
+  const user = await getCurrentUser()
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
   const { progressId } = await params
   const url = new URL(req.url)
   const type = url.searchParams.get("type") || "unknown"
 
-  await getOrCreateProgress(userId, progressId, type)
+  await getOrCreateProgress(userId, progressId, type, null, 0, organizationId)
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
-      let lastSent: any = null
+      let lastSent: Awaited<ReturnType<typeof getProgressById>> | null = null
       let stopped = false
 
       req.signal.addEventListener("abort", () => {
@@ -29,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prog
       })
 
       while (!stopped) {
-        const progress = await getProgressById(userId, progressId)
+        const progress = await getProgressById(userId, progressId, organizationId)
         if (!progress) {
           controller.enqueue(encoder.encode(`event: error\ndata: {"error":"Not found"}\n\n`))
           controller.close()

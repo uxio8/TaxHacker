@@ -1,13 +1,18 @@
 import { getCurrentUser } from "@/lib/auth"
-import { fileExists, fullPathForFile } from "@/lib/files"
+import { getUserUploadsDirectory } from "@/lib/files"
+import { readStoredFileBuffer } from "@/lib/storage/runtime"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { encodeFilename } from "@/lib/utils"
 import { getFileById } from "@/models/files"
-import fs from "fs/promises"
+import { getUserById } from "@/models/users"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request, { params }: { params: Promise<{ fileId: string }> }) {
   const { fileId } = await params
   const user = await getCurrentUser()
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
 
   if (!fileId) {
     return new NextResponse("No fileId provided", { status: 400 })
@@ -15,21 +20,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
 
   try {
     // Find file in database
-    const file = await getFileById(fileId, user.id)
+    const file = await getFileById(fileId, organizationId)
 
-    if (!file || file.userId !== user.id) {
-      return new NextResponse("File not found or does not belong to the user", { status: 404 })
+    if (!file) {
+      return new NextResponse("File not found", { status: 404 })
     }
 
-    // Check if file exists
-    const fullFilePath = fullPathForFile(user, file)
-    const isFileExists = await fileExists(fullFilePath)
-    if (!isFileExists) {
-      return new NextResponse(`File not found on disk: ${file.path}`, { status: 404 })
+    const ownerUser = await getUserById(file.userId)
+    if (!ownerUser) {
+      return new NextResponse("File owner not found", { status: 404 })
     }
 
-    // Read file
-    const fileBuffer = await fs.readFile(fullFilePath)
+    const fileBuffer = await readStoredFileBuffer({
+      ownerOrganizationId: file.organizationId,
+      ownerUploadsDirectory: getUserUploadsDirectory(ownerUser),
+      storedPath: file.path,
+    })
 
     // Return file with proper content type and encoded filename
     return new NextResponse(fileBuffer, {

@@ -3,55 +3,49 @@ import { codeFromName } from "@/lib/utils"
 import { Prisma } from "@/prisma/client"
 import { cache } from "react"
 import { ensureUserDefaultsVersion } from "./defaults"
+import { buildOrganizationOwnedCodeWhere, buildOrganizationOwnedCreateData, buildOrganizationOwnedScope } from "./organization-owned"
 
 export type ProjectData = {
   [key: string]: unknown
 }
 
-export const getProjects = cache(async (userId: string) => {
-  await ensureUserDefaultsVersion(userId)
+export const getProjects = cache(async (organizationId: string) => {
+  await ensureUserDefaultsVersion(organizationId)
 
   return await prisma.project.findMany({
-    where: { userId },
+    where: buildOrganizationOwnedScope(organizationId),
     orderBy: {
       name: "asc",
     },
   })
 })
 
-export const getProjectByCode = cache(async (userId: string, code: string) => {
+export const getProjectByCode = cache(async (organizationId: string, code: string) => {
   return await prisma.project.findUnique({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
   })
 })
 
-export const createProject = async (userId: string, project: ProjectData) => {
+export const createProject = async (organizationId: string, project: ProjectData) => {
   if (!project.code) {
     project.code = codeFromName(project.name as string)
   }
   return await prisma.project.create({
-    data: {
-      ...project,
-      user: {
-        connect: {
-          id: userId,
-        },
-      },
-    } as Prisma.ProjectCreateInput,
+    data: buildOrganizationOwnedCreateData(organizationId, project) as unknown as Prisma.ProjectUncheckedCreateInput,
   })
 }
 
-export const updateProject = async (userId: string, code: string, project: ProjectData) => {
+export const updateProject = async (organizationId: string, code: string, project: ProjectData) => {
   return await prisma.project.update({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
     data: project,
   })
 }
 
-export const deleteProject = async (userId: string, code: string) => {
+export const deleteProject = async (organizationId: string, code: string) => {
   await prisma.transaction.updateMany({
     where: {
-      userId,
+      userId: organizationId,
       projectCode: code,
     },
     data: {
@@ -60,6 +54,6 @@ export const deleteProject = async (userId: string, code: string) => {
   })
 
   return await prisma.project.delete({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
   })
 }

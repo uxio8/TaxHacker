@@ -38,15 +38,16 @@ export async function selfHostedGetStartedAction(formData: FormData) {
 
   const existingUser = await getSelfHostedUser()
   const user = existingUser ?? (await getOrCreateSelfHostedUser())
+  const organizationId = user.defaultOrganizationId ?? user.id
 
-  if (await isDatabaseEmpty(user.id)) {
-    await createUserDefaults(user.id)
+  if (await isDatabaseEmpty(organizationId)) {
+    await createUserDefaults(organizationId)
   }
 
   if (!existingUser) {
     const defaultCurrency = formData.get("default_currency")
     if (defaultCurrency) {
-      await updateSettings(user.id, "default_currency", defaultCurrency as string)
+      await updateSettings(organizationId, "default_currency", defaultCurrency as string)
     }
   }
 

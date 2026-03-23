@@ -1,48 +1,48 @@
 "use server"
 
-import { fullPathForFile } from "@/lib/files"
+import { getUserUploadsDirectory } from "@/lib/files"
+import { deleteStoredFile } from "@/lib/storage/runtime"
 import { prisma } from "@/lib/db"
-import { unlink } from "fs/promises"
-import { cache } from "react"
+import { Prisma } from "@/prisma/client"
 import { getTransactionById } from "./transactions"
 import { getUserById } from "./users"
 
-export const getUnsortedFiles = cache(async (userId: string) => {
+export const getUnsortedFiles = async (organizationId: string) => {
   return await prisma.file.findMany({
     where: {
       isReviewed: false,
-      userId,
+      organizationId,
     },
     orderBy: {
       createdAt: "desc",
     },
   })
-})
+}
 
-export const getUnsortedFilesCount = cache(async (userId: string) => {
+export const getUnsortedFilesCount = async (organizationId: string) => {
   return await prisma.file.count({
     where: {
       isReviewed: false,
-      userId,
+      organizationId,
     },
   })
-})
+}
 
-export const getFileById = cache(async (id: string, userId: string) => {
+export const getFileById = async (id: string, organizationId: string) => {
   return await prisma.file.findFirst({
-    where: { id, userId },
+    where: { id, organizationId },
   })
-})
+}
 
-export const getFilesByTransactionId = cache(async (id: string, userId: string) => {
-  const transaction = await getTransactionById(id, userId)
+export const getFilesByTransactionId = async (id: string, organizationId: string) => {
+  const transaction = await getTransactionById(id, organizationId)
   if (transaction && transaction.files) {
     return await prisma.file.findMany({
       where: {
         id: {
           in: transaction.files as string[],
         },
-        userId,
+        organizationId,
       },
       orderBy: {
         createdAt: "asc",
@@ -50,40 +50,51 @@ export const getFilesByTransactionId = cache(async (id: string, userId: string) 
     })
   }
   return []
-})
+}
 
-export const createFile = async (userId: string, data: any) => {
+export const createFile = async (userId: string, data: Record<string, unknown>) => {
+  const organizationId = typeof data.organizationId === "string" ? data.organizationId : userId
+
   return await prisma.file.create({
     data: {
       ...data,
       userId,
-    },
+      organizationId,
+    } as Prisma.FileUncheckedCreateInput,
   })
 }
 
-export const updateFile = async (id: string, userId: string, data: any) => {
-  return await prisma.file.update({
-    where: { id, userId },
+export const updateFile = async (id: string, organizationId: string, data: Record<string, unknown>) => {
+  await prisma.file.updateMany({
+    where: { id, organizationId },
     data,
   })
+
+  return getFileById(id, organizationId)
 }
 
-export const deleteFile = async (id: string, userId: string) => {
-  const file = await getFileById(id, userId)
+export const deleteFile = async (id: string, organizationId: string) => {
+  const file = await getFileById(id, organizationId)
   if (!file) {
     return
   }
 
   try {
-    const user = await getUserById(userId)
+    const user = await getUserById(file.userId)
     if (user) {
-      await unlink(fullPathForFile(user, file))
+      await deleteStoredFile({
+        ownerOrganizationId: file.organizationId,
+        ownerUploadsDirectory: getUserUploadsDirectory(user),
+        storedPath: file.path,
+      })
     }
   } catch (error) {
     console.error("Error deleting file:", error)
   }
 
-  return await prisma.file.delete({
-    where: { id, userId },
+  await prisma.file.deleteMany({
+    where: { id, organizationId },
   })
+
+  return file
 }

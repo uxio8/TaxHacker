@@ -1,4 +1,5 @@
 export const SELF_HOSTED_ACCESS_COOKIE_NAME = "taxhacker_self_hosted_access"
+export const PLATFORM_IMPERSONATION_COOKIE_NAME = "taxhacker_platform_impersonation"
 const textEncoder = new TextEncoder()
 
 function getWebCrypto() {
@@ -28,6 +29,10 @@ function timingSafeEqual(left: string, right: string) {
 }
 
 async function signSelfHostedAccess(adminToken: string, authSecret: string) {
+  return signPayload(adminToken, authSecret)
+}
+
+async function signPayload(payload: string, authSecret: string) {
   const key = await getWebCrypto().subtle.importKey(
     "raw",
     textEncoder.encode(authSecret),
@@ -36,11 +41,42 @@ async function signSelfHostedAccess(adminToken: string, authSecret: string) {
     ["sign"]
   )
 
-  return getWebCrypto().subtle.sign("HMAC", key, textEncoder.encode(adminToken))
+  return getWebCrypto().subtle.sign("HMAC", key, textEncoder.encode(payload))
 }
 
 export async function buildSelfHostedAccessCookieValue(adminToken: string, authSecret: string) {
   return toHex(await signSelfHostedAccess(adminToken, authSecret))
+}
+
+export async function buildPlatformImpersonationCookieValue(
+  input: {
+    actorUserId: string
+    sessionId: string
+  },
+  authSecret: string
+) {
+  const payload = `${input.actorUserId}:${input.sessionId}`
+  const signature = toHex(await signPayload(payload, authSecret))
+  return `${input.sessionId}.${signature}`
+}
+
+export async function readPlatformImpersonationCookieSessionId(
+  cookieValue: string | null | undefined,
+  actorUserId: string,
+  authSecret: string
+) {
+  if (!cookieValue) {
+    return null
+  }
+
+  const [sessionId, signature] = cookieValue.split(".")
+
+  if (!sessionId || !signature) {
+    return null
+  }
+
+  const expectedSignature = toHex(await signPayload(`${actorUserId}:${sessionId}`, authSecret))
+  return timingSafeEqual(signature, expectedSignature) ? sessionId : null
 }
 
 export async function hasSelfHostedAccess(

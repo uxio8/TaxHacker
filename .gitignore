@@ -2,6 +2,7 @@
 
 # data directory
 /data/*
+/backups/*
 
 # dependencies
 /node_modules
@@ -18,6 +19,7 @@
 
 # next.js
 /.next/
+/.next*/
 /out/
 
 # production
@@ -30,6 +32,8 @@
 .worktrees/
 *.pem
 .vscode
+/runtime/
+/test-results/
 
 # debug
 npm-debug.log*
@@ -39,6 +43,9 @@ yarn-error.log*
 
 # env files
 .env
+.env.production
+.env.tunnel
+.env.localdeploy
 
 # vercel
 .vercel

@@ -16,9 +16,9 @@ export async function analyzeTransaction(
   schema: Record<string, unknown>,
   attachments: AnalyzeAttachment[],
   fileId: string,
-  userId: string
+  organizationId: string
 ): Promise<ActionState<AnalysisResult>> {
-  const settings = await getSettings(userId)
+  const settings = await getSettings(organizationId)
   const llmSettings = getLLMSettings(settings)
 
   try {
@@ -38,7 +38,7 @@ export async function analyzeTransaction(
     console.log("LLM response:", result)
     console.log("LLM tokens used:", tokensUsed)
 
-    await updateFile(fileId, userId, { cachedParseResult: result })
+    await updateFile(fileId, organizationId, { cachedParseResult: result })
 
     return {
       success: true,

@@ -1,12 +1,12 @@
 services:
   app:
-    image: ghcr.io/vas3k/taxhacker:latest
-    container_name: taxhacker_app
+    image: ghcr.io/your-org/ledgerflow:latest
+    container_name: ledgerflow_app
     networks:
-      - taxhacker_network
+      - ledgerflow_network
     environment:
       - NODE_ENV=production
-      - BASE_URL=https://taxhacker.app
+      - BASE_URL=https://ledgerflow.example.com
       - SELF_HOSTED_MODE=false
       - UPLOAD_PATH=/app/data/uploads
     env_file:
@@ -25,14 +25,14 @@ services:
         max-file: "3"
 
   analysis-worker:
-    image: ghcr.io/vas3k/taxhacker:latest
-    container_name: taxhacker_analysis_worker
+    image: ghcr.io/your-org/ledgerflow:latest
+    container_name: ledgerflow_analysis_worker
     command: ["npm", "run", "worker:analysis"]
     networks:
-      - taxhacker_network
+      - ledgerflow_network
     environment:
       - NODE_ENV=production
-      - BASE_URL=https://taxhacker.app
+      - BASE_URL=https://ledgerflow.example.com
       - SELF_HOSTED_MODE=false
       - UPLOAD_PATH=/app/data/uploads
     env_file:
@@ -49,5 +49,5 @@ services:
         max-file: "3"
 
 networks:
-  taxhacker_network:
+  ledgerflow_network:
     driver: bridge
