@@ -2,16 +2,13 @@
 
 import { transactionFormSchema } from "@/forms/transactions"
 import { ActionState } from "@/lib/actions"
-import { getCurrentUser, isSubscriptionExpired } from "@/lib/auth"
-import {
-  getDirectorySize,
-  getTransactionFileUploadPath,
-  getUserUploadsDirectory,
-  isEnoughStorageToUploadFile,
-  safePathJoin,
-} from "@/lib/files"
+import { getCurrentUser } from "@/lib/auth"
+import { requireCurrentWritableOrganizationId } from "@/lib/tenant"
+import { getCurrentOrganizationUserBillingProjection } from "@/models/billing/access"
+import { buildOrganizationActionUser } from "@/models/billing/runtime"
 import { updateField } from "@/models/fields"
-import { createFile, deleteFile } from "@/models/files"
+import { syncOrganizationStorageUsageSnapshot } from "@/models/billing/usage"
+import { deleteFile } from "@/models/files"
 import {
   bulkDeleteTransactions,
   createTransaction,
@@ -20,12 +17,16 @@ import {
   updateTransaction,
   updateTransactionFiles,
 } from "@/models/transactions"
-import { updateUser } from "@/models/users"
+import {
+  assertFiscalDocumentsSyncAllowed,
+  buildSyncableTransactionProjection,
+  ensureFiscalDocumentsSynced,
+  type SyncableTransaction,
+} from "@/models/fiscal/sync"
+import { uploadFiles } from "@/models/uploads"
 import { Transaction } from "@/prisma/client"
 import { randomUUID } from "crypto"
-import { mkdir, writeFile } from "fs/promises"
 import { revalidatePath } from "next/cache"
-import path from "path"
 
 export async function createTransactionAction(
   _prevState: ActionState<Transaction> | null,
@@ -33,13 +34,26 @@ export async function createTransactionAction(
 ): Promise<ActionState<Transaction>> {
   try {
     const user = await getCurrentUser()
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
     const validatedForm = transactionFormSchema.safeParse(Object.fromEntries(formData.entries()))
 
     if (!validatedForm.success) {
       return { success: false, error: validatedForm.error.message }
     }
 
-    const transaction = await createTransaction(user.id, validatedForm.data)
+    await assertFiscalSyncAllowedBeforeWrite(user.id, organizationId, [
+      buildSyncableTransactionProjection({
+        id: randomUUID(),
+        userId: user.id,
+        data: validatedForm.data as Record<string, unknown>,
+        defaultType: "expense",
+      }),
+    ])
+
+    const transaction = await createTransaction(user.id, organizationId, validatedForm.data)
+    await syncFiscalDocumentsAfterWrite(user.id, organizationId, [transaction])
 
     revalidatePath("/transactions")
     return { success: true, data: transaction }
@@ -55,6 +69,9 @@ export async function saveTransactionAction(
 ): Promise<ActionState<Transaction>> {
   try {
     const user = await getCurrentUser()
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
     const transactionId = formData.get("transactionId") as string
     const validatedForm = transactionFormSchema.safeParse(Object.fromEntries(formData.entries()))
 
@@ -62,7 +79,22 @@ export async function saveTransactionAction(
       return { success: false, error: validatedForm.error.message }
     }
 
-    const transaction = await updateTransaction(transactionId, user.id, validatedForm.data)
+    const currentTransaction = await getTransactionById(transactionId, organizationId)
+    if (!currentTransaction) {
+      return { success: false, error: "No se ha encontrado la transacción" }
+    }
+
+    await assertFiscalSyncAllowedBeforeWrite(user.id, organizationId, [
+      buildSyncableTransactionProjection({
+        id: currentTransaction.id,
+        userId: user.id,
+        current: currentTransaction,
+        data: validatedForm.data as Record<string, unknown>,
+      }),
+    ])
+
+    const transaction = await updateTransaction(transactionId, organizationId, validatedForm.data)
+    await syncFiscalDocumentsAfterWrite(user.id, organizationId, [transaction])
 
     revalidatePath("/transactions")
     return { success: true, data: transaction }
@@ -78,10 +110,14 @@ export async function deleteTransactionAction(
 ): Promise<ActionState<Transaction>> {
   try {
     const user = await getCurrentUser()
-    const transaction = await getTransactionById(transactionId, user.id)
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
+    const transaction = await getTransactionById(transactionId, organizationId)
     if (!transaction) throw new Error("No se ha encontrado la transacción")
 
-    await deleteTransaction(transaction.id, user.id)
+    await assertFiscalSyncAllowedBeforeWrite(user.id, organizationId, [transaction], true)
+    await deleteTransaction(transaction.id, organizationId)
 
     revalidatePath("/transactions")
 
@@ -101,22 +137,28 @@ export async function deleteTransactionFileAction(
   }
 
   const user = await getCurrentUser()
-  const transaction = await getTransactionById(transactionId, user.id)
+  const organizationId = await requireCurrentWritableOrganizationId({
+    getCurrentUser: async () => user,
+  })
+  const transaction = await getTransactionById(transactionId, organizationId)
   if (!transaction) {
     return { success: false, error: "No se ha encontrado la transacción" }
   }
 
   await updateTransactionFiles(
     transactionId,
-    user.id,
+    organizationId,
     transaction.files ? (transaction.files as string[]).filter((id) => id !== fileId) : []
   )
 
-  await deleteFile(fileId, user.id)
+  await deleteFile(fileId, organizationId)
 
   // Update user storage used
-  const storageUsed = await getDirectorySize(getUserUploadsDirectory(user))
-  await updateUser(user.id, { storageUsed })
+  await syncOrganizationStorageUsageSnapshot({
+    organizationId,
+    userId: user.id,
+    userEmailOrId: user.email || user.id,
+  })
 
   revalidatePath(`/transactions/${transactionId}`)
   return { success: true, data: transaction }
@@ -132,67 +174,35 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
     }
 
     const user = await getCurrentUser()
-    const transaction = await getTransactionById(transactionId, user.id)
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
+    const transaction = await getTransactionById(transactionId, organizationId)
     if (!transaction) {
       return { success: false, error: "No se ha encontrado la transacción" }
     }
-
-    const userUploadsDirectory = getUserUploadsDirectory(user)
-
-    // Check limits
-    const totalFileSize = files.reduce((acc, file) => acc + file.size, 0)
-    if (!isEnoughStorageToUploadFile(user, totalFileSize)) {
-      return { success: false, error: "No hay almacenamiento suficiente para subir archivos nuevos" }
-    }
-
-    if (isSubscriptionExpired(user)) {
-      return {
-        success: false,
-        error: "Tu suscripción ha caducado. Amplía el plan o compra una nueva suscripción.",
-      }
-    }
-
-    const fileRecords = await Promise.all(
-      files.map(async (file) => {
-        const fileUuid = randomUUID()
-        const relativeFilePath = getTransactionFileUploadPath(fileUuid, file.name, transaction)
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-
-        const fullFilePath = safePathJoin(userUploadsDirectory, relativeFilePath)
-        await mkdir(path.dirname(fullFilePath), { recursive: true })
-
-        await writeFile(fullFilePath, buffer)
-
-        // Create file record in database
-        const fileRecord = await createFile(user.id, {
-          id: fileUuid,
-          filename: file.name,
-          path: relativeFilePath,
-          mimetype: file.type,
-          isReviewed: true,
-          metadata: {
-            size: file.size,
-            lastModified: file.lastModified,
-          },
-        })
-
-        return fileRecord
-      })
-    )
-
-    // Update invoice with the new file ID
-    await updateTransactionFiles(
+    const billingProjection = await getCurrentOrganizationUserBillingProjection(organizationId)
+    const result = await uploadFiles({
+      user: buildOrganizationActionUser(
+        {
+          id: user.id,
+          email: user.email,
+        },
+        {
+          organizationId,
+          storageLimit: billingProjection.storageLimit,
+          storageUsed: billingProjection.storageUsed,
+          membershipExpiresAt: billingProjection.membershipExpiresAt,
+          accessStatus: billingProjection.accessStatus,
+        }
+      ),
+      files,
       transactionId,
-      user.id,
-      transaction.files
-        ? [...(transaction.files as string[]), ...fileRecords.map((file) => file.id)]
-        : fileRecords.map((file) => file.id)
-    )
+    })
 
-    // Update user storage used
-    const storageUsed = await getDirectorySize(getUserUploadsDirectory(user))
-    await updateUser(user.id, { storageUsed })
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
 
     revalidatePath(`/transactions/${transactionId}`)
     return { success: true }
@@ -205,7 +215,17 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
 export async function bulkDeleteTransactionsAction(transactionIds: string[]) {
   try {
     const user = await getCurrentUser()
-    await bulkDeleteTransactions(transactionIds, user.id)
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
+    const transactions = (
+      await Promise.all(
+        transactionIds.map((transactionId) => getTransactionById(transactionId, organizationId))
+      )
+    ).filter((transaction): transaction is Transaction => Boolean(transaction))
+
+    await assertFiscalSyncAllowedBeforeWrite(user.id, organizationId, transactions, true)
+    await bulkDeleteTransactions(transactionIds, organizationId)
     revalidatePath("/transactions")
     return { success: true }
   } catch (error) {
@@ -217,7 +237,10 @@ export async function bulkDeleteTransactionsAction(transactionIds: string[]) {
 export async function updateFieldVisibilityAction(fieldCode: string, isVisible: boolean) {
   try {
     const user = await getCurrentUser()
-    await updateField(user.id, fieldCode, {
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
+    await updateField(organizationId, fieldCode, {
       isVisibleInList: isVisible,
     })
     return { success: true }
@@ -225,4 +248,40 @@ export async function updateFieldVisibilityAction(fieldCode: string, isVisible: 
     console.error("Failed to update field visibility:", error)
     return { success: false, error: "No se ha podido actualizar la visibilidad de la columna" }
   }
+}
+
+async function syncFiscalDocumentsAfterWrite(
+  userId: string,
+  organizationId: string,
+  transactions: Transaction[]
+) {
+  try {
+    await ensureFiscalDocumentsSynced(userId, {
+      organizationId,
+      transactions,
+    })
+  } catch (error) {
+    console.error("Failed to sync fiscal documents after transaction write:", {
+      userId,
+      transactionIds: transactions.map((transaction) => transaction.id),
+      error,
+    })
+  }
+}
+
+async function assertFiscalSyncAllowedBeforeWrite(
+  userId: string,
+  organizationId: string,
+  transactions: SyncableTransaction[],
+  deleteMode = false
+) {
+  await assertFiscalDocumentsSyncAllowed(userId, {
+    organizationId,
+    transactions,
+    deleteMode,
+    actor: {
+      type: "user",
+      id: userId,
+    },
+  })
 }

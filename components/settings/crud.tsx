@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useI18n } from "@/lib/i18n"
 import { Check, Edit, Trash2 } from "lucide-react"
-import { useOptimistic, useState } from "react"
+import { useState } from "react"
 
 type CrudOption = {
   label: string
@@ -29,16 +29,24 @@ interface CrudProps<T> {
   onEdit?: (id: string, data: Partial<T>) => Promise<{ success: boolean; error?: string }>
 }
 
-export function CrudTable<T extends { [key: string]: any }>({ items, columns, onDelete, onAdd, onEdit }: CrudProps<T>) {
+export function CrudTable<T extends Record<string, unknown>>({ items, columns, onDelete, onAdd, onEdit }: CrudProps<T>) {
   const { t } = useI18n()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newItem, setNewItem] = useState<Partial<T>>(itemDefaults(columns))
   const [editingItem, setEditingItem] = useState<Partial<T>>(itemDefaults(columns))
-  const [optimisticItems, addOptimisticItem] = useOptimistic(items, (state, newItem: T) => [...state, newItem])
 
   const getOptionValue = (option: string | CrudOption) => (typeof option === "string" ? option : option.value)
   const getOptionLabel = (option: string | CrudOption) => (typeof option === "string" ? option : option.label)
+  const getItemId = (item: T): string => {
+    const value = item.code ?? item.id
+    return typeof value === "string" ? value : ""
+  }
+  const getItemLabel = (item: T): string => {
+    const value = item.name ?? item.code ?? "elemento"
+    return typeof value === "string" ? value : "elemento"
+  }
+  const isItemDeletable = (item: T): boolean => item.isDeletable === true
 
   const FormCell = (item: T, column: CrudColumn<T>) => {
     if (column.type === "checkbox") {
@@ -53,7 +61,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
         </div>
       )
     }
-    return item[column.key]
+    return item[column.key] as React.ReactNode
   }
 
   const EditFormCell = (item: T, column: CrudColumn<T>) => {
@@ -130,7 +138,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
     return (
       <Input
         type="text"
-        value={editingItem[column.key] || ""}
+        value={String(editingItem[column.key] ?? "")}
         aria-label={String(column.label)}
         onChange={(e) =>
           setEditingItem({
@@ -257,7 +265,7 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
   }
 
   const startEditing = (item: T) => {
-    setEditingId(item.code || item.id)
+    setEditingId(getItemId(item))
     setEditingItem(item)
   }
 
@@ -284,20 +292,20 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
           </TableRow>
         </TableHeader>
         <TableBody>
-          {optimisticItems.map((item, index) => (
+          {items.map((item, index) => (
             <TableRow key={index}>
               {columns.map((column) => (
                 <TableCell key={String(column.key)} className="first:font-semibold">
-                  {editingId === (item.code || item.id) && column.editable
+                  {editingId === getItemId(item) && column.editable
                     ? EditFormCell(item, column)
                     : FormCell(item, column)}
                 </TableCell>
               ))}
               <TableCell>
                 <div className="flex gap-2">
-                  {editingId === (item.code || item.id) ? (
+                  {editingId === getItemId(item) ? (
                     <>
-                      <Button size="sm" onClick={() => handleEdit(item.code || item.id)} aria-label={t("settings.crud.saveChanges")}>
+                      <Button size="sm" onClick={() => handleEdit(getItemId(item))} aria-label={t("settings.crud.saveChanges")}>
                         {t("common.actions.save")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setEditingId(null)} aria-label={t("settings.crud.cancelEditing")}>
@@ -315,19 +323,19 @@ export function CrudTable<T extends { [key: string]: any }>({ items, columns, on
                             setIsAdding(false)
                           }}
                           aria-label={t("settings.crud.editItem", {
-                            item: String(item.name || item.code || "elemento"),
+                            item: getItemLabel(item),
                           })}
                         >
                           <Edit />
                         </Button>
                       )}
-                      {item.isDeletable && (
+                      {isItemDeletable(item) && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleDelete(item.code || item.id)}
+                          onClick={() => handleDelete(getItemId(item))}
                           aria-label={t("settings.crud.deleteItem", {
-                            item: String(item.name || item.code || "elemento"),
+                            item: getItemLabel(item),
                           })}
                         >
                           <Trash2 />

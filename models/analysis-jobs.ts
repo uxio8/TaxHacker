@@ -6,10 +6,11 @@ function toJsonValue<T>(value: T): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue
 }
 
-export async function findActiveAnalysisJobForFile(userId: string, fileId: string) {
+export async function findActiveAnalysisJobForFile(userId: string, fileId: string, organizationId = userId) {
   return prisma.analysisJob.findFirst({
     where: {
       userId,
+      organizationId,
       fileId,
       status: {
         in: [...ACTIVE_ANALYSIS_JOB_STATUSES],
@@ -21,10 +22,16 @@ export async function findActiveAnalysisJobForFile(userId: string, fileId: strin
   })
 }
 
-export async function createAnalysisJob(userId: string, fileId: string, payload: AnalysisJobPayload) {
+export async function createAnalysisJob(
+  userId: string,
+  fileId: string,
+  payload: AnalysisJobPayload,
+  organizationId = userId
+) {
   return prisma.analysisJob.create({
     data: {
       userId,
+      organizationId,
       fileId,
       status: ANALYSIS_JOB_STATUS.QUEUED,
       prompt: payload.prompt,
@@ -35,11 +42,12 @@ export async function createAnalysisJob(userId: string, fileId: string, payload:
   })
 }
 
-export async function getAnalysisJobById(userId: string, id: string) {
+export async function getAnalysisJobById(userId: string, id: string, organizationId = userId) {
   return prisma.analysisJob.findFirst({
     where: {
       id,
       userId,
+      organizationId,
     },
   })
 }

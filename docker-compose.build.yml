@@ -10,7 +10,7 @@ services:
     environment:
       - NODE_ENV=production
       - UPLOAD_PATH=/app/data/uploads
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/taxhacker
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ledgerflow
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -32,7 +32,7 @@ services:
     environment:
       - NODE_ENV=production
       - UPLOAD_PATH=/app/data/uploads
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/taxhacker
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ledgerflow
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -46,16 +46,16 @@ services:
 
   postgres:
     image: postgres:17-alpine
-    container_name: taxhacker-postgres
+    container_name: ledgerflow-postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=taxhacker
+      - POSTGRES_DB=ledgerflow
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     logging:
       driver: "local"
       options:

@@ -2,20 +2,23 @@
 
 import { getCurrentUser, isSubscriptionExpired } from "@/lib/auth"
 import {
-  getTransactionFileUploadPath,
   getUserUploadsDirectory,
   isEnoughStorageToUploadFile,
-  safePathJoin,
 } from "@/lib/files"
+import { requireCurrentWritableOrganizationId } from "@/lib/tenant"
+import { putStoredFileBuffer } from "@/lib/storage/runtime"
 import { getAppData, setAppData } from "@/models/apps"
+import { getCurrentOrganizationUserBillingProjection } from "@/models/billing/access"
+import { buildOrganizationActionUser } from "@/models/billing/runtime"
+import { syncOrganizationStorageUsageSnapshot } from "@/models/billing/usage"
 import { createFile } from "@/models/files"
+import { assertFiscalDocumentsSyncAllowed, ensureFiscalDocumentsSynced } from "@/models/fiscal/sync"
 import { createTransaction, updateTransactionFiles } from "@/models/transactions"
+import { buildDefaultTransactionUploadTargetFromFilename } from "@/models/upload-targets"
 import { Transaction, User } from "@/prisma/client"
-import { renderToBuffer } from "@react-pdf/renderer"
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
 import { randomUUID } from "crypto"
-import { mkdir, writeFile } from "fs/promises"
 import { revalidatePath } from "next/cache"
-import path from "path"
 import { createElement } from "react"
 import { InvoiceFormData } from "./components/invoice-page"
 import { InvoicePDF } from "./components/invoice-pdf"
@@ -24,18 +27,26 @@ import { InvoiceAppData } from "./page"
 
 export async function generateInvoicePDF(data: InvoiceFormData): Promise<Uint8Array> {
   const pdfElement = createElement(InvoicePDF, { data })
-  const buffer = await renderToBuffer(pdfElement as any)
+  const buffer = await renderToBuffer(pdfElement as React.ReactElement<DocumentProps>)
   return new Uint8Array(buffer)
 }
 
-export async function addNewTemplateAction(user: User, template: InvoiceTemplate) {
+export async function addNewTemplateAction(_user: User, template: InvoiceTemplate) {
+  const user = await getCurrentUser()
+  await requireCurrentWritableOrganizationId({
+    getCurrentUser: async () => user,
+  })
   const appData = (await getAppData(user, "invoices")) as InvoiceAppData | null
   const updatedTemplates = [...(appData?.templates || []), template]
   const appDataResult = await setAppData(user, "invoices", { ...appData, templates: updatedTemplates })
   return { success: true, data: appDataResult }
 }
 
-export async function deleteTemplateAction(user: User, templateId: string) {
+export async function deleteTemplateAction(_user: User, templateId: string) {
+  const user = await getCurrentUser()
+  await requireCurrentWritableOrganizationId({
+    getCurrentUser: async () => user,
+  })
   const appData = (await getAppData(user, "invoices")) as InvoiceAppData | null
   if (!appData) return { success: false, error: "No app data found" }
 
@@ -49,6 +60,24 @@ export async function saveInvoiceAsTransactionAction(
 ): Promise<{ success: boolean; error?: string; data?: Transaction }> {
   try {
     const user = await getCurrentUser()
+    const organizationId = await requireCurrentWritableOrganizationId({
+      getCurrentUser: async () => user,
+    })
+    const occurredAt = new Date()
+    const billingProjection = await getCurrentOrganizationUserBillingProjection(organizationId)
+    const actionUser = buildOrganizationActionUser(
+      {
+        id: user.id,
+        email: user.email,
+      },
+      {
+        organizationId,
+        storageLimit: billingProjection.storageLimit,
+        storageUsed: billingProjection.storageUsed,
+        membershipExpiresAt: billingProjection.membershipExpiresAt,
+        accessStatus: billingProjection.accessStatus,
+      }
+    )
 
     // Generate PDF
     const pdfBuffer = await generateInvoicePDF(formData)
@@ -59,8 +88,45 @@ export async function saveInvoiceAsTransactionAction(
     const fees = formData.additionalFees.reduce((sum, fee) => sum + fee.amount, 0)
     const totalAmount = (formData.taxIncluded ? subtotal : subtotal + taxes) + fees
 
+    await assertFiscalDocumentsSyncAllowed(user.id, {
+      organizationId,
+      transactions: [
+        buildInvoiceTransactionForFiscalSync(
+          {
+            id: randomUUID(),
+            userId: user.id,
+            organizationId,
+            name: `Invoice #${formData.invoiceNumber || "unknown"}`,
+            description: null,
+            merchant: `${formData.billTo.split("\n")[0]}`,
+            total: totalAmount * 100,
+            currencyCode: formData.currency,
+            convertedTotal: null,
+            convertedCurrencyCode: null,
+            type: "income",
+            items: [],
+            note: null,
+            files: [],
+            extra: null,
+            categoryCode: null,
+            projectCode: null,
+            issuedAt: new Date(formData.date),
+            createdAt: occurredAt,
+            updatedAt: occurredAt,
+            text: null,
+          },
+          formData
+        ),
+      ],
+      actor: {
+        type: "user",
+        id: user.id,
+      },
+      occurredAt,
+    })
+
     // Create transaction
-    const transaction = await createTransaction(user.id, {
+    const transaction = await createTransaction(user.id, organizationId, {
       name: `Invoice #${formData.invoiceNumber || "unknown"}`,
       merchant: `${formData.billTo.split("\n")[0]}`,
       total: totalAmount * 100,
@@ -73,14 +139,14 @@ export async function saveInvoiceAsTransactionAction(
     })
 
     // Check storage limits
-    if (!isEnoughStorageToUploadFile(user, pdfBuffer.length)) {
+    if (!(await isEnoughStorageToUploadFile(actionUser, pdfBuffer.length))) {
       return {
         success: false,
         error: "Insufficient storage to save invoice PDF",
       }
     }
 
-    if (isSubscriptionExpired(user)) {
+    if (isSubscriptionExpired(actionUser)) {
       return {
         success: false,
         error: "Your subscription has expired, please upgrade your account or buy new subscription plan",
@@ -89,21 +155,31 @@ export async function saveInvoiceAsTransactionAction(
 
     // Save PDF file
     const fileUuid = randomUUID()
-    const fileName = `invoice-${formData.invoiceNumber}.pdf`
-    const relativeFilePath = getTransactionFileUploadPath(fileUuid, fileName, transaction)
+    const fileName = buildInvoiceFileName(formData)
     const userUploadsDirectory = getUserUploadsDirectory(user)
-    const fullFilePath = safePathJoin(userUploadsDirectory, relativeFilePath)
-
-    await mkdir(path.dirname(fullFilePath), { recursive: true })
-    await writeFile(fullFilePath, pdfBuffer)
+    const target = buildDefaultTransactionUploadTargetFromFilename(
+      organizationId,
+      fileUuid,
+      fileName,
+      transaction.issuedAt || new Date()
+    )
+    await putStoredFileBuffer({
+      ownerOrganizationId: organizationId,
+      ownerUploadsDirectory: userUploadsDirectory,
+      storedPath: target.relativePath,
+      kind: "transaction",
+      contentType: "application/pdf",
+      body: Buffer.from(pdfBuffer),
+    })
 
     // Create file record in database
     const fileRecord = await createFile(user.id, {
       id: fileUuid,
-      filename: fileName,
-      path: relativeFilePath,
+      organizationId,
+      filename: target.storedFilename,
+      path: target.relativePath,
       mimetype: "application/pdf",
-      isReviewed: true,
+      isReviewed: target.isReviewed,
       metadata: {
         size: pdfBuffer.length,
         lastModified: Date.now(),
@@ -111,7 +187,15 @@ export async function saveInvoiceAsTransactionAction(
     })
 
     // Update transaction with the file ID
-    await updateTransactionFiles(transaction.id, user.id, [fileRecord.id])
+    await updateTransactionFiles(transaction.id, organizationId, [fileRecord.id])
+    await syncOrganizationStorageUsageSnapshot({
+      organizationId,
+      userId: user.id,
+      userEmailOrId: user.email || user.id,
+    })
+    await syncFiscalDocumentsAfterWrite(user.id, organizationId, [
+      buildInvoiceTransactionForFiscalSync(transaction, formData),
+    ])
 
     revalidatePath("/transactions")
 
@@ -122,5 +206,82 @@ export async function saveInvoiceAsTransactionAction(
       success: false,
       error: `Failed to save invoice as transaction: ${error}`,
     }
+  }
+}
+
+function buildInvoiceFileName(formData: InvoiceFormData) {
+  const invoiceNumber = sanitizeFilePart(formData.invoiceNumber)
+  const issuedAt = sanitizeDatePart(formData.date)
+  const issuer = sanitizeFilePart(formData.companyDetails.split("\n")[0])
+
+  const parts = [invoiceNumber, issuedAt ? `(${issuedAt})` : null, issuer].filter(
+    (part): part is string => Boolean(part)
+  )
+
+  if (parts.length === 0) {
+    return "invoice.pdf"
+  }
+
+  return `${parts.join(" ")}.pdf`
+}
+
+function sanitizeFilePart(value: string | undefined | null) {
+  if (!value) {
+    return null
+  }
+
+  return value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/-+/g, "-")
+    .trim()
+    .replace(/^[.\-\s]+|[.\-\s]+$/g, "")
+}
+
+function sanitizeDatePart(value: string | undefined | null) {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function buildInvoiceTransactionForFiscalSync(
+  transaction: Transaction,
+  formData: InvoiceFormData
+): Transaction {
+  return {
+    ...transaction,
+    extra: {
+      invoice_number: formData.invoiceNumber || null,
+    },
+  }
+}
+
+async function syncFiscalDocumentsAfterWrite(
+  userId: string,
+  organizationId: string,
+  transactions: Transaction[]
+) {
+  try {
+    await ensureFiscalDocumentsSynced(userId, {
+      organizationId,
+      transactions,
+    })
+  } catch (error) {
+    console.error("Failed to sync fiscal documents after invoice write:", {
+      userId,
+      transactionIds: transactions.map((transaction) => transaction.id),
+      error,
+    })
   }
 }

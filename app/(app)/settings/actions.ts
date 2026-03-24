@@ -7,29 +7,47 @@ import {
   projectFormSchema,
   settingsFormSchema,
 } from "@/forms/settings"
+import { fiscalProfileFormSchema } from "@/forms/fiscal/profile"
 import { userFormSchema } from "@/forms/users"
 import { ActionState } from "@/lib/actions"
 import { getCurrentUser } from "@/lib/auth"
 import { createTranslator } from "@/lib/i18n"
-import { uploadStaticImage } from "@/lib/uploads"
+import { requireCurrentOrganizationId, requireCurrentTenantAdmin } from "@/lib/tenant"
+import { buildStaticAssetUrl, uploadStaticImage } from "@/lib/uploads"
 import { codeFromName, randomHexColor } from "@/lib/utils"
 import { createCategory, deleteCategory, updateCategory } from "@/models/categories"
-import { createCurrency, deleteCurrency, updateCurrency } from "@/models/currencies"
+import { CurrencyData, createCurrency, deleteCurrency, updateCurrency } from "@/models/currencies"
 import { createField, deleteField, updateField } from "@/models/fields"
+import { syncFiscalObligationsForOrganization } from "@/models/fiscal/obligations"
+import { syncDefaultSpanishFiscalPeriodsV1 } from "@/models/fiscal/periods"
+import { upsertFiscalProfileForOrganization } from "@/models/fiscal/profile"
+import { isFiscalStorageNotReadyError } from "@/models/fiscal/storage"
 import { createProject, deleteProject, updateProject } from "@/models/projects"
 import { SettingsMap, updateSettings } from "@/models/settings"
 import { updateUser } from "@/models/users"
-import { Prisma, User } from "@/prisma/client"
+import { FiscalProfile, Prisma, User } from "@/prisma/client"
 import { revalidatePath } from "next/cache"
-import path from "path"
 
 const t = createTranslator()
+
+async function requireSettingsAdmin(user?: User) {
+  const currentUser = user ?? (await getCurrentUser())
+
+  await requireCurrentTenantAdmin({
+    getCurrentUser: async () => currentUser,
+  })
+
+  return requireCurrentOrganizationId({
+    getCurrentUser: async () => currentUser,
+  })
+}
 
 export async function saveSettingsAction(
   _prevState: ActionState<SettingsMap> | null,
   formData: FormData
 ): Promise<ActionState<SettingsMap>> {
   const user = await getCurrentUser()
+  const organizationId = await requireSettingsAdmin(user)
   const validatedForm = settingsFormSchema.safeParse(Object.fromEntries(formData))
 
   if (!validatedForm.success) {
@@ -39,7 +57,7 @@ export async function saveSettingsAction(
   for (const key in validatedForm.data) {
     const value = validatedForm.data[key as keyof typeof validatedForm.data]
     if (value !== undefined) {
-      await updateSettings(user.id, key, value)
+      await updateSettings(organizationId, key, value)
     }
   }
 
@@ -52,6 +70,7 @@ export async function saveProfileAction(
   formData: FormData
 ): Promise<ActionState<User>> {
   const user = await getCurrentUser()
+  const organizationId = await requireSettingsAdmin(user)
   const validatedForm = userFormSchema.safeParse(Object.fromEntries(formData))
 
   if (!validatedForm.success) {
@@ -63,8 +82,17 @@ export async function saveProfileAction(
   const avatarFile = formData.get("avatar") as File | null
   if (avatarFile instanceof File && avatarFile.size > 0) {
     try {
-      const uploadedAvatarPath = await uploadStaticImage(user, avatarFile, "avatar.webp", 500, 500)
-      avatarUrl = `/files/static/${path.basename(uploadedAvatarPath)}`
+      const uploadedAvatarPath = await uploadStaticImage({
+        user,
+        organizationId,
+        file: avatarFile,
+        assetType: "avatar",
+        assetId: user.id,
+        saveFileName: "avatar.webp",
+        maxWidth: 500,
+        maxHeight: 500,
+      })
+      avatarUrl = buildStaticAssetUrl(uploadedAvatarPath)
     } catch (error) {
       return {
         success: false,
@@ -78,8 +106,17 @@ export async function saveProfileAction(
   const businessLogoFile = formData.get("businessLogo") as File | null
   if (businessLogoFile instanceof File && businessLogoFile.size > 0) {
     try {
-      const uploadedBusinessLogoPath = await uploadStaticImage(user, businessLogoFile, "businessLogo.png", 500, 500)
-      businessLogoUrl = `/files/static/${path.basename(uploadedBusinessLogoPath)}`
+      const uploadedBusinessLogoPath = await uploadStaticImage({
+        user,
+        organizationId,
+        file: businessLogoFile,
+        assetType: "business-logo",
+        assetId: "default",
+        saveFileName: "businessLogo.png",
+        maxWidth: 500,
+        maxHeight: 500,
+      })
+      businessLogoUrl = buildStaticAssetUrl(uploadedBusinessLogoPath)
     } catch (error) {
       return {
         success: false,
@@ -92,7 +129,6 @@ export async function saveProfileAction(
   await updateUser(user.id, {
     name: validatedForm.data.name !== undefined ? validatedForm.data.name : user.name,
     avatar: avatarUrl,
-    businessName: validatedForm.data.businessName !== undefined ? validatedForm.data.businessName : user.businessName,
     businessAddress:
       validatedForm.data.businessAddress !== undefined ? validatedForm.data.businessAddress : user.businessAddress,
     businessBankDetails:
@@ -107,14 +143,52 @@ export async function saveProfileAction(
   return { success: true }
 }
 
-export async function addProjectAction(userId: string, data: Prisma.ProjectCreateInput) {
+export async function saveFiscalProfileAction(
+  _prevState: ActionState<FiscalProfile> | null,
+  formData: FormData
+): Promise<ActionState<FiscalProfile>> {
+  const user = await getCurrentUser()
+  const organizationId = await requireSettingsAdmin(user)
+  const validatedForm = fiscalProfileFormSchema.safeParse(Object.fromEntries(formData))
+
+  if (!validatedForm.success) {
+    return { success: false, error: validatedForm.error.issues[0]?.message ?? validatedForm.error.message }
+  }
+
+  try {
+    const fiscalProfile = await upsertFiscalProfileForOrganization(
+      organizationId,
+      user.id,
+      validatedForm.data
+    )
+    await syncDefaultSpanishFiscalPeriodsV1(fiscalProfile.id)
+    await syncFiscalObligationsForOrganization(organizationId)
+    revalidatePath("/settings/fiscal")
+    revalidatePath("/tax/quarters")
+    revalidatePath("/tax/close")
+    revalidatePath("/tax/archive")
+    return { success: true, data: fiscalProfile }
+  } catch (error) {
+    return {
+      success: false,
+      error: isFiscalStorageNotReadyError(error)
+        ? t("tax.storageNotReady.actionError")
+        : error instanceof Error
+          ? error.message
+          : t("common.errors.generic"),
+    }
+  }
+}
+
+export async function addProjectAction(data: Prisma.ProjectCreateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = projectFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const project = await createProject(userId, {
+  const project = await createProject(organizationId, {
     code: codeFromName(validatedForm.data.name),
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt || null,
@@ -125,14 +199,15 @@ export async function addProjectAction(userId: string, data: Prisma.ProjectCreat
   return { success: true, project }
 }
 
-export async function editProjectAction(userId: string, code: string, data: Prisma.ProjectUpdateInput) {
+export async function editProjectAction(code: string, data: Prisma.ProjectUpdateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = projectFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const project = await updateProject(userId, code, {
+  const project = await updateProject(organizationId, code, {
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt,
     color: validatedForm.data.color || "",
@@ -142,24 +217,26 @@ export async function editProjectAction(userId: string, code: string, data: Pris
   return { success: true, project }
 }
 
-export async function deleteProjectAction(userId: string, code: string) {
+export async function deleteProjectAction(code: string) {
+  const organizationId = await requireSettingsAdmin()
   try {
-    await deleteProject(userId, code)
-  } catch (error) {
+    await deleteProject(organizationId, code)
+  } catch {
     return { success: false, error: t("settings.errors.deleteProject") }
   }
   revalidatePath("/settings/projects")
   return { success: true }
 }
 
-export async function addCurrencyAction(userId: string, data: Prisma.CurrencyCreateInput) {
+export async function addCurrencyAction(data: CurrencyData) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = currencyFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const currency = await createCurrency(userId, {
+  const currency = await createCurrency(organizationId, {
     code: validatedForm.data.code,
     name: validatedForm.data.name,
   })
@@ -168,29 +245,32 @@ export async function addCurrencyAction(userId: string, data: Prisma.CurrencyCre
   return { success: true, currency }
 }
 
-export async function editCurrencyAction(userId: string, code: string, data: Prisma.CurrencyUpdateInput) {
+export async function editCurrencyAction(code: string, data: { name: string }) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = currencyFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const currency = await updateCurrency(userId, code, { name: validatedForm.data.name })
+  const currency = await updateCurrency(organizationId, code, { name: validatedForm.data.name })
   revalidatePath("/settings/currencies")
   return { success: true, currency }
 }
 
-export async function deleteCurrencyAction(userId: string, code: string) {
+export async function deleteCurrencyAction(code: string) {
+  const organizationId = await requireSettingsAdmin()
   try {
-    await deleteCurrency(userId, code)
-  } catch (error) {
+    await deleteCurrency(organizationId, code)
+  } catch {
     return { success: false, error: t("settings.errors.deleteCurrency") }
   }
   revalidatePath("/settings/currencies")
   return { success: true }
 }
 
-export async function addCategoryAction(userId: string, data: Prisma.CategoryCreateInput) {
+export async function addCategoryAction(data: Prisma.CategoryCreateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = categoryFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
@@ -199,7 +279,7 @@ export async function addCategoryAction(userId: string, data: Prisma.CategoryCre
 
   const code = codeFromName(validatedForm.data.name)
   try {
-    const category = await createCategory(userId, {
+    const category = await createCategory(organizationId, {
       code,
       name: validatedForm.data.name,
       llm_prompt: validatedForm.data.llm_prompt,
@@ -219,14 +299,15 @@ export async function addCategoryAction(userId: string, data: Prisma.CategoryCre
   }
 }
 
-export async function editCategoryAction(userId: string, code: string, data: Prisma.CategoryUpdateInput) {
+export async function editCategoryAction(code: string, data: Prisma.CategoryUpdateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = categoryFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const category = await updateCategory(userId, code, {
+  const category = await updateCategory(organizationId, code, {
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt,
     color: validatedForm.data.color || "",
@@ -236,24 +317,26 @@ export async function editCategoryAction(userId: string, code: string, data: Pri
   return { success: true, category }
 }
 
-export async function deleteCategoryAction(userId: string, code: string) {
+export async function deleteCategoryAction(code: string) {
+  const organizationId = await requireSettingsAdmin()
   try {
-    await deleteCategory(userId, code)
-  } catch (error) {
+    await deleteCategory(organizationId, code)
+  } catch {
     return { success: false, error: t("settings.errors.deleteCategory") }
   }
   revalidatePath("/settings/categories")
   return { success: true }
 }
 
-export async function addFieldAction(userId: string, data: Prisma.FieldCreateInput) {
+export async function addFieldAction(data: Prisma.FieldCreateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = fieldFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const field = await createField(userId, {
+  const field = await createField(organizationId, {
     code: codeFromName(validatedForm.data.name),
     name: validatedForm.data.name,
     type: validatedForm.data.type,
@@ -268,14 +351,15 @@ export async function addFieldAction(userId: string, data: Prisma.FieldCreateInp
   return { success: true, field }
 }
 
-export async function editFieldAction(userId: string, code: string, data: Prisma.FieldUpdateInput) {
+export async function editFieldAction(code: string, data: Prisma.FieldUpdateInput) {
+  const organizationId = await requireSettingsAdmin()
   const validatedForm = fieldFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const field = await updateField(userId, code, {
+  const field = await updateField(organizationId, code, {
     name: validatedForm.data.name,
     type: validatedForm.data.type,
     llm_prompt: validatedForm.data.llm_prompt,
@@ -288,10 +372,11 @@ export async function editFieldAction(userId: string, code: string, data: Prisma
   return { success: true, field }
 }
 
-export async function deleteFieldAction(userId: string, code: string) {
+export async function deleteFieldAction(code: string) {
+  const organizationId = await requireSettingsAdmin()
   try {
-    await deleteField(userId, code)
-  } catch (error) {
+    await deleteField(organizationId, code)
+  } catch {
     return { success: false, error: t("settings.errors.deleteField") }
   }
   revalidatePath("/settings/fields")

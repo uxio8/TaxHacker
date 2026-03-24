@@ -4,6 +4,9 @@ import { createPageMetadata } from "@/lib/i18n"
 export const metadata = createPageMetadata("docs.ai.title")
 
 export default async function AI() {
+  const appName = config.app.title
+  const appUrl = config.app.baseURL
+
   return (
     <div className="prose prose-slate max-w-none">
       <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-6">Información sobre el uso de IA</h1>
@@ -17,19 +20,19 @@ export default async function AI() {
         </a>
         <br />
         <strong className="text-slate-700">Dominio</strong>:{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
+        <a href={appUrl} className="text-blue-600 hover:text-blue-800">
+          {appUrl}
         </a>
       </p>
 
       <p className="text-gray-700 leading-relaxed mb-6">
-        En TaxHacker utilizamos inteligencia artificial (&quot;IA&quot;) para impulsar las funciones principales de la
+        En {appName} utilizamos inteligencia artificial (&quot;IA&quot;) para impulsar las funciones principales de la
         plataforma. Este documento explica cómo y por qué usamos tecnologías de IA, qué datos se procesan y cómo puede
         afectarte como usuario.
       </p>
 
-      <h2 className="text-2xl font-semibold text-gray-800 mt-8 mb-4">1. Finalidad de la IA en TaxHacker</h2>
-      <p className="text-gray-700 leading-relaxed mb-3">La IA es esencial en la experiencia de TaxHacker y se usa para:</p>
+      <h2 className="text-2xl font-semibold text-gray-800 mt-8 mb-4">1. Finalidad de la IA en {appName}</h2>
+      <p className="text-gray-700 leading-relaxed mb-3">La IA es esencial en la experiencia de {appName} y se usa para:</p>
       <ul className="list-disc pl-6 space-y-2 mb-6 text-gray-700">
         <li>Reconocimiento óptico de caracteres (OCR) de facturas y tickets escaneados</li>
         <li>Categorización y etiquetado automático de transacciones financieras</li>
@@ -68,7 +71,7 @@ export default async function AI() {
       </ul>
       <p className="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-4">
         <strong className="text-amber-600">⚠️ Nota:</strong> Estos datos <strong>no se anonimizan ni se redactan</strong>{" "}
-        antes de su envío. Al usar TaxHacker, reconoces y consientes esta transferencia.
+        antes de su envío. Al usar {appName}, reconoces y consientes esta transferencia.
       </p>
       <p className="text-gray-700 leading-relaxed mb-6">
         Guardamos en tu cuenta los <strong>resultados estructurados</strong> de la IA, como campos interpretados o
@@ -88,7 +91,7 @@ export default async function AI() {
 
       <h2 className="text-2xl font-semibold text-gray-800 mt-8 mb-4">5. Exclusión voluntaria y dependencia del sistema</h2>
       <p className="text-gray-700 leading-relaxed mb-6">
-        El procesamiento con IA es un componente fundamental de TaxHacker y no puede desactivarse. Si no consientes que
+        El procesamiento con IA es un componente fundamental de {appName} y no puede desactivarse. Si no consientes que
         tus datos se procesen mediante IA, no deberías usar la plataforma.
       </p>
 
@@ -110,7 +113,7 @@ export default async function AI() {
         legales o financieros.
       </p>
       <p className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6">
-        <strong className="text-red-600">⚠️ Importante:</strong> TaxHacker <strong>no sustituye</strong> a un contable,
+        <strong className="text-red-600">⚠️ Importante:</strong> {appName} <strong>no sustituye</strong> a un contable,
         asesor fiscal o abogado. Úsalo bajo tu propia responsabilidad.
       </p>
     </div>

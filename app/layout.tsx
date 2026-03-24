@@ -5,17 +5,36 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
+  applicationName: config.app.title,
   title: {
-    template: "%s | TaxHacker",
+    template: `%s | ${config.app.title}`,
     default: config.app.title,
   },
   description: config.app.description,
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      {
+        url: "/android-chrome-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/android-chrome-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
     shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
-  manifest: "/site.webmanifest",
+  manifest: "/manifest.webmanifest",
   metadataBase: new URL(config.app.baseURL),
   openGraph: {
     type: "website",

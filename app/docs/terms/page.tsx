@@ -4,6 +4,9 @@ import { createPageMetadata } from "@/lib/i18n"
 export const metadata = createPageMetadata("docs.terms.title")
 
 export default async function Terms() {
+  const appName = config.app.title
+  const appUrl = config.app.baseURL
+
   return (
     <div className="prose prose-slate max-w-none">
       <h1 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">Términos del servicio</h1>
@@ -11,8 +14,8 @@ export default async function Terms() {
         <strong className="text-slate-700">Fecha de entrada en vigor:</strong> 22 de abril de 2025
         <br />
         <strong className="text-slate-700">Servicio:</strong>{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
+        <a href={appUrl} className="text-blue-600 hover:text-blue-800">
+          {appUrl}
         </a>
         <br />
         <strong className="text-slate-700">Contacto:</strong>{" "}
@@ -22,13 +25,13 @@ export default async function Terms() {
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        Estos Términos del servicio (&quot;Términos&quot;) regulan tu acceso y uso de TaxHacker, un analizador de
+        Estos Términos del servicio (&quot;Términos&quot;) regulan tu acceso y uso de {appName}, un analizador de
         facturas y gestor de gastos automatizado impulsado por inteligencia artificial (IA). Al acceder o utilizar
         nuestros servicios, aceptas quedar vinculado por estos Términos.
       </p>
 
       <h2 className="text-2xl font-semibold text-slate-800 mb-4">1. Descripción del servicio</h2>
-      <p className="text-slate-700 mb-3">TaxHacker ofrece:</p>
+      <p className="text-slate-700 mb-3">{appName} ofrece:</p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
           Una <strong className="text-slate-800">plataforma cloud</strong> con planes de suscripción de pago
@@ -47,7 +50,7 @@ export default async function Terms() {
       <h2 className="text-2xl font-semibold text-slate-800 mb-4">2. Requisitos y uso de la cuenta</h2>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          Debes tener al menos <strong className="text-slate-800">18 años</strong> para usar TaxHacker.
+          Debes tener al menos <strong className="text-slate-800">18 años</strong> para usar {appName}.
         </li>
         <li>
           Puedes registrar y mantener <strong className="text-slate-800">varias cuentas</strong>.
@@ -92,7 +95,7 @@ export default async function Terms() {
       <h2 className="text-2xl font-semibold text-slate-800 mb-4">5. Uso de IA e integraciones de terceros</h2>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          TaxHacker utiliza <strong className="text-slate-800">OpenAI (ChatGPT)</strong> y otras APIs de terceros para
+          {appName} utiliza <strong className="text-slate-800">OpenAI (ChatGPT)</strong> y otras APIs de terceros para
           procesar y analizar documentos.
         </li>
         <li>
@@ -112,7 +115,7 @@ export default async function Terms() {
           análisis resultante.
         </li>
         <li>
-          TaxHacker <strong className="text-slate-800">no reclama ningún derecho</strong> sobre tus datos.
+          {appName} <strong className="text-slate-800">no reclama ningún derecho</strong> sobre tus datos.
         </li>
         <li>
           Eres libre de <strong className="text-slate-800">reutilizar, descargar, publicar o exportar</strong>
@@ -123,7 +126,7 @@ export default async function Terms() {
       <h2 className="text-2xl font-semibold text-slate-800 mb-4">7. Limitación de responsabilidad</h2>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          TaxHacker se ofrece <strong className="text-slate-800">&quot;tal cual&quot;</strong>, sin garantías de ningún
+          {appName} se ofrece <strong className="text-slate-800">&quot;tal cual&quot;</strong>, sin garantías de ningún
           tipo.
         </li>
         <li>
@@ -131,7 +134,7 @@ export default async function Terms() {
           la idoneidad del servicio para contabilidad, presentación de impuestos o cumplimiento normativo.
         </li>
         <li className="bg-yellow-50 p-3 border-l-4 border-yellow-400">
-          <strong className="text-slate-800">⚠️ Importante:</strong> TaxHacker <strong className="text-slate-800">no
+          <strong className="text-slate-800">⚠️ Importante:</strong> {appName} <strong className="text-slate-800">no
           sustituye</strong> el asesoramiento fiscal o legal profesional. Usas el servicio{" "}
           <strong className="text-slate-800">bajo tu propia responsabilidad</strong>.
         </li>

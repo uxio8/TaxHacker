@@ -1,3 +1,4 @@
+import config from "../config.ts"
 import {
   DEFAULT_LOCALE,
   FALLBACK_LOCALE,
@@ -65,6 +66,20 @@ export function formatMessage(template: string, values?: TranslationValues): str
   })
 }
 
+function getDefaultTranslationValues(): TranslationValues {
+  return {
+    appName: config.app.title,
+    demoCompanyName: config.app.demoCompanyName,
+  }
+}
+
+function mergeTranslationValues(values?: TranslationValues): TranslationValues {
+  return {
+    ...getDefaultTranslationValues(),
+    ...(values ?? {}),
+  }
+}
+
 function resolveTemplate(key: MessageKey, locale: Locale, messages?: MessageCatalog): string {
   const activeMessages = messages ?? getMessages(locale)
 
@@ -74,12 +89,12 @@ function resolveTemplate(key: MessageKey, locale: Locale, messages?: MessageCata
 export function t(key: MessageKey, options: TranslateOptions = {}): string {
   const locale = resolveLocale(options.locale)
 
-  return formatMessage(resolveTemplate(key, locale, options.messages), options.values)
+  return formatMessage(resolveTemplate(key, locale, options.messages), mergeTranslationValues(options.values))
 }
 
 export function createTranslator(options: CreateTranslatorOptions = {}): Translator {
   const locale = resolveLocale(options.locale)
   const messages = options.messages ?? getMessages(locale)
 
-  return (key, values) => formatMessage(resolveTemplate(key, locale, messages), values)
+  return (key, values) => formatMessage(resolveTemplate(key, locale, messages), mergeTranslationValues(values))
 }

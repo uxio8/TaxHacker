@@ -1,5 +1,6 @@
 import Stripe from "stripe"
 import config from "./config"
+import { BILLING_PLANS } from "./billing/catalog"
 
 export const stripeClient: Stripe | null = config.stripe.secretKey
   ? new Stripe(config.stripe.secretKey, {
@@ -22,36 +23,22 @@ export type Plan = {
 }
 
 export const PLANS: Record<string, Plan> = {
-  unlimited: {
-    code: "unlimited",
-    name: "Unlimited",
-    description: "Special unlimited plan",
-    benefits: ["Unlimited storage", "Unlimited AI analysis", "Unlimited everything"],
-    price: "",
-    stripePriceId: "",
-    limits: {
-      storage: -1,
-      ai: -1,
-    },
-    isAvailable: false,
-  },
-  early: {
-    code: "early",
-    name: "Early Adopter",
-    description: "Discounted plan for our first users who can forgive us bugs and childish problems :)",
-    benefits: [
-      "Special price for early adopters",
-      "512 Mb of storage",
-      "1000 AI file analyses",
-      "Unlimited transactions",
-      "Unlimited fields, categories and projects",
-    ],
-    price: "€35 for a year",
-    stripePriceId: "price_1RHTj1As8DS4NhOzhejpTN3I",
-    limits: {
-      storage: 512 * 1024 * 1024,
-      ai: 1000,
-    },
-    isAvailable: true,
-  },
+  ...Object.fromEntries(
+    Object.values(BILLING_PLANS).map((plan) => [
+      plan.code,
+      {
+        code: plan.code,
+        name: plan.displayName,
+        description: plan.description,
+        benefits: plan.benefits,
+        price: plan.priceLabel,
+        stripePriceId: plan.stripePriceId,
+        limits: {
+          storage: plan.limits["storage.bytes"],
+          ai: plan.limits["ai.jobs.monthly"],
+        },
+        isAvailable: plan.isAvailable,
+      } satisfies Plan,
+    ])
+  ),
 }

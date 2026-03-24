@@ -1,6 +1,7 @@
 "use client"
 
 import { useI18n } from "@/lib/i18n"
+import { getAnalyzedDocumentTitle } from "@/lib/analyzed-file-name"
 import { formatBytes } from "@/lib/utils"
 import { File } from "@/prisma/client"
 import Image from "next/image"
@@ -10,6 +11,10 @@ import { useState } from "react"
 export function FilePreview({ file }: { file: File }) {
   const { t } = useI18n()
   const [isEnlarged, setIsEnlarged] = useState(false)
+  const documentTitle = getAnalyzedDocumentTitle(
+    file.filename,
+    file.cachedParseResult as Record<string, unknown> | null | undefined
+  )
 
   const fileSize =
     file.metadata && typeof file.metadata === "object" && "size" in file.metadata ? Number(file.metadata.size) : 0
@@ -20,7 +25,7 @@ export function FilePreview({ file }: { file: File }) {
         <div className="aspect-[3/4]">
           <Image
             src={`/files/preview/${file.id}`}
-            alt={file.filename}
+            alt={documentTitle}
             width={300}
             height={400}
             loading="lazy"
@@ -37,7 +42,7 @@ export function FilePreview({ file }: { file: File }) {
         </div>
         <div className="flex flex-col gap-2 mt-2 overflow-hidden">
           <h2 className="text-md underline font-semibold overflow-ellipsis">
-            <Link href={`/files/download/${file.id}`}>{file.filename}</Link>
+            <Link href={`/files/download/${file.id}`}>{documentTitle}</Link>
           </h2>
           <p className="text-sm overflow-ellipsis">
             <strong>{t("files.preview.type")}</strong> {file.mimetype}

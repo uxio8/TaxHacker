@@ -4,6 +4,7 @@ import { isPoolCloudConfigured } from "@/lib/pool-cloud-env"
 import { cache } from "react"
 import { LLMProvider } from "@/ai/providers/llmProvider"
 import { ensureUserDefaultsVersion } from "./defaults"
+import { buildOrganizationOwnedCodeWhere, buildOrganizationOwnedCreateData, buildOrganizationOwnedScope } from "./organization-owned"
 
 export type SettingsMap = Record<string, string>
 
@@ -21,11 +22,11 @@ export function getLLMSettings(settings: SettingsMap) {
   }
 }
 
-export const getSettings = cache(async (userId: string): Promise<SettingsMap> => {
-  await ensureUserDefaultsVersion(userId)
+export const getSettings = cache(async (organizationId: string): Promise<SettingsMap> => {
+  await ensureUserDefaultsVersion(organizationId)
 
   const settings = await prisma.setting.findMany({
-    where: { userId },
+    where: buildOrganizationOwnedScope(organizationId),
   })
 
   return settings.reduce((acc, setting) => {
@@ -34,15 +35,14 @@ export const getSettings = cache(async (userId: string): Promise<SettingsMap> =>
   }, {} as SettingsMap)
 })
 
-export const updateSettings = cache(async (userId: string, code: string, value: string | undefined) => {
+export const updateSettings = cache(async (organizationId: string, code: string, value: string | undefined) => {
   return await prisma.setting.upsert({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
     update: { value },
-    create: {
+    create: buildOrganizationOwnedCreateData(organizationId, {
       code,
       value,
       name: code,
-      userId,
-    },
+    }),
   })
 })

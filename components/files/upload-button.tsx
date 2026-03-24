@@ -1,11 +1,10 @@
 "use client"
 
 import { useNotification } from "@/app/(app)/context"
-import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { Button } from "@/components/ui/button"
 import config from "@/lib/config"
 import { useI18n } from "@/lib/i18n"
-import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
+import { notifyUploadSuccess, resetFileInputValue, uploadFilesWithHttp } from "@/lib/upload-flow"
 import { Loader2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { ComponentProps, startTransition, useRef, useState } from "react"
@@ -31,34 +30,22 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
 
     setUploadError("")
     setIsUploading(true)
-    const formData = new FormData()
-
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i])
-    }
 
     startTransition(async () => {
       try {
-        const result = await uploadFilesAction(formData)
+        const result = await uploadFilesWithHttp({ files })
         if (result.success) {
-          const uploadFlow = getUploadFlowState({
+          notifyUploadSuccess({
             currentPath: pathname,
             destination: "unsorted",
+            router,
+            showNotification,
           })
-
-          showNotification({ code: uploadFlow.notificationCode, message: "new" })
-          setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
-
-          if (uploadFlow.redirectPath) {
-            router.push(uploadFlow.redirectPath)
-          }
-
-          if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
-            router.refresh()
-          }
         } else {
           setUploadError(result.error ? result.error : t("common.errors.generic"))
         }
+      } catch (error) {
+        setUploadError(error instanceof Error ? error.message : t("common.errors.generic"))
       } finally {
         resetFileInputValue(input)
         setIsUploading(false)
@@ -76,7 +63,6 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
       <input
         ref={fileInputRef}
         type="file"
-        id="fileInput"
         className="hidden"
         multiple
         accept={config.upload.acceptedMimeTypes}

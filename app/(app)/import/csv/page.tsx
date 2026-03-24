@@ -1,6 +1,6 @@
 import { ImportCSVTable } from "@/components/import/csv"
-import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getFields } from "@/models/fields"
 
 export const metadata = createPageMetadata("common.importCsv", {
@@ -8,8 +8,8 @@ export const metadata = createPageMetadata("common.importCsv", {
 })
 
 export default async function CSVImportPage() {
-  const user = await getCurrentUser()
-  const fields = await getFields(user.id)
+  const organizationId = await requireCurrentOrganizationId()
+  const fields = await getFields(organizationId)
   return (
     <div className="flex flex-col gap-4 p-4">
       <ImportCSVTable fields={fields} />

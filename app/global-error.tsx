@@ -1,8 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import * as Sentry from "@sentry/nextjs"
 import { createTranslator } from "@/lib/i18n"
+import { isSentryRuntimeEnabled } from "@/lib/sentry"
 import { Ghost } from "lucide-react"
 import Link from "next/link"
 import { useEffect } from "react"
@@ -10,7 +10,13 @@ import { useEffect } from "react"
 export default function GlobalError({ error }: { error: Error }) {
   const t = createTranslator()
   useEffect(() => {
-    Sentry.captureException(error)
+    if (!isSentryRuntimeEnabled()) {
+      return
+    }
+
+    void import("@sentry/nextjs").then((Sentry) => {
+      Sentry.captureException(error)
+    })
   }, [error])
 
   return (

@@ -11,11 +11,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  owner
+  admin
+  member
+}
+
+enum BillingStatus {
+  trial
+  active
+  past_due
+  cancelled
+  archived
+}
+
+enum AccessStatus {
+  enabled
+  grace_period
+  restricted
+  suspended
+}
+
+enum PlatformRole {
+  platform_owner
+  platform_admin
+  platform_support
+  platform_finance
+}
+
+enum OrganizationOverrideType {
+  capability
+  limit
+  access_status
+}
+
+enum SupportAccessMode {
+  read_only
+  read_write
+}
+
 model User {
   id                  String        @id @default(uuid()) @db.Uuid
   email               String        @unique
   name                String
   avatar              String?
+  defaultOrganizationId String?     @map("default_organization_id") @db.Uuid
+  defaultOrganization Organization? @relation("DefaultOrganization", fields: [defaultOrganizationId], references: [id], onDelete: SetNull)
+  memberships         Membership[]
   settings            Setting[]
   categories          Category[]
   projects            Project[]
@@ -34,6 +76,7 @@ model User {
   aiBalance           Int           @default(0) @map("ai_balance")
   businessName        String?       @map("business_name")
   businessAddress     String?       @map("business_address")
+  businessTaxId       String?       @map("business_tax_id")
   businessBankDetails String?       @map("business_bank_details")
   businessLogo        String?       @map("business_logo")
   accounts            Account[]
@@ -41,8 +84,444 @@ model User {
   appData             AppData[]
   progress            Progress[]
   analysisJobs        AnalysisJob[]
+  fiscalProfiles      FiscalProfile[]
+  filedFiscalObligations          FiscalObligation[]        @relation("FiscalObligationFiledBy")
+  filedFiscalDossiers             FiscalFilingDossier[]    @relation("FiscalFilingDossierFiledBy")
+  fiscalReviewRequestsCreated      FiscalReviewRequest[]    @relation("FiscalReviewRequestCreatedBy")
+  fiscalReviewRequestsResolved     FiscalReviewRequest[]    @relation("FiscalReviewRequestResolvedBy")
+  organizationInvitationsSent      OrganizationInvitation[] @relation("OrganizationInvitationInvitedBy")
+  organizationInvitationsAccepted  OrganizationInvitation[] @relation("OrganizationInvitationAcceptedBy")
+  platformAdminAssignments         PlatformAdminAssignment[]
+  platformAuditLogsAuthored        PlatformAuditLog[]       @relation("PlatformAuditLogActor")
+  platformAuditLogsTargeted        PlatformAuditLog[]       @relation("PlatformAuditLogTargetUser")
+  organizationOverridesCreated     OrganizationOverride[]   @relation("OrganizationOverrideCreatedBy")
+  supportAccessSessionsAuthored    SupportAccessSession[]   @relation("SupportAccessSessionActor")
+  supportAccessSessionsAssumed     SupportAccessSession[]   @relation("SupportAccessSessionAssumedUser")
 
   @@map("users")
+}
+
+model Organization {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  memberships  Membership[]
+  defaultUsers User[]       @relation("DefaultOrganization")
+  settings     Setting[]
+  categories   Category[]
+  projects     Project[]
+  fields       Field[]
+  currencies   Currency[]
+  files        File[]
+  transactions Transaction[]
+  appData      AppData[]
+  progress     Progress[]
+  analysisJobs AnalysisJob[]
+  fiscalProfiles FiscalProfile[]
+  fiscalObligations FiscalObligation[]
+  fiscalReviewRequests FiscalReviewRequest[]
+  invitations  OrganizationInvitation[]
+  subscription OrganizationSubscription?
+  usageRecords OrganizationUsage[]
+  overrides    OrganizationOverride[]
+  billingEvents BillingEvent[]
+  platformAuditLogs PlatformAuditLog[]
+  supportAccessSessions SupportAccessSession[]
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId, role])
+  @@map("memberships")
+}
+
+model OrganizationInvitation {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email            String
+  emailNormalized  String       @map("email_normalized")
+  role             Role
+  token            String       @unique
+  invitedByUserId  String       @map("invited_by_user_id") @db.Uuid
+  invitedByUser    User         @relation("OrganizationInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedByUserId String?      @map("accepted_by_user_id") @db.Uuid
+  acceptedByUser   User?        @relation("OrganizationInvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  expiresAt        DateTime     @map("expires_at")
+  acceptedAt       DateTime?    @map("accepted_at")
+  revokedAt        DateTime?    @map("revoked_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId, emailNormalized])
+  @@index([organizationId, revokedAt, expiresAt])
+  @@map("organization_invitations")
+}
+
+model OrganizationSubscription {
+  id                     String                        @id @default(uuid()) @db.Uuid
+  organizationId         String                        @unique @map("organization_id") @db.Uuid
+  organization           Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planCode               String                        @map("plan_code")
+  catalogVersion         Int                           @default(1) @map("catalog_version")
+  billingStatus          BillingStatus                 @default(trial) @map("billing_status")
+  accessStatus           AccessStatus                  @default(enabled) @map("access_status")
+  stripeCustomerId       String?                       @map("stripe_customer_id")
+  stripeSubscriptionId   String?                       @map("stripe_subscription_id")
+  lastStripeEventId      String?                       @map("last_stripe_event_id")
+  lastStripeEventCreatedAt DateTime?                   @map("last_stripe_event_created_at")
+  currentPeriodStartsAt  DateTime?                     @map("current_period_starts_at")
+  currentPeriodEndsAt    DateTime?                     @map("current_period_ends_at")
+  gracePeriodEndsAt      DateTime?                     @map("grace_period_ends_at")
+  cancelAtPeriodEnd      Boolean                       @default(false) @map("cancel_at_period_end")
+  scheduledPlanCode      String?                       @map("scheduled_plan_code")
+  scheduledCatalogVersion Int?                         @map("scheduled_catalog_version")
+  addons                 OrganizationSubscriptionAddon[]
+  createdAt              DateTime                      @default(now()) @map("created_at")
+  updatedAt              DateTime                      @updatedAt @map("updated_at")
+
+  @@index([billingStatus, accessStatus])
+  @@index([stripeCustomerId])
+  @@index([lastStripeEventCreatedAt])
+  @@map("organization_subscriptions")
+}
+
+model OrganizationSubscriptionAddon {
+  id                       String                   @id @default(uuid()) @db.Uuid
+  subscriptionId           String                   @map("subscription_id") @db.Uuid
+  subscription             OrganizationSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  addonCode                String                   @map("addon_code")
+  catalogVersion           Int                      @default(1) @map("catalog_version")
+  stripeSubscriptionItemId String?                  @map("stripe_subscription_item_id")
+  isActive                 Boolean                  @default(true) @map("is_active")
+  effectiveAt              DateTime                 @default(now()) @map("effective_at")
+  expiresAt                DateTime?                @map("expires_at")
+  scheduledRemovalAt       DateTime?                @map("scheduled_removal_at")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+
+  @@unique([subscriptionId, addonCode])
+  @@index([addonCode, isActive])
+  @@map("organization_subscription_addons")
+}
+
+model OrganizationUsage {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  metricKey      String       @map("metric_key")
+  periodKey      String       @map("period_key")
+  quantity       Int          @default(0)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([organizationId, metricKey, periodKey])
+  @@index([organizationId, metricKey])
+  @@map("organization_usage")
+}
+
+model OrganizationOverride {
+  id                String                   @id @default(uuid()) @db.Uuid
+  organizationId    String                   @map("organization_id") @db.Uuid
+  organization      Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type              OrganizationOverrideType
+  key               String
+  boolValue         Boolean?                 @map("bool_value")
+  numberValue       Int?                     @map("number_value")
+  accessStatusValue AccessStatus?            @map("access_status_value")
+  reason            String
+  createdByUserId   String?                  @map("created_by_user_id") @db.Uuid
+  createdByUser     User?                    @relation("OrganizationOverrideCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  effectiveAt       DateTime                 @default(now()) @map("effective_at")
+  expiresAt         DateTime?                @map("expires_at")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  @@index([organizationId, type, key])
+  @@index([organizationId, expiresAt])
+  @@map("organization_overrides")
+}
+
+model BillingEvent {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider        String
+  eventType       String       @map("event_type")
+  externalEventId String?      @map("external_event_id")
+  payload         Json
+  processedAt     DateTime?    @map("processed_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  @@unique([provider, externalEventId])
+  @@index([organizationId, createdAt])
+  @@map("billing_events")
+}
+
+model PlatformAdminAssignment {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      PlatformRole
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@unique([userId, role])
+  @@index([role])
+  @@map("platform_admin_assignments")
+}
+
+model PlatformAuditLog {
+  id           String       @id @default(uuid()) @db.Uuid
+  actorUserId  String?      @map("actor_user_id") @db.Uuid
+  actorUser    User?        @relation("PlatformAuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUserId String?      @map("target_user_id") @db.Uuid
+  targetUser   User?        @relation("PlatformAuditLogTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  organizationId String?    @map("organization_id") @db.Uuid
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  action       String
+  reason       String?
+  payload      Json
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("platform_audit_logs")
+}
+
+model SupportAccessSession {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String            @map("user_id") @db.Uuid
+  user           User              @relation("SupportAccessSessionActor", fields: [userId], references: [id], onDelete: Cascade)
+  assumedUserId  String?           @map("assumed_user_id") @db.Uuid
+  assumedUser    User?             @relation("SupportAccessSessionAssumedUser", fields: [assumedUserId], references: [id], onDelete: SetNull)
+  mode           SupportAccessMode
+  reason         String
+  expiresAt      DateTime          @map("expires_at")
+  revokedAt      DateTime?         @map("revoked_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@index([organizationId, expiresAt])
+  @@index([userId, expiresAt])
+  @@index([assumedUserId, expiresAt])
+  @@map("support_access_sessions")
+}
+
+model FiscalProfile {
+  id                       String                   @id @default(uuid()) @db.Uuid
+  userId                   String                   @map("user_id") @db.Uuid
+  user                     User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId           String                   @unique @map("organization_id") @db.Uuid
+  organization             Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  companyName              String                   @map("company_name")
+  taxId                    String                   @map("tax_id")
+  taxIdNormalized          String                   @map("tax_id_normalized")
+  countryCode              String                   @default("ES") @map("country_code")
+  currencyCode             String                   @default("EUR") @map("currency_code")
+  legalEntityType          String                   @default("spanish_sl") @map("legal_entity_type")
+  vatCashAccountingEnabled Boolean                  @default(false) @map("vat_cash_accounting_enabled")
+  hasEmployees             Boolean                  @default(false) @map("has_employees")
+  hasRentWithholding       Boolean                  @default(false) @map("has_rent_withholding")
+  hasProfessionalWithholding Boolean                @default(false) @map("has_professional_withholding")
+  hasIntraEuOperations     Boolean                  @default(false) @map("has_intra_eu_operations")
+  issuesInvoices           Boolean                  @default(true) @map("issues_invoices")
+  annualCloseMonth         Int                      @default(12) @map("annual_close_month")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  counterparties           Counterparty[]
+  fiscalPeriods            FiscalPeriod[]
+  fiscalObligations        FiscalObligation[]
+  fiscalReviewRequests     FiscalReviewRequest[]
+  fiscalPeriodSnapshots    FiscalPeriodSnapshot[]
+  fiscalAuditLogs          FiscalAuditLog[]
+  transactionFiscalDocuments TransactionFiscal[]
+
+  @@index([userId])
+  @@map("fiscal_profiles")
+}
+
+model FiscalObligation {
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @map("organization_id") @db.Uuid
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ownerScopeId      String        @map("owner_scope_id") @db.Uuid
+  ownerScope        FiscalProfile @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  code              String
+  fiscalYear        Int           @map("fiscal_year")
+  quarter           Int?
+  periodKey         String        @map("period_key")
+  status            String        @default("waiting_on_documents")
+  dueDate           DateTime?     @map("due_date") @db.Date
+  owner             String        @default("advisor")
+  blockingReasons   Json          @default("[]") @map("blocking_reasons")
+  requiredEvidence  Json          @default("[]") @map("required_evidence")
+  filingReference   String?       @map("filing_reference")
+  filedAt           DateTime?     @map("filed_at")
+  filedByUserId     String?       @map("filed_by_user_id") @db.Uuid
+  filedByUser       User?         @relation("FiscalObligationFiledBy", fields: [filedByUserId], references: [id], onDelete: SetNull)
+  filingDossier     FiscalFilingDossier?
+  notes             String?
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@unique([organizationId, code, periodKey])
+  @@index([organizationId, periodKey])
+  @@index([ownerScopeId, fiscalYear])
+  @@index([organizationId, status])
+  @@map("fiscal_obligations")
+}
+
+model FiscalFilingDossier {
+  id                 String           @id @default(uuid()) @db.Uuid
+  fiscalObligationId String           @unique @map("fiscal_obligation_id") @db.Uuid
+  fiscalObligation   FiscalObligation @relation(fields: [fiscalObligationId], references: [id], onDelete: Cascade)
+  draftSnapshot      Json             @default("{}") @map("draft_snapshot")
+  evidenceManifest   Json             @default("{}") @map("evidence_manifest")
+  checklistState     Json             @default("{}") @map("checklist_state")
+  filingReference    String?          @map("filing_reference")
+  filedAt            DateTime?        @map("filed_at")
+  filedByUserId      String?          @map("filed_by_user_id") @db.Uuid
+  filedByUser        User?            @relation("FiscalFilingDossierFiledBy", fields: [filedByUserId], references: [id], onDelete: SetNull)
+  filingReceiptFileId String?         @map("filing_receipt_file_id") @db.Uuid
+  filingReceiptFile  File?            @relation("FiscalFilingDossierReceipt", fields: [filingReceiptFileId], references: [id], onDelete: SetNull)
+  filingNotes        String?          @map("filing_notes")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  @@index([filedByUserId])
+  @@index([filingReceiptFileId])
+  @@map("fiscal_filing_dossiers")
+}
+
+model FiscalReviewRequest {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ownerScopeId     String            @map("owner_scope_id") @db.Uuid
+  ownerScope       FiscalProfile     @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  fiscalDocumentId String            @map("fiscal_document_id")
+  fiscalDocument   TransactionFiscal @relation(fields: [fiscalDocumentId], references: [id], onDelete: Cascade)
+  createdByUserId  String            @map("created_by_user_id") @db.Uuid
+  createdByUser    User              @relation("FiscalReviewRequestCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  actorType        String            @map("actor_type")
+  owner            String
+  message          String
+  dueDate          DateTime?         @map("due_date") @db.Date
+  status           String            @default("open")
+  resolvedAt       DateTime?         @map("resolved_at")
+  resolvedByUserId String?           @map("resolved_by_user_id") @db.Uuid
+  resolvedByUser   User?             @relation("FiscalReviewRequestResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  @@index([organizationId, status])
+  @@index([ownerScopeId, status, dueDate])
+  @@index([fiscalDocumentId, status])
+  @@map("fiscal_review_requests")
+}
+
+model FiscalPeriod {
+  id           String        @id @default(uuid()) @db.Uuid
+  ownerScopeId String        @map("owner_scope_id") @db.Uuid
+  ownerScope   FiscalProfile @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  fiscalYear   Int           @map("fiscal_year")
+  quarter      Int
+  periodKey    String        @map("period_key")
+  startsOn     DateTime      @map("starts_on") @db.Date
+  endsOn       DateTime      @map("ends_on") @db.Date
+  status       String        @default("open")
+  countryCode  String        @default("ES") @map("country_code")
+  currencyCode String        @default("EUR") @map("currency_code")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  snapshots    FiscalPeriodSnapshot[]
+  auditEvents  FiscalAuditLog[]
+
+  @@unique([ownerScopeId, periodKey])
+  @@unique([ownerScopeId, fiscalYear, quarter])
+  @@index([ownerScopeId, fiscalYear])
+  @@index([ownerScopeId, status])
+  @@map("fiscal_periods")
+}
+
+model FiscalPeriodSnapshot {
+  id            String        @id @default(uuid()) @db.Uuid
+  ownerScopeId  String        @map("owner_scope_id") @db.Uuid
+  ownerScope    FiscalProfile @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  fiscalPeriodId String       @map("fiscal_period_id") @db.Uuid
+  fiscalPeriod  FiscalPeriod  @relation(fields: [fiscalPeriodId], references: [id], onDelete: Cascade)
+  snapshotKind  String        @map("snapshot_kind")
+  schemaVersion Int           @default(1) @map("schema_version")
+  payload       Json
+  payloadHash   String        @map("payload_hash")
+  generatedAt   DateTime      @map("generated_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@unique([ownerScopeId, fiscalPeriodId, snapshotKind])
+  @@index([ownerScopeId, fiscalPeriodId, updatedAt])
+  @@index([ownerScopeId, snapshotKind, updatedAt])
+  @@map("fiscal_period_snapshots")
+}
+
+model FiscalAuditLog {
+  id               String            @id @default(uuid()) @db.Uuid
+  ownerScopeId     String            @map("owner_scope_id") @db.Uuid
+  ownerScope       FiscalProfile     @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  fiscalPeriodId   String?           @map("fiscal_period_id") @db.Uuid
+  fiscalPeriod     FiscalPeriod?     @relation(fields: [fiscalPeriodId], references: [id], onDelete: SetNull)
+  fiscalDocumentId String?           @map("fiscal_document_id")
+  fiscalDocument   TransactionFiscal? @relation(fields: [fiscalDocumentId], references: [id], onDelete: SetNull)
+  event            String
+  schemaVersion    Int               @default(1) @map("schema_version")
+  payload          Json
+  occurredAt       DateTime          @map("occurred_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  @@index([ownerScopeId, occurredAt, id])
+  @@index([ownerScopeId, fiscalPeriodId, occurredAt, id])
+  @@index([ownerScopeId, fiscalDocumentId, occurredAt, id])
+  @@index([ownerScopeId, event, occurredAt, id])
+  @@map("fiscal_audit_logs")
+}
+
+model Counterparty {
+  id                   String        @id @default(uuid()) @db.Uuid
+  ownerScopeId         String        @map("owner_scope_id") @db.Uuid
+  ownerScope           FiscalProfile @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  canonicalIdentityKey String        @map("canonical_identity_key")
+  identityBasis        String        @map("identity_basis")
+  displayName          String        @map("display_name")
+  normalizedName       String        @map("normalized_name")
+  taxId                String?       @map("tax_id")
+  taxIdNormalized      String        @default("none") @map("tax_id_normalized")
+  countryCode          String        @default("ES") @map("country_code")
+  isActive             Boolean       @default(true) @map("is_active")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  transactionFiscalDocuments TransactionFiscal[]
+
+  @@unique([ownerScopeId, canonicalIdentityKey])
+  @@index([ownerScopeId, displayName])
+  @@index([ownerScopeId, taxIdNormalized])
+  @@map("counterparties")
 }
 
 model Session {
@@ -91,64 +570,80 @@ model Verification {
 }
 
 model Setting {
-  id          String  @id @default(uuid()) @db.Uuid
-  userId      String  @map("user_id") @db.Uuid
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code        String
-  name        String
-  description String?
-  value       String?
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  description    String?
+  value          String?
 
   @@unique([userId, code])
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("settings")
 }
 
 model Category {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @map("user_id") @db.Uuid
-  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code         String
-  name         String
-  color        String        @default("#000000")
-  llm_prompt   String?
-  transactions Transaction[]
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String        @map("organization_id") @db.Uuid
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  color          String        @default("#000000")
+  llm_prompt     String?
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now()) @map("created_at")
 
   @@unique([userId, code])
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("categories")
 }
 
 model Project {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @map("user_id") @db.Uuid
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code         String
-  name         String
-  color        String        @default("#000000")
-  llm_prompt   String?
-  transactions Transaction[]
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String        @map("organization_id") @db.Uuid
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  color          String        @default("#000000")
+  llm_prompt     String?
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now()) @map("created_at")
 
   @@unique([userId, code])
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("projects")
 }
 
 model Field {
-  id                  String   @id @default(uuid()) @db.Uuid
-  userId              String   @map("user_id") @db.Uuid
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String       @id @default(uuid()) @db.Uuid
+  userId              String       @map("user_id") @db.Uuid
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId      String       @map("organization_id") @db.Uuid
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   code                String
   name                String
-  type                String   @default("string")
+  type                String       @default("string")
   llm_prompt          String?
   options             Json?
-  createdAt           DateTime @default(now()) @map("created_at")
-  isVisibleInList     Boolean  @default(false) @map("is_visible_in_list")
-  isVisibleInAnalysis Boolean  @default(false) @map("is_visible_in_analysis")
-  isRequired          Boolean  @default(false) @map("is_required")
-  isExtra             Boolean  @default(true) @map("is_extra")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  isVisibleInList     Boolean      @default(false) @map("is_visible_in_list")
+  isVisibleInAnalysis Boolean      @default(false) @map("is_visible_in_analysis")
+  isRequired          Boolean      @default(false) @map("is_required")
+  isExtra             Boolean      @default(true) @map("is_extra")
 
   @@unique([userId, code])
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("fields")
 }
 
@@ -156,6 +651,8 @@ model File {
   id                String   @id @default(uuid()) @db.Uuid
   userId            String   @map("user_id") @db.Uuid
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId    String   @map("organization_id") @db.Uuid
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   filename          String
   path              String
   mimetype          String
@@ -165,7 +662,10 @@ model File {
   cachedParseResult Json?    @map("cached_parse_result")
   createdAt         DateTime @default(now()) @map("created_at")
   analysisJobs      AnalysisJob[]
+  fiscalFilingReceiptDossiers FiscalFilingDossier[] @relation("FiscalFilingDossierReceipt")
 
+  @@index([organizationId])
+  @@index([organizationId, isReviewed, createdAt])
   @@map("files")
 }
 
@@ -173,6 +673,8 @@ model Transaction {
   id                    String    @id @default(uuid()) @db.Uuid
   userId                String    @map("user_id") @db.Uuid
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId        String    @map("organization_id") @db.Uuid
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name                  String?
   description           String?
   merchant              String?
@@ -185,16 +687,22 @@ model Transaction {
   note                  String?
   files                 Json      @default("[]")
   extra                 Json?
-  category              Category? @relation(fields: [categoryCode, userId], references: [code, userId])
+  category              Category? @relation(fields: [categoryCode, organizationId], references: [code, organizationId])
   categoryCode          String?   @map("category_code")
-  project               Project?  @relation(fields: [projectCode, userId], references: [code, userId])
+  project               Project?  @relation(fields: [projectCode, organizationId], references: [code, organizationId])
   projectCode           String?   @map("project_code")
   issuedAt              DateTime? @map("issued_at")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   text                  String?
+  fiscalDocument        TransactionFiscal?
 
+  @@unique([id, organizationId])
   @@index([userId])
+  @@index([organizationId])
+  @@index([organizationId, projectCode])
+  @@index([organizationId, categoryCode])
+  @@index([organizationId, issuedAt])
   @@index([projectCode])
   @@index([categoryCode])
   @@index([issuedAt])
@@ -204,63 +712,151 @@ model Transaction {
   @@map("transactions")
 }
 
+model TransactionFiscal {
+  id                         String                   @id @map("fiscal_document_id")
+  ownerScopeId               String                   @map("owner_scope_id") @db.Uuid
+  ownerScope                 FiscalProfile            @relation(fields: [ownerScopeId], references: [id], onDelete: Cascade)
+  sourceTransactionId        String                   @unique @map("source_transaction_id") @db.Uuid
+  transaction                Transaction              @relation(fields: [sourceTransactionId], references: [id], onDelete: Cascade)
+  documentKind               String                   @map("document_kind")
+  direction                  String
+  invoiceNumber              String?                  @map("invoice_number")
+  invoiceSeries              String?                  @map("invoice_series")
+  issueDate                  DateTime                 @map("issue_date") @db.Date
+  operationDate              DateTime?                @map("operation_date") @db.Date
+  paymentDate                DateTime?                @map("payment_date") @db.Date
+  currencyCode               String                   @default("EUR") @map("currency_code")
+  counterpartyId             String?                  @map("counterparty_id") @db.Uuid
+  counterparty               Counterparty?            @relation(fields: [counterpartyId], references: [id], onDelete: Restrict)
+  counterpartyRole           String                   @default("unknown") @map("counterparty_role")
+  counterpartyName           String?                  @map("counterparty_name")
+  counterpartyTaxId          String?                  @map("counterparty_tax_id")
+  counterpartyCountryCode    String                   @default("ES") @map("counterparty_country_code")
+  companyTaxId               String?                  @map("company_tax_id")
+  reviewStatus               String                   @default("pending") @map("review_status")
+  reviewReasons              Json                     @default("[]") @map("review_reasons")
+  vatPeriodAssignment        Json?                    @map("vat_period_assignment")
+  withholdingPeriodAssignment Json?                   @map("withholding_period_assignment")
+  observedAmountCents        Int                      @default(0) @map("observed_amount_cents")
+  totalNetCents              Int                      @default(0) @map("total_net_cents")
+  totalVatCents              Int                      @default(0) @map("total_vat_cents")
+  totalWithholdingCents      Int                      @default(0) @map("total_withholding_cents")
+  totalGrossCents            Int                      @default(0) @map("total_gross_cents")
+  totalPayableCents          Int                      @default(0) @map("total_payable_cents")
+  sourceConfidence           String                   @default("manual") @map("source_confidence")
+  notes                      String?
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @updatedAt @map("updated_at")
+  auditEvents                FiscalAuditLog[]
+  reviewRequests             FiscalReviewRequest[]
+  lines                      TransactionFiscalLine[]
+
+  @@unique([ownerScopeId, sourceTransactionId])
+  @@index([ownerScopeId, reviewStatus, issueDate])
+  @@index([counterpartyId])
+  @@map("transaction_fiscals")
+}
+
+model TransactionFiscalLine {
+  id                         String            @id @map("line_id")
+  transactionFiscalId        String            @map("transaction_fiscal_id")
+  transactionFiscal          TransactionFiscal @relation(fields: [transactionFiscalId], references: [id], onDelete: Cascade)
+  lineNumber                 Int               @map("line_number")
+  concept                    String
+  baseAmountCents            Int               @default(0) @map("base_amount_cents")
+  vatTreatment               String            @default("out_of_scope") @map("vat_treatment")
+  vatRateBps                 Int               @default(0) @map("vat_rate_bps")
+  vatAmountCents             Int               @default(0) @map("vat_amount_cents")
+  withholdingApplicable      Boolean           @default(false) @map("withholding_applicable")
+  withholdingRegime          String            @default("none") @map("withholding_regime")
+  withholdingBaseCents       Int               @default(0) @map("withholding_base_cents")
+  withholdingRateBps         Int               @default(0) @map("withholding_rate_bps")
+  withholdingAmountCents     Int               @default(0) @map("withholding_amount_cents")
+  deductibilityPercentBps    Int               @default(0) @map("deductibility_percent_bps")
+  deductibilityReason        String            @default("not_applicable") @map("deductibility_reason")
+  expenseFamily              String            @default("none") @map("expense_family")
+  isReadyForVatBooks         Boolean           @default(false) @map("is_ready_for_vat_books")
+  isReadyForWithholdingBooks Boolean           @default(false) @map("is_ready_for_withholding_books")
+  createdAt                  DateTime          @default(now()) @map("created_at")
+  updatedAt                  DateTime          @updatedAt @map("updated_at")
+
+  @@unique([transactionFiscalId, lineNumber])
+  @@index([transactionFiscalId, isReadyForVatBooks], map: "transaction_fiscal_lines_vat_ready_idx")
+  @@index([transactionFiscalId, isReadyForWithholdingBooks], map: "transaction_fiscal_lines_withholding_ready_idx")
+  @@map("transaction_fiscal_lines")
+}
+
 model Currency {
-  id     String  @id @default(uuid()) @db.Uuid
-  userId String? @map("user_id") @db.Uuid
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code   String
-  name   String
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
 
   @@unique([userId, code])
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@map("currencies")
 }
 
 model AppData {
-  id     String @id @default(uuid()) @db.Uuid
-  app    String
-  userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data   Json
+  id             String       @id @default(uuid()) @db.Uuid
+  app            String
+  userId         String       @map("user_id") @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  data           Json
 
   @@unique([userId, app])
+  @@unique([organizationId, app])
+  @@index([organizationId])
   @@map("app_data")
 }
 
 model Progress {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String
-  data      Json?
-  current   Int      @default(0)
-  total     Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           String
+  data           Json?
+  current        Int          @default(0)
+  total          Int          @default(0)
+  createdAt      DateTime     @default(now()) @map("created_at")
 
   @@index([userId])
+  @@index([organizationId])
   @@map("progress")
 }
 
 model AnalysisJob {
-  id               String   @id @default(uuid()) @db.Uuid
-  userId           String   @map("user_id") @db.Uuid
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fileId           String   @map("file_id") @db.Uuid
-  file             File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId   String       @map("organization_id") @db.Uuid
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fileId           String       @map("file_id") @db.Uuid
+  file             File         @relation(fields: [fileId], references: [id], onDelete: Cascade)
   status           String
   prompt           String
   schema           Json
   attachments      Json
   providers        Json
-  selectedProvider String?  @map("selected_provider")
-  tokensUsed       Int      @default(0) @map("tokens_used")
+  selectedProvider String?      @map("selected_provider")
+  tokensUsed       Int          @default(0) @map("tokens_used")
   result           Json?
   error            String?
-  createdAt        DateTime @default(now()) @map("created_at")
-  startedAt        DateTime? @map("started_at")
-  finishedAt       DateTime? @map("finished_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  startedAt        DateTime?    @map("started_at")
+  finishedAt       DateTime?    @map("finished_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
   @@index([fileId, status])
   @@map("analysis_jobs")
 }

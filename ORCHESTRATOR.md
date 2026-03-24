@@ -1,0 +1,1220 @@
+# ORCHESTRATOR
+
+Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a compacciones de contexto y para dar a futuros subagentes un mapa operativo fiable del sistema.
+
+## Estado actual
+
+- Repo base: monolito Next.js 15 con App Router.
+- Backend de datos: Prisma sobre PostgreSQL.
+- Almacenamiento de adjuntos: filesystem por usuario.
+- Análisis IA: asíncrono mediante `analysis_jobs` + worker dedicado.
+- Idioma por defecto de producto: `es-ES`.
+- Dirección de arquitectura aprobada para la siguiente gran fase:
+  - no parar producto para montar ya la infraestructura final
+  - sí corregir ya la arquitectura lógica del producto
+  - prioridad: `organization-centric` + `multitenant shared-schema` + `storage S3-ready` + `web/worker` limpios
+  - infraestructura física por fases:
+    - ahora: VM pequeña + Docker Compose + PostgreSQL temporal + S3 real
+    - beta: PostgreSQL gestionado
+    - escala: compute gestionado
+- Plan operativo actual para esta transición:
+  - `docs/superpowers/plans/2026-03-22-multitenant-foundation-and-infra-plan.md`
+  - plan de remate final del foundation hardening:
+    - `docs/superpowers/plans/2026-03-22-multitenant-foundation-closeout-plan.md`
+- Plan funcional siguiente para usuario final:
+  - `docs/superpowers/plans/2026-03-23-guided-user-experience-plan.md`
+- Plan maestro siguiente para producto fiscal S.L. española:
+  - `docs/superpowers/plans/2026-03-23-spanish-sl-fiscal-control-tower-plan.md`
+- Expansión del control plane `/ops` cerrada:
+  - spec de alcance:
+    - `docs/superpowers/specs/2026-03-23-ops-control-plane-scope.md`
+  - plan ejecutado:
+    - `docs/superpowers/plans/2026-03-23-ops-control-plane-expansion-plan.md`
+  - resultado operativo:
+    - `/ops` ya funciona como panel global con filtros por plan, billing, acceso, soporte y backlog
+    - `/ops/organizations/[organizationId]` ya funciona como ficha operativa completa por tenant
+    - la ficha ya incluye:
+      - contrato y acceso
+      - miembros e invitaciones
+      - salud/readiness
+      - soporte profundo
+      - auditoría y eventos de billing
+    - el control plane ya permite:
+      - cambiar plan y addons
+      - programar cambios de plan
+      - aplicar overrides de acceso
+      - invitar, cambiar rol, expulsar y transferir ownership
+      - abrir y revocar sesiones de soporte
+      - impersonar como miembro activo del tenant con motivo y trazabilidad
+  - piezas nuevas clave:
+    - `models/ops.ts`
+    - `models/ops-organization-detail.ts`
+    - `models/ops-billing-admin.ts`
+    - `models/ops-support.ts`
+    - `app/(app)/ops/organizations/[organizationId]/page.tsx`
+    - `app/(app)/ops/organizations/[organizationId]/actions.ts`
+    - `components/ops/organization-detail-shell.tsx`
+    - `components/ops/organization-contract-card.tsx`
+    - `components/ops/organization-members-card.tsx`
+    - `components/ops/organization-health-card.tsx`
+    - `components/ops/organization-support-card.tsx`
+    - `components/ops/organization-audit-card.tsx`
+    - `components/ops/ops-dashboard-filters.tsx`
+    - `components/ops/ops-summary-cards.tsx`
+  - cobertura añadida:
+    - `tests/models/ops-health-summary.test.mjs`
+    - `tests/models/ops-organization-detail.test.mjs`
+    - `tests/models/ops-billing-admin.test.mjs`
+    - `tests/models/ops-support.test.mjs`
+    - `tests/app/ops-organization-detail.test.mjs`
+    - `tests/app/ops-dashboard.test.mjs`
+  - guardrails fijados:
+    - `Ops` no edita el catálogo comercial; opera contrato interno
+    - impersonación solo sobre miembros activos del tenant
+    - soporte con motivo obligatorio, caducidad y trazabilidad
+    - el control plane sigue dentro del monolito; no se separa todavía como servicio propio
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/ops-health-summary.test.mjs tests/models/ops-organization-detail.test.mjs tests/models/ops-billing-admin.test.mjs tests/models/ops-support.test.mjs tests/app/ops-organization-detail.test.mjs tests/app/ops-dashboard.test.mjs tests/models/ops.test.mjs` OK
+    - `npx eslint app/(app)/ops/page.tsx app/(app)/ops/actions.ts app/(app)/ops/layout.tsx app/(app)/ops/organizations/[organizationId]/page.tsx app/(app)/ops/organizations/[organizationId]/loading.tsx app/(app)/ops/organizations/[organizationId]/actions.ts components/ops/*.tsx models/ops.ts models/ops-organization-detail.ts models/ops-billing-admin.ts models/ops-support.ts models/support-access.ts tests/models/ops*.test.mjs tests/app/ops-*.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npm run build` OK
+    - smoke manual real OK:
+      - `/ops`
+      - `/ops/organizations/[organizationId]`
+      - filtros globales
+      - cards de detalle
+- Cierre reciente del bloque Stripe por organización:
+  - `app/api/stripe/checkout`, `app/api/stripe/portal` y `app/api/stripe/webhook` ya siguen el patrón testeable `create-route.ts` con imports relativos e inyección de dependencias
+  - endurecimientos aplicados:
+    - billing actions (`checkout` y `portal`) ya exigen `requireCurrentTenantAdmin()`
+    - los errores de permisos en billing ya salen como `403` explícito, no como `500`
+    - `checkout` ya deduplica addons de query antes de construir `line_items`
+    - `checkout` ya envía `idempotencyKey` estable por `organizationId + plan + addons`
+    - el webhook ya se puede probar fuera de Next y mantiene el sync por organización en `checkout.session.completed`
+    - la página `cloud/payment/success` ya valida que la checkout session pertenezca a la organización activa antes de sincronizar contrato
+    - el success page ya no usa fallback ambiguo por `customerId`; sólo sincroniza si hay `organizationId` resoluble y coincide con la organización activa
+  - cobertura añadida:
+    - `tests/app/api/stripe-checkout.test.mjs`
+    - `tests/app/api/stripe-portal.test.mjs`
+    - `tests/app/api/stripe-webhook.test.mjs`
+    - `tests/models/billing/checkout-success.test.mjs`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/billing/checkout-success.test.mjs tests/app/api/stripe-checkout.test.mjs tests/app/api/stripe-portal.test.mjs tests/app/api/stripe-webhook.test.mjs` OK
+    - `npx eslint models/billing/checkout-success.ts tests/models/billing/checkout-success.test.mjs app/(auth)/cloud/payment/success/page.tsx app/api/stripe/checkout/create-route.ts app/api/stripe/checkout/route.ts app/api/stripe/portal/create-route.ts app/api/stripe/portal/route.ts app/api/stripe/webhook/create-route.ts app/api/stripe/webhook/route.ts tests/app/api/stripe-checkout.test.mjs tests/app/api/stripe-portal.test.mjs tests/app/api/stripe-webhook.test.mjs` OK
+    - `npm run build` OK
+    - `npx tsc --noEmit --pretty false` OK
+  - residuales conscientes tras este corte:
+    - el contrato local todavía no protege contra webhooks antiguos fuera de orden; eso exige versionado/ordering explícito en `organization_subscriptions`
+- Cierre reciente del bloque SaaS/billing runtime tras review externo:
+  - `models/users.ts` ya asegura también el bootstrap de billing por organización en `getUserById()`, `getOrCreateCloudUser()` y `getOrCreateSelfHostedUser()`
+  - `lib/auth.ts` deja de duplicar ese bootstrap en `getCurrentUser()`
+  - `models/mobile/inbox.ts` ya scopea ficheros del inbox móvil por `organizationId` además de `userId`, evitando fugas entre organizaciones del mismo usuario
+  - `app/(app)/unsorted/actions.ts` ya autoriza análisis por organización y carga adjuntos con el owner real del fichero, no con el usuario actual
+  - cobertura añadida:
+    - `tests/models/users.test.mjs`
+    - `tests/models/mobile/inbox.test.mjs`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/users.test.mjs tests/models/mobile/inbox.test.mjs tests/models/uploads.test.mjs tests/app/api/uploads.test.mjs tests/app/api/mobile/capture.test.mjs tests/app/api/mobile/inbox.test.mjs tests/models/billing/runtime.test.mjs tests/models/billing/usage.test.mjs` OK
+    - `node --test --experimental-strip-types app/(app)/unsorted/actions.test.mjs` OK
+    - `npx eslint models/users.ts lib/auth.ts models/mobile/inbox.ts app/(app)/unsorted/actions.ts tests/models/users.test.mjs tests/models/mobile/inbox.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npm run build` OK
+- Task 0.1 del roadmap ya cerrada:
+  - contrato de multitenancy: `docs/superpowers/specs/2026-03-22-multitenant-foundation-design.md`
+  - contrato de storage: `docs/superpowers/specs/2026-03-22-storage-contract.md`
+  - decisión congelada:
+    - tenancy `shared database` + `shared schema`
+    - aislamiento por `organizationId`
+    - `Organization` como raíz del tenant
+    - `Membership` como relación identidad-tenant
+    - `User` sigue siendo identidad/auth/compatibilidad, no owner canónico del dominio
+    - todas las nuevas claves de storage de negocio deben vivir bajo `organizations/{organizationId}/...`
+- Task 0.2 del roadmap ya cerrada:
+  - mapa de seguridad: `docs/superpowers/specs/2026-03-22-migration-safety-map.md`
+  - secuencia segura fijada:
+    - primero `Organization`, `Membership`, `Role` y resolución de `currentOrganization`
+    - después catálogos/defaults por organización
+    - después documentos/jobs
+    - después storage abstraction y migración física
+    - fiscal va después de que el dominio general ya sea organization-centric
+  - riesgos altos fijados:
+    - no mezclar cambio de tenant root con storage físico
+    - no tocar fiscal antes de resolver la relación `FiscalProfile -> Organization`
+    - no migrar `Transaction` antes que `Category/Project/Field/Currency`
+    - `mobile capture` y `analysis worker` son superficies de alto riesgo de regresión durante la ola de documentos/jobs
+- Task 1.1 del roadmap ya cerrada:
+  - raíz tenant mínima ya introducida en Prisma:
+    - `Organization`
+    - `Membership`
+    - `Role`
+    - `User.defaultOrganizationId`
+  - migración con backfill ya preparada:
+    - `prisma/migrations/20260322193000_add_organizations_and_memberships/migration.sql`
+    - estrategia de bootstrap: `1 user -> 1 organization -> 1 membership owner`
+    - backfill:
+      - crea `organizations` para usuarios existentes usando `businessName -> name -> local-part del email`
+      - crea `memberships` owner por cada usuario existente
+      - fija `users.default_organization_id = users.id` cuando falta
+  - helpers base ya introducidos:
+    - `models/organizations.ts`
+    - `models/memberships.ts`
+    - `models/users.ts` ya asegura bootstrap de organización en self-hosted y cloud
+  - endurecimientos aplicados tras review:
+    - bootstrap determinista usando `organization.id = user.id` en runtime, alineado con el backfill
+    - `membership.upsert` owner tanto en bootstrap nuevo como en reparación de bootstrap parcial
+    - `getOrCreateCloudUser()` recarga el usuario tras bootstrap para devolver `defaultOrganizationId` fresco
+    - fallback de nombre unificado a `Organization` cuando faltan `businessName`, `name` y local-part de email
+  - verificación fresca de la task:
+    - `node --test --experimental-strip-types tests/models/organizations.test.mjs tests/models/memberships.test.mjs tests/models/users.test.mjs` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npx eslint models/users.ts models/organizations.ts models/memberships.ts tests/models/organizations.test.mjs tests/models/memberships.test.mjs tests/models/users.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+  - límite explícito de esta ola:
+    - todavía no se ha migrado ownership de `Setting/Category/Project/Field/Currency`
+    - todavía no se ha tocado `File/Transaction/AnalysisJob`
+    - fiscal sigue pendiente de reconciliar contra `Organization`
+- Task 1.2 del roadmap ya cerrada:
+  - resolución del tenant activo ya introducida:
+    - `lib/tenant.ts`
+    - helpers expuestos:
+      - `getCurrentOrganization()`
+      - `getCurrentMembership()`
+      - `requireCurrentOrganization()`
+  - contrato operativo de esta ola:
+    - la organización activa sale del `User.defaultOrganizationId`
+    - antes de resolver tenant, el sistema reasegura `ensureOrganizationBootstrapForUser(user.id)`
+    - self-hosted y cloud comparten el mismo camino lógico de tenant
+  - endurecimiento aplicado:
+    - `models/users.ts` ahora hace bootstrap de organización también en `getUserById()`, no solo en creación/self-hosted
+    - `app/(app)/layout.tsx` ya resuelve `currentOrganization` al entrar en el shell autenticado
+    - el layout evita doble lectura completa del usuario reutilizando el `user` ya cargado al pedir `requireCurrentOrganization()`
+  - alcance explícito:
+    - todavía no hay selector de organización activa
+    - la app sigue operando sobre la organización por defecto del usuario
+    - `File/Transaction/AnalysisJob` siguen filtrando por `userId` hasta la siguiente ola
+  - verificación fresca de la task:
+    - `node --test --experimental-strip-types tests/lib/tenant.test.mjs tests/models/users.test.mjs tests/models/organizations.test.mjs tests/models/memberships.test.mjs` OK
+    - `npx eslint lib/tenant.ts models/users.ts app/(app)/layout.tsx tests/lib/tenant.test.mjs tests/models/users.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+- Task 2.1 del roadmap en curso:
+  - contrato compartido nuevo para catálogos/configuración:
+    - `models/organization-owned.ts`
+    - helpers:
+      - `buildOrganizationOwnedScope()`
+      - `buildOrganizationOwnedCodeWhere()`
+      - `buildOrganizationOwnedCreateData()`
+  - schema y migración ya preparados para mover configuración a tenant:
+    - `prisma/schema.prisma`
+    - `prisma/migrations/20260322224500_add_organization_scope_to_workspace_config/migration.sql`
+    - tablas afectadas:
+      - `Setting`
+      - `Category`
+      - `Project`
+      - `Field`
+      - `Currency`
+    - cada una añade `organizationId`, relación con `Organization`, unique nuevo por `(organizationId, code)` y mantiene `userId` temporal por compatibilidad
+  - dominio ya reorientado a `organizationId` en runtime:
+    - `models/defaults.ts`
+    - `models/settings.ts`
+    - `models/categories.ts`
+    - `models/projects.ts`
+    - `models/fields.ts`
+    - `models/currencies.ts`
+    - `models/export_and_import.ts`
+    - `models/mobile/capture.ts`
+    - `models/mobile/inbox.ts`
+    - `app/(app)/settings/actions.ts`
+    - `app/(app)/settings/danger/actions.ts`
+    - `app/(app)/import/csv/actions.tsx`
+    - `app/(app)/export/transactions/route.ts`
+    - `app/api/mobile/capture/create-route.ts`
+    - `app/api/mobile/inbox/create-route.ts`
+  - superficies ya propagadas a tenant activo explícito:
+    - páginas de settings:
+      - `app/(app)/settings/page.tsx`
+      - `app/(app)/settings/categories/page.tsx`
+      - `app/(app)/settings/projects/page.tsx`
+      - `app/(app)/settings/fields/page.tsx`
+      - `app/(app)/settings/currencies/page.tsx`
+      - `app/(app)/settings/llm/page.tsx`
+      - `app/(app)/settings/danger/page.tsx`
+    - páginas/acciones de producto que leen catálogos o settings:
+      - `app/(app)/dashboard/page.tsx`
+      - `app/(app)/apps/invoices/page.tsx`
+      - `app/(app)/transactions/page.tsx`
+      - `app/(app)/transactions/[transactionId]/page.tsx`
+      - `app/(app)/unsorted/page.tsx`
+      - `app/(app)/unsorted/actions.ts`
+      - `app/(app)/capture/review/[fileId]/page.tsx`
+      - `app/(app)/capture/review/[fileId]/actions.ts`
+      - `app/(app)/capture/review/[fileId]/review-actions-core.ts`
+      - `app/(app)/import/csv/page.tsx`
+      - `app/(app)/import/csv/actions.tsx`
+      - `app/(app)/export/transactions/route.ts`
+    - auth/bootstrap:
+      - `app/(auth)/actions.ts`
+      - `app/(auth)/self-hosted/redirect/route.ts`
+  - decisión operativa de esta ola:
+    - mientras no exista selector multi-org real, se mantiene la invariancia `organization.id === user.id` del bootstrap inicial
+    - por eso los callers actuales que todavía pasan `user.id` siguen funcionando como `organizationId`
+    - `userId` se sigue escribiendo en estas tablas solo como compatibilidad temporal hasta la ola de documentos/transacciones
+  - endurecimiento adicional aplicado:
+    - mobile capture e inbox ya reciben `organizationId` explícito desde las rutas API y no leen settings por `user.id`
+    - import/export CSV ya resuelve categorías y proyectos por `organizationId`, evitando fugas cruzadas entre tenants por coincidencia de `code` o `name`
+    - `models/export_and_import.ts` ya scopea `findFirst` de categorías/proyectos con `organizationId`
+  - verificación fresca del avance:
+    - `node --test --experimental-strip-types tests/models/tenant-config-scope.test.mjs` OK
+    - `node --test --experimental-strip-types tests/models/tenant-config-scope.test.mjs tests/lib/tenant.test.mjs tests/models/users.test.mjs tests/models/organizations.test.mjs tests/models/memberships.test.mjs` OK
+    - `node --test --experimental-strip-types tests/models/mobile/capture.test.mjs tests/models/mobile/inbox.test.mjs tests/app/api/mobile/capture.test.mjs tests/app/api/mobile/inbox.test.mjs tests/models/tenant-config-scope.test.mjs` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npx eslint models/organization-owned.ts models/defaults.ts models/settings.ts models/categories.ts models/projects.ts models/fields.ts models/currencies.ts models/export_and_import.ts models/mobile/capture.ts models/mobile/inbox.ts app/(app)/settings/actions.ts app/(app)/settings/danger/actions.ts app/(app)/import/csv/actions.tsx app/(app)/export/transactions/route.ts app/api/mobile/capture/create-route.ts app/api/mobile/inbox/create-route.ts tests/models/tenant-config-scope.test.mjs tests/models/mobile/capture.test.mjs tests/models/mobile/inbox.test.mjs tests/app/api/mobile/capture.test.mjs tests/app/api/mobile/inbox.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+    - `npm run build` OK
+  - pendiente antes de cerrar la task:
+    - aplicar y verificar la migración sobre base real
+    - decidir si se remata `models/transactions.ts` para dejar de inferir `organizationId` por la invariancia temporal, o si se difiere explícitamente a la ola de `documents/jobs`
+- intento de validación sobre BD real bloqueado por entorno:
+  - `docker compose ps postgres` confirmó que `postgres` local no estaba levantado
+  - `docker compose up -d postgres` falló al descargar `postgres:17-alpine` por timeout de red
+  - mientras eso no se resuelva, la validación de migraciones en vivo sigue pendiente aunque `prisma validate` y `prisma generate` estén en verde
+- Task 2.2 del roadmap en curso:
+  - subola ya abierta y verificada para `runtime state`:
+    - `File`
+    - `AnalysisJob`
+    - `Progress`
+    - `AppData`
+  - schema y migración preparados:
+    - `prisma/schema.prisma`
+    - `prisma/migrations/20260322235500_add_organization_scope_to_runtime_state/migration.sql`
+  - decisiones aplicadas en runtime:
+    - estas entidades ya escriben `organizationId` además de `userId`
+    - se mantiene compatibilidad temporal con `userId` como filtro principal mientras `Transaction` y `fiscal` no se hayan movido aún
+    - `AppData` ya usa como clave canónica `organizationId + app`
+    - `AnalysisJob` y `Progress` ya admiten filtro explícito por tenant activo
+  - write set principal ya tocado:
+    - `models/files.ts`
+    - `models/analysis-jobs.ts`
+    - `models/progress.ts`
+    - `models/apps.ts`
+    - `models/uploads.ts`
+    - `models/mobile/capture.ts`
+    - `models/mobile/inbox.ts`
+    - `app/(app)/unsorted/actions.ts`
+    - `app/api/analysis-jobs/[jobId]/route.ts`
+    - `app/api/progress/[progressId]/route.ts`
+    - `app/(app)/settings/backups/data/route.ts`
+    - `app/(app)/export/transactions/route.ts`
+    - `app/api/uploads/create-route.ts`
+    - `app/(app)/files/actions.ts`
+    - `app/(app)/transactions/actions.ts`
+    - `app/(app)/apps/invoices/actions.ts`
+  - endurecimiento ya aplicado:
+    - subidas nuevas de archivos (`mobile`, `uploads`, `files`, `transactions`, `invoices`, `split unsorted`) ya persisten `organizationId`
+    - `mobile inbox` ya filtra jobs por `organizationId` además de `userId`
+    - `analysis job polling` y `progress SSE` ya resuelven tenant activo al leer
+    - `backup/export` ya actualizan progreso por tenant activo
+  - verificación fresca de la subola:
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `node --test --experimental-strip-types tests/models/mobile/capture.test.mjs tests/models/mobile/inbox.test.mjs tests/models/uploads.test.mjs tests/app/api/mobile/capture.test.mjs tests/app/api/mobile/inbox.test.mjs tests/app/api/uploads.test.mjs tests/models/tenant-config-scope.test.mjs` OK
+    - `npx eslint models/files.ts models/analysis-jobs.ts models/progress.ts models/apps.ts models/uploads.ts models/mobile/capture.ts models/mobile/inbox.ts app/(app)/unsorted/actions.ts app/api/analysis-jobs/[jobId]/route.ts app/api/progress/[progressId]/route.ts app/(app)/settings/backups/data/route.ts app/(app)/export/transactions/route.ts app/api/uploads/create-route.ts app/(app)/files/actions.ts app/(app)/transactions/actions.ts app/(app)/apps/invoices/actions.ts tests/models/uploads.test.mjs tests/app/api/uploads.test.mjs` OK
+    - `npm run build` OK
+    - `npx tsc --noEmit --pretty false` OK
+  - pendiente explícito de esta subola:
+    - aplicar la migración en una BD real
+    - siguiente recorte lógico: realinear `fiscal` con la nueva raíz de tenant y preparar `storage abstraction`
+  - subola adicional ya integrada y verificada para `Transaction` + lecturas críticas de `File`:
+    - `Transaction` ya es `organization-owned` en schema y runtime:
+      - añade `organizationId`
+      - relación a `Organization`
+      - relación a `Category/Project` por `(code, organizationId)` en vez de `(code, userId)`
+      - helper explícito en `models/transaction-owned.ts`
+    - write set principal de esta pasada:
+      - `prisma/schema.prisma`
+      - `prisma/migrations/20260323003000_add_organization_scope_to_transactions/migration.sql`
+      - `models/transaction-owned.ts`
+      - `models/transactions.ts`
+      - `models/files.ts`
+      - `models/uploads.ts`
+      - `models/mobile/capture.ts`
+      - `app/(app)/transactions/*`
+      - `app/(app)/unsorted/actions.ts`
+      - `app/(app)/apps/invoices/actions.ts`
+      - `app/(app)/import/csv/actions.tsx`
+      - `app/(app)/export/transactions/route.ts`
+      - `app/(app)/files/download/[fileId]/route.ts`
+      - `app/(app)/files/preview/[fileId]/route.ts`
+      - `app/(app)/capture/review/[fileId]/*`
+      - `app/(app)/layout.tsx`
+      - `app/(app)/dashboard/page.tsx`
+      - `app/(app)/unsorted/page.tsx`
+      - `ai/analyze.ts`
+      - `tests/models/transaction-owned.test.mjs`
+      - `tests/models/uploads.test.mjs`
+      - `tests/models/mobile/capture.test.mjs`
+      - `tests/app/api/uploads.test.mjs`
+      - `tests/app/capture/review-actions.test.mjs`
+    - decisiones aplicadas:
+      - las lecturas y mutaciones críticas de `Transaction` ya consumen `organizationId` como scope canónico
+      - `createTransaction()` mantiene `userId` solo como dato de autoría/compatibilidad; el tenant real ya es `organizationId`
+      - `File` pasa a leerse por `organizationId` en inbox, review móvil, preview/download y transacciones
+      - preview/download ya no resuelven el binario con el usuario activo, sino con `file.userId` para no depender del miembro que abre la sesión
+      - `deleteFile()` ya usa el owner real del fichero para resolver el path físico antes de borrar
+    - residual explícito tras esta pasada:
+      - el namespace físico del storage sigue siendo legacy por usuario/email mientras no se ejecute la ola de `storage abstraction`
+      - por eso el ownership lógico ya está orientado a tenant, pero el provider local aún no es `organization-first`
+  - base de `storage abstraction` ya iniciada y verificada:
+    - contrato congelado en `docs/superpowers/specs/2026-03-22-storage-contract.md`
+    - provider local nuevo en `lib/storage/local.ts`
+    - tipos y singleton en `lib/storage/types.ts` y `lib/storage/index.ts`
+    - key builders canónicos en `lib/storage/keys.ts`
+    - puente legacy/canónico para resolución física en `lib/storage/paths.ts`
+    - `lib/files.ts` ya resuelve `fullPathForFile()` contra la raíz global de storage cuando `File.path` es un `objectKey` canónico `organizations/{organizationId}/...`, manteniendo compatibilidad con rutas legacy por usuario
+    - `models/upload-targets.ts` ya centraliza los destinos por defecto de `uploads`:
+      - `unsorted` nuevo -> `organizations/{organizationId}/uploads/unsorted/{fileId}{ext}`
+      - `transaction` nueva -> `organizations/{organizationId}/uploads/transactions/{fileId}/{YYYY}/{MM}/{storedFilename}`
+    - `models/uploads.ts` ya usa ese builder canónico y resuelve la ruta física con `resolveStoredFileAbsolutePath()`, así que las subidas nuevas empiezan a persistir `File.path` como `objectKey` lógico aunque el provider físico siga siendo local
+    - `lib/storage/usage.ts` + `lib/files.ts` ya calculan storage usado de forma tenant-aware durante la migración:
+      - suma `organizations/{organizationId}` y, si existe, el namespace legacy por usuario/email
+      - `getDirectorySize()` ya tolera `ENOENT`, así que la primera subida no revierte por faltar la carpeta legacy
+    - write paths alineados en esta pasada:
+      - `app/(app)/files/actions.ts` ya escribe `unsorted` canónico
+      - `app/(app)/transactions/actions.ts` ya escribe adjuntos de transacción canónicos
+      - `app/(app)/apps/invoices/actions.ts` ya escribe el PDF en path canónico y actualiza `storageUsed`
+      - `models/mobile/capture.ts` ya escribe `unsorted` canónico
+      - `app/(app)/unsorted/actions.ts` ya resuelve el binario original con el owner real del fichero y mueve `unsorted -> transaction` usando path canónico
+    - esto permite empezar a persistir claves canónicas sin romper preview/download ni borrado local mientras siga vivo el filesystem actual
+    - siguiente corte lógico de esta ola:
+      - mover `previews` y derivados a claves canónicas
+      - dejar el adapter local leyendo legacy y escribiendo canónico en más superficies
+      - después introducir provider S3-compatible sin tocar dominio
+    - verificación fresca:
+      - `node --test --experimental-strip-types tests/lib/storage/local-provider.test.mjs tests/lib/storage/keys.test.mjs tests/lib/storage/file-location.test.mjs tests/lib/storage/usage.test.mjs tests/models/upload-targets.test.mjs tests/models/uploads.test.mjs tests/models/mobile/capture.test.mjs tests/app/api/uploads.test.mjs app/(app)/unsorted/actions.test.mjs` OK
+      - `npx eslint lib/files.ts lib/storage/types.ts lib/storage/local.ts lib/storage/index.ts lib/storage/keys.ts lib/storage/paths.ts lib/storage/usage.ts models/upload-targets.ts models/uploads.ts models/mobile/capture.ts app/(app)/files/actions.ts app/(app)/transactions/actions.ts app/(app)/apps/invoices/actions.ts app/(app)/unsorted/actions.ts app/(app)/unsorted/actions.test.mjs tests/lib/storage/local-provider.test.mjs tests/lib/storage/keys.test.mjs tests/lib/storage/file-location.test.mjs tests/lib/storage/usage.test.mjs tests/models/upload-targets.test.mjs tests/models/uploads.test.mjs tests/models/mobile/capture.test.mjs tests/app/api/uploads.test.mjs` OK
+      - `npx tsc --noEmit --pretty false` OK
+      - `npm run build` OK
+    - verificación fresca:
+      - `node --test --experimental-strip-types tests/models/transaction-owned.test.mjs tests/models/uploads.test.mjs tests/models/mobile/capture.test.mjs tests/app/api/uploads.test.mjs tests/app/capture/review-actions.test.mjs` OK
+      - `npx prisma validate` OK
+      - `npx prisma generate` OK
+      - `npx eslint ai/analyze.ts models/files.ts models/mobile/capture.ts models/uploads.ts models/transactions.ts app/(app)/layout.tsx app/(app)/dashboard/page.tsx app/(app)/unsorted/page.tsx app/(app)/unsorted/actions.ts app/(app)/transactions/actions.ts app/(app)/capture/review/[fileId]/page.tsx app/(app)/capture/review/[fileId]/actions.ts app/(app)/capture/review/[fileId]/review-actions-core.ts app/(app)/files/download/[fileId]/route.ts app/(app)/files/preview/[fileId]/route.ts tests/models/transaction-owned.test.mjs tests/models/uploads.test.mjs tests/models/mobile/capture.test.mjs tests/app/api/uploads.test.mjs tests/app/capture/review-actions.test.mjs` OK
+      - `npx tsc --noEmit --pretty false` OK
+      - `npm run build` OK
+- Estado de verificación conocido:
+  - verificación fiscal dirigida reciente:
+    - `components/tax/layout/content.test.mjs` OK
+    - `tests/models/fiscal/close.test.mjs` OK
+    - `tests/models/fiscal/legal-archive.test.mjs` OK
+    - `npx tsc --noEmit --pretty false` OK
+    - `npx eslint` sobre el write set fiscal reciente OK
+  - verificación global reciente:
+    - `npm run lint` OK
+    - `npx tsc --noEmit --pretty false` OK
+    - `npm run build` OK
+  - remate final del `multitenant foundation closeout` ya cerrado:
+    - `previews` y derivados ya escriben claves canónicas por organización y mantienen lectura legacy mientras dure la migración
+    - contrato de previews congelado en `docs/superpowers/specs/2026-03-22-preview-storage-contract.md`
+    - provider S3-compatible operativo en `lib/storage/s3.ts` y runtime de provider ya desacoplado del filesystem local
+    - tooling de migración física ya creado en `scripts/migrate-storage.ts` con runbook en `docs/superpowers/specs/2026-03-22-storage-migration-runbook.md`
+    - backups/export ya son org-aware/provider-aware y tienen runbook en `docs/superpowers/specs/2026-03-22-backup-recovery-runbook.md`
+    - `analysis-worker` y runtime de jobs ya consumen storage provider configurable, no rutas locales embebidas
+    - `fiscal sync` ya prefiere `organizationId` como raíz explícita y mantiene `userId` solo como compatibilidad temporal
+    - `tax` ya tiene guardas tenant-aware verificadas en `tests/app/tax/tenant-guards.test.mjs`
+    - la shell ya expone organización activa con badge tenant-aware y navegación preparada para multi-org básico
+    - `app/(auth)/self-hosted/page.tsx` mueve defaults al servidor para no arrastrar Prisma al bundle cliente; `setup-form-client.tsx` recibe esos valores por props
+    - `scripts/db-cutover-check.ts` ya existe como preflight ligero para el paso `PostgreSQL local -> PostgreSQL gestionado`
+    - `scripts/backup-local.ts` ya existe como backup diario barato para el perfil `app + worker + postgres` en tu propia máquina
+    - gotcha del CLI:
+      - en este repo la ruta del workspace contiene espacios
+      - los scripts ESM que quieran autodetectar `main()` no deben comparar `import.meta.url` con ``file://${process.argv[1]}``
+      - hay que usar `pathToFileURL(process.argv[1]).href`, como hace ahora `scripts/db-cutover-check.ts`
+    - documentos de salida ya cerrados:
+      - `docs/superpowers/specs/2026-03-22-production-vm-runbook.md`
+      - `docs/superpowers/specs/2026-03-22-managed-postgres-cutover.md`
+      - `docs/superpowers/specs/2026-03-22-compute-replatform-trigger.md`
+      - `docs/superpowers/specs/2026-03-22-agent-readiness-guardrails.md`
+  - verificación integrada fresca del cierre:
+    - `node --test --experimental-strip-types tests/lib/storage/tenant-quota.test.mjs tests/lib/storage/legacy-usage-aggregation.test.mjs tests/lib/previews/storage-preview-paths.test.mjs tests/lib/previews/pdf-limit.test.mjs tests/app/files/preview-route.test.mjs tests/models/fiscal/legal-archive.test.mjs tests/models/fiscal/sync.test.mjs tests/models/fiscal/tenant-scope.test.mjs tests/app/tax/tenant-guards.test.mjs tests/app/tenant-routing.test.mjs tests/lib/storage/s3-provider.test.mjs tests/scripts/migrate-storage.test.mjs tests/scripts/db-cutover-check.test.mjs tests/lib/worker-runtime.test.mjs tests/models/backups.test.mjs tests/app/settings/backups-storage.test.mjs` OK (`55/55`)
+    - `npx eslint scripts/db-cutover-check.ts tests/scripts/db-cutover-check.test.mjs app/(app)/settings/backups/data/create-route.ts app/(auth)/self-hosted/page.tsx app/(auth)/self-hosted/setup-form-client.tsx tests/app/tenant-routing.test.mjs` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npm run build` OK
+    - `npx tsc --noEmit --pretty false` OK
+  - con Sentry desactivado por defecto, `npm run build` no debería mostrar la advertencia conocida de `@opentelemetry`/Sentry en local/self-hosted.
+  - gotcha operativo importante:
+    - no ejecutar `npx tsc --noEmit --pretty false` a la vez que `npm run build`
+    - este repo incluye `.next/types/**/*.ts` en `tsconfig.json`
+    - si `next build` está regenerando `.next/types`, `tsc` puede fallar en falso con muchos `TS6053 File '.next/types/...' not found`
+    - orden correcto de verificación:
+      - `npm run build`
+      - después `npx tsc --noEmit --pretty false`
+
+## Puntos de entrada
+
+- `app/page.tsx`: decide entre landing y dashboard según sesión.
+- `app/layout.tsx`: metadata global, `I18nProvider`, `globals.css`.
+- `app/(app)/layout.tsx`: shell autenticado, sidebar, dropzone global, toaster, banner de suscripción.
+- `app/(auth)/*`: entrada cloud y self-hosted.
+- `app/api/*`: auth, currency, progress SSE, analysis job polling, Stripe.
+- `scripts/analysis-worker.ts`: arranque del worker de análisis.
+- `scripts/db-cutover-check.ts`: preflight ligero para el corte `PostgreSQL local -> PostgreSQL gestionado`.
+
+## Mapa de arquitectura
+
+### 1. Capa web
+
+- `app/(app)` contiene las pantallas privadas:
+  - `dashboard`
+  - `transactions`
+  - `unsorted`
+  - `files`
+  - `settings`
+  - `apps`
+  - `import/csv`
+  - `export/transactions`
+- `app/(auth)` contiene los flujos de entrada:
+  - `/enter`
+  - `/cloud`
+  - `/self-hosted`
+- `app/docs` contiene páginas legales y de disclosure.
+
+### 2. Capa UI
+
+- `components/ui`: primitives estilo shadcn/Radix.
+- `components/*`: piezas de producto por dominio.
+- La app es mayoritariamente server-first.
+- Los componentes con interacción viven en cliente y suelen invocar server actions directamente.
+- Existe ya un canal móvil específico separado del workspace general:
+  - `/capture`
+  - `/capture/inbox`
+  - `/capture/review/[fileId]`
+  - está pensado para `captura -> inbox -> veredicto rápido -> escritorio`
+  - no reutiliza `unsorted` como UX principal de móvil
+
+### 3. Capa de mutación
+
+- La mayoría de escrituras están en `app/*/actions.ts`.
+- Patrón dominante:
+  - componente cliente -> action -> `models/*` y/o `lib/*` -> Prisma/filesystem -> `revalidatePath`.
+
+### 4. Capa de acceso a datos
+
+- `models/*` es una capa fina sobre Prisma.
+- No hay repositorios complejos ni servicios de dominio pesados.
+- Convención:
+  - lecturas reutilizables en `models/*`
+  - helpers operativos, seguridad, archivos y terceros en `lib/*`
+
+### 5. Capa IA
+
+- `ai/*` construye prompt, schema y adjuntos.
+- `app/(app)/unsorted/actions.ts` crea `analysis_jobs`.
+- `lib/analysis-worker.ts` hace polling de la tabla y procesa trabajos.
+- `lib/analysis-worker-supervisor.ts` supervisa el worker con heartbeat y autostart.
+- Providers soportados:
+  - OpenAI
+  - Google
+  - Mistral
+  - Pool Cloud
+- Pool Cloud ejecuta `codex` en modo no interactivo con lease remota.
+- La integración de Pool Cloud ya está alineada con outcomes operativos del pool actual: `succeeded`, `failed`, `timed_out`, `usage_limited`, `auth_invalid` y `workspace_invalid`.
+- `lib/analysis-worker.ts` clasifica errores reales de Codex/ChatGPT antes de cerrar la lease; `deactivated_workspace` y `402 Payment Required` se reportan como `workspace_invalid`, y los mensajes de cuota como `usage_limited`.
+- El prompt de análisis añade automáticamente contexto del negocio del usuario (`businessName` y, si existe, `businessAddress`) para distinguir empresa emisora frente a empresa receptora.
+- Ese contexto incluye también `businessTaxId` cuando el usuario lo configura en su perfil.
+
+## Limites de modulos
+
+- `app/`: composición de páginas, layouts, route handlers y server actions.
+- `components/`: presentación y flujos de UI.
+- `models/`: consultas y mutaciones de BD con Prisma.
+- `lib/`: utilidades transversales, auth, ficheros, previews, seguridad, Stripe, email, stats, worker.
+- `ai/`: preparación de análisis IA.
+- `forms/`: validación Zod de formularios.
+- `prisma/`: esquema y migraciones.
+
+## Convenciones importantes
+
+### Server vs client
+
+- Por defecto, los archivos en `app/` son server components.
+- Los componentes interactivos empiezan con `"use client"`.
+- Las mutaciones se exponen como server actions.
+
+### Alias e imports
+
+- Alias principal: `@/*`.
+- `tsconfig.json` usa `strict: true`, `moduleResolution: bundler`, `allowJs: true`.
+
+### Datos de transacciones
+
+- Regla critica: la tabla `Field` define tanto campos estandar como campos extra.
+- `models/transactions.ts` separa `standard` y `extra` consultando `Field.isExtra`.
+- Consecuencia:
+  - `models/defaults.ts` no es solo seed.
+  - Si cambian defaults o sincronizacion de fields, cambia el comportamiento real del CRUD.
+- Convención funcional importante para facturas:
+  - Los códigos persistidos `billing_*` se mantienen por compatibilidad.
+  - Semánticamente, `billing_*` representa SIEMPRE a la empresa emisora/proveedora de la factura, no al receptor.
+  - La desambiguación usa `businessName`, `businessAddress` y `businessTaxId` del usuario cuando están configurados.
+
+### Defaults
+
+- `models/defaults.ts` siembra proyectos, categorias, monedas, fields y settings.
+- `ensureUserDefaultsVersion()` actualiza defaults ya existentes.
+- Mucha UI asume que esos defaults existen.
+
+### Auth
+
+- Cloud: Better Auth con OTP por email.
+- Self-hosted: cookie firmada con HMAC y usuario singleton.
+- Middleware protege rutas privadas y cambia de logica en self-hosted.
+
+### Filesystem
+
+- `lib/files.ts` define las rutas reales.
+- Convencion por usuario:
+  - `UPLOAD_PATH/<email>/unsorted`
+  - `UPLOAD_PATH/<email>/previews`
+  - `UPLOAD_PATH/<email>/static`
+- Todas las rutas deben pasar por helpers seguros.
+- Convención funcional importante para adjuntos de transacciones:
+  - Cuando hay datos suficientes, el nombre visible del fichero pasa a formato `NUMERO_FACTURA (YYYY-MM-DD) NOMBRE_COMERCIO.ext`.
+  - Si falta alguna parte, se omite solo esa parte.
+  - Si no hay datos útiles, se conserva el nombre original.
+  - En `unsorted -> transacción`, si el destino ya existe se añade sufijo incremental `-1`, `-2`, etc. y `file.filename` se actualiza al nombre real final.
+  - En subidas manuales a transacciones y en PDFs generados por la miniapp de facturas, el fichero se guarda dentro de una subcarpeta por `fileUuid` para evitar colisiones sin perder el nombre bonito en el sistema.
+
+## Entidades principales
+
+- `User`: perfil, plan, limites, saldo IA, datos de negocio.
+- Datos de negocio propios actuales en `User`:
+  - `businessName`
+  - `businessAddress`
+  - `businessTaxId`
+  - `businessBankDetails`
+  - `businessLogo`
+- `Setting`: mapa clave/valor por usuario.
+- `Category`, `Project`, `Field`, `Currency`: configuracion funcional.
+- `File`: adjunto subido y parse cacheado.
+- `Transaction`: movimiento contable principal.
+- `AppData`: estado por miniapp.
+- `Progress`: progreso de export/backup.
+- `AnalysisJob`: cola persistente de analisis IA.
+
+## Flujos clave
+
+### Subida y analisis
+
+1. El usuario sube ficheros a `unsorted`.
+2. Se guardan en filesystem y en `File`.
+3. La UI de `unsorted` puede lanzar analisis.
+4. Se crea `AnalysisJob` con prompt, schema, adjuntos y providers.
+5. La action y el polling rearman el worker automaticamente si no hay heartbeat fresco.
+6. El worker procesa el job y persiste `cachedParseResult`.
+7. La UI hace polling de `/api/analysis-jobs/[jobId]`.
+8. El usuario revisa y guarda como transaccion.
+
+### Canal móvil de captura
+
+1. El usuario entra en `/capture`.
+2. La subida móvil va por `POST /api/mobile/capture` con `multipart/form-data`.
+3. Solo acepta `image/*` y `application/pdf`.
+4. El archivo se guarda en `unsorted` y persiste continuidad en `File.metadata.mobileTriage`.
+5. Si hay LLM y worker disponibles, el análisis se encola automáticamente.
+6. `/capture/inbox` consulta `GET /api/mobile/inbox` y muestra estados compactos:
+   - `analyzing`
+   - `ready_for_review`
+   - `deferred_to_desktop`
+   - `error`
+7. `/capture/review/[fileId]` permite:
+   - aceptar
+   - corregir críticos
+   - reintentar análisis
+   - seguir en escritorio
+8. `unsorted` muestra badge cuando `metadata.mobileTriage` viene diferido desde móvil.
+9. Revalidación final manual hecha el 22 de marzo de 2026 en self-hosted:
+   - subida real de factura PDF desde `/capture`
+   - transición `analyzing -> ready_for_review` en unos `20s`
+   - `accept` desde `/capture/review/[fileId]` vuelve al inbox, oculta el documento aceptado y baja el contador visible de `7` a `6`
+   - subida real de PDF no factura desde `/capture`
+   - transición `analyzing -> ready_for_review` con badge `Baja confianza` en unos `22s`
+   - la quick review de `low_confidence` mantiene `Aceptar` deshabilitado y deriva correctamente a escritorio
+10. El remate de la fase 1 móvil queda cerrado como V1:
+   - `docs/superpowers/plans/2026-03-22-mobile-phase-1-closeout-plan.md` ya está ejecutado
+   - el estado terminal tras `accept` limpio sale del write principal de `saveFileAsTransactionAction`, junto con `isReviewed = true`
+   - inbox y contadores ya no consideran pendiente un fichero aceptado, ni siquiera con metadata legacy
+11. Riesgo residual bajo confirmado:
+   - `models/mobile/capture.ts` mantiene un contrato algo ambiguo en `ensureWorkerAvailable(): Promise<boolean>` porque hoy se usa por efecto lateral y no por su valor de retorno
+   - no bloquea la fase 1, pero si se endurece esa API en el futuro hay que decidir entre `throw` o consumir explícitamente el `boolean`
+12. La fase 2 móvil queda cerrada:
+   - diseño ejecutado: `docs/superpowers/specs/2026-03-22-mobile-phase-2-pwa-design.md`
+   - plan ejecutado: `docs/superpowers/plans/2026-03-22-mobile-phase-2-pwa-plan.md`
+   - contrato resultante:
+     - `site.webmanifest` instala con `start_url=/capture?source=pwa`
+     - `scope=/`
+     - el shell standalone usa una navegación móvil reducida a `Captura` e `Inbox`
+     - no hay `badge` de `unsorted` ni trigger de sidebar en standalone
+     - `/capture` y `/capture/inbox` mantienen layout específico de PWA sin duplicar navegación dentro del contenido
+   - cierre manual confirmado:
+     - `/capture?source=pwa` carga correctamente en viewport móvil
+     - `/capture/inbox?source=pwa` carga correctamente y no revienta si falla el fetch del inbox
+     - las tarjetas `Pendiente de escritorio` ya no duplican el botón `Escritorio`
+13. Siguiente prioridad recomendada:
+   - no abrir todavía offline, background sync ni `share_target`
+   - el siguiente bloque razonable es mejorar acceso e instalación PWA en dispositivo real y, después, decidir si compensa una fase 3 limitada
+
+### Guardado como transaccion
+
+1. Se crea `Transaction`.
+2. Se mueve el fichero desde `unsorted` a la ruta final por fecha y, cuando aplica, se renombra con el patrón `NUMERO_FACTURA (YYYY-MM-DD) NOMBRE_COMERCIO.ext`.
+3. Se marca `File.isReviewed = true`.
+4. Se enlaza el `file.id` a `transaction.files`.
+
+### Export y backup
+
+- Export de transacciones:
+  - genera CSV
+  - opcionalmente empaqueta adjuntos en ZIP
+- Backup:
+  - exporta tablas a JSON
+  - exporta adjuntos a ZIP
+- Restore:
+  - destructivo
+  - borra datos actuales si el flag interno sigue activo
+
+## Dependencias operativas relevantes
+
+- Next.js 15
+- React 19
+- Prisma 6
+- PostgreSQL 17
+- Better Auth
+- LangChain providers
+- Stripe
+- Resend
+- Sharp
+- pdf2pic
+- GraphicsMagick (`gm`)
+- Ghostscript (`gs`)
+- `codex` CLI dentro de contenedor para Pool Cloud
+
+## Entorno local
+
+- El entorno local del repo asume `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/taxhacker` por defecto.
+- `docker-compose.yml` ya debe publicar PostgreSQL al host con:
+  - `${POSTGRES_PORT:-5432}:5432`
+- Consecuencia operativa:
+  - `docker compose up -d postgres` debe bastar para que `npx prisma migrate deploy`, `next dev` y `npm run worker:analysis` conecten sin contenedores temporales ni túneles manuales.
+  - si la máquina ya usa `5432`, exportar `POSTGRES_PORT` antes de levantar compose y ajustar `DATABASE_URL` al mismo puerto.
+- `docker-compose.build.yml` ya exponía `5432`; el compose base debe mantenerse alineado con esa expectativa para desarrollo y validaciones manuales.
+- Perfil barato recomendado mientras el producto siga en pulido interno:
+  - `postgres + cloudflared` en Docker y `app + analysis-worker` en host
+  - `storage` local en `./data`
+  - acceso HTTPS/PWA desde móvil mediante `docker-compose.tunnel.yml` + `Cloudflare Tunnel`
+  - backup diario con `npm run backup:local`
+  - runbook: `docs/superpowers/specs/2026-03-23-cheap-local-deploy-runbook.md`
+- Soporte nuevo ya añadido:
+  - `docker-compose.tunnel.yml`
+  - `.env.tunnel.example`
+  - `.env.localdeploy.example`
+  - `scripts/backup-local.ts`
+  - `scripts/run-local-backup.sh`
+  - `scripts/install-backup-launchd.sh`
+  - `scripts/start-local-runtime-tmux.sh`
+  - `scripts/stop-local-runtime-tmux.sh`
+  - `scripts/status-local-runtime.sh`
+- `backup-local.ts`:
+  - hace dump lógico de PostgreSQL usando `docker compose exec -T postgres pg_dump`
+  - copia el árbol `./data`
+  - escribe `manifest.json`
+  - poda backups antiguos; por defecto conserva `7` días
+- Validación de este perfil en esta sesión:
+  - tests del write set `backup-local/db-cutover`: `10/10` OK
+  - `eslint` del write set: OK
+  - `tsc --noEmit`: OK
+  - `npm run build`: OK
+  - `launchctl list com.taxhacker.backup-local` devuelve el agent cargado con `LastExitStatus = 0`
+  - `docker compose -f docker-compose.yml -f docker-compose.tunnel.yml --env-file .env --env-file .env.tunnel config` renderiza OK
+  - validación operativa final:
+    - `npm run local:start` arranca `taxhacker-app` y `taxhacker-analysis-worker` bajo `tmux`
+    - `npm run local:status` devuelve ambas sesiones `up`
+    - `curl -I http://localhost:7331/self-hosted` devuelve `200`
+    - `docker --context colima-codex-loyalty compose -f docker-compose.yml -f docker-compose.tunnel.yml ps postgres cloudflared` deja ambos `Up`
+  - decisión operativa:
+    - no usar `launchd` para `app` ni `analysis-worker` mientras el repo viva dentro de `Documents` en macOS
+    - usar `tmux` para runtime local y reservar `launchd` para `backup-local`
+
+## Testing y calidad
+
+- Los tests visibles son principalmente unitarios sobre `lib/*`, `models/fiscal/*`, `models/tax-forms/*` y algunos contratos de `components/tax/*`.
+- Patrón de test: `node:test` + `assert`, con `--experimental-strip-types`.
+- No hay suite visible de integracion, UI o E2E.
+- `npm run lint` está limpio a fecha de esta sesión.
+- El build sigue ignorando lint mediante `next.config.ts`, pero ahora mismo compila y tipa en verde.
+- Validación manual móvil ya hecha en self-hosted:
+  - subida de imagen desde `/capture`
+  - subida de PDF real desde `/capture`
+  - transición `analyzing -> ready_for_review`
+  - `Seguir en escritorio`
+  - `Aceptar` exitoso en quick review con creación real de transacción
+  - `Aceptar` elimina el documento del inbox y baja el contador visible
+  - PDF no factura real termina en `ready_for_review` con `Baja confianza` y quick review accionable
+  - validación manual final de fase 2:
+    - `http://localhost:7331/site.webmanifest` devuelve `start_url=/capture?source=pwa` y `scope=/`
+    - `/capture?source=pwa` y `/capture/inbox?source=pwa` cargan bien en viewport móvil
+    - las tarjetas `Pendiente de escritorio` muestran una sola acción `Escritorio`
+    - el shell móvil web mantiene el menú general; el modo standalone queda cubierto por contrato CSS y tests de fuente
+  - verificación integrada reciente del canal móvil:
+    - `node --test --experimental-strip-types tests/app/capture/review-actions.test.mjs tests/models/mobile/inbox.test.mjs tests/models/mobile/capture.test.mjs tests/models/mobile/triage.test.mjs tests/app/api/mobile/inbox.test.mjs tests/app/capture/routes.test.mjs tests/models/uploads.test.mjs tests/app/api/uploads.test.mjs tests/components/upload-widgets.test.mjs` -> `61/61` OK
+    - `eslint` del write set móvil -> OK
+    - `tsc --noEmit` -> OK
+    - cierre de la regresión final del inbox:
+      - `node --test --experimental-strip-types tests/components/capture/mobile-contract.test.mjs` -> `7/7` OK
+      - `eslint components/capture/mobile-contract.ts components/capture/mobile-inbox.tsx tests/components/capture/mobile-contract.test.mjs` -> OK
+      - `tsc --noEmit` -> OK
+
+## Zonas fragiles o no obvias
+
+- Entorno local Next.js:
+  - no mezclar `npm run build` y `npm run dev` contra la misma carpeta `.next`
+  - al hacerlo, el dev server puede quedar roto con `ENOENT` sobre `.next/static/development/_buildManifest.js.tmp.*` o `app-build-manifest.json`
+  - síntoma: `500 Internal Server Error` en `/`, `/self-hosted` y otras rutas sanas
+  - recuperación segura: parar `next dev`, apartar `.next` a una carpeta temporal y arrancar `npm run dev` desde cero
+- `app/api/currency/route.ts`: scrapea XE y parsea `__NEXT_DATA__`. Fuente externa fragil.
+- `models/transactions.ts`: `bulkDeleteTransactions()` no limpia adjuntos ni recalcula `storageUsed`.
+- `app/(app)/apps/invoices/actions.ts`: crea la transaccion antes de validar cuota/suscripcion; puede dejar datos a medias.
+- `app/(app)/unsorted/actions.ts`: el flujo `saveFileAsTransactionAction` sigue teniendo riesgo de fallo parcial entre creación de transacción, movimiento de fichero, update del `File` y enlace de `transaction.files`. La limpieza terminal móvil ya va en el write principal del `File`, pero la atomicidad total BD+filesystem sigue siendo una deuda general del flujo.
+- `app/(app)/export/transactions/route.ts`: genera ZIP en memoria; riesgo con mucho volumen.
+- `app/(app)/settings/backups/data/route.ts`: backup tambien empaqueta en memoria.
+- `lib/previews/pdf.ts`: TODO pendiente; convierte todas las paginas aunque exista limite configurado.
+- `next.config.ts`: `ignoreDuringBuilds: true` y `images.unoptimized: true`.
+- Sentry ya no debe activarse implícitamente solo porque existan ficheros de configuración:
+  - el repo lo trata como `opt-in`
+  - requiere `NEXT_PUBLIC_SENTRY_ENABLED=true`
+  - y además las variables normales de Sentry (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`) para el plugin de build
+  - si Sentry está apagado, `instrumentation.ts`, `instrumentation-client.ts` y `app/global-error.tsx` no deben importar `@sentry/nextjs` en caliente
+  - además, `next.config.ts` aliasa `@sentry/nextjs` a [lib/sentry-noop.ts](/Users/uxiomarcosmacmini/Documents/Nuevos desarrollos/taxhacker/lib/sentry-noop.ts) cuando `NEXT_PUBLIC_SENTRY_ENABLED` no está activo, para que ni webpack ni turbopack arrastren `@opentelemetry` por accidente en local/self-hosted
+- Next 15 no admite exports auxiliares arbitrarios en `app/api/**/route.ts`.
+  - Si hace falta exponer una factoría testeable para route handlers, moverla a un sibling como `create-route.ts`.
+  - `route.ts` debe exportar solo `GET/POST/...` y configs permitidas.
+- Las subidas por Server Actions dependen de `Origin`, `Host` y `X-Forwarded-Host` coherentes. Si la app entra por proxy/CDN/hostname alternativo y no coincide con Next, la subida falla antes de llegar a la action con `Invalid Server Actions request.`. Mantener `experimental.serverActions.allowedOrigins` al dia y preservar cabeceras del host publico.
+- El analisis sigue dependiendo del worker, pero ya no debe arrancarse a mano en condiciones normales:
+  - `startAnalysisJobAction()` y `/api/analysis-jobs/[jobId]` llaman a `ensureAnalysisWorkerRunning()`.
+  - El supervisor usa heartbeat compartido en `path.resolve(UPLOAD_PATH, "..", "runtime")`, para que app y worker lo vean igual en local y en self-hosted con volumen compartido.
+  - Si se toca `UPLOAD_PATH`, Docker volumes o el entrypoint del worker, revisar tambien `lib/analysis-worker-supervisor.ts`.
+- Limitación funcional actual del análisis de emisor/receptor:
+  - La desambiguación mejora con `businessTaxId`, pero sigue dependiendo de que el usuario complete correctamente su perfil de negocio.
+  - Si `businessTaxId` está vacío, el sistema vuelve a apoyarse principalmente en nombre y dirección.
+- Contrato móvil no obvio:
+  - `File.metadata.mobileTriage` guarda continuidad del canal móvil sin migración nueva.
+  - forma esperada:
+    - `source: "mobile_capture"`
+    - `disposition: "pending" | "deferred"`
+    - `reasonCode?: MobileReasonCode`
+    - `lastMobileActionAt: ISO8601`
+  - el inbox deriva `deferred_to_desktop` como estado de UI; no persistir ese literal como `disposition`.
+  - `mobileTriage` es la fuente de verdad tanto para defer manual como para defer automático por falta de LLM/worker.
+  - el inbox usa heurística V1 de confianza sobre:
+    - `merchant`
+    - `issuedAt`
+    - `total`
+    - `invoice_number`
+  - `low_confidence` o errores de análisis fuerzan escritorio; la quick review móvil solo está pensada para casos simples.
+  - reglas operativas endurecidas:
+    - `acceptMobileReviewAction` debe normalizar opcionales ausentes o rotos antes de persistir `cachedParseResult` y antes de construir `FormData`.
+    - No pueden llegar a `saveFileAsTransactionAction` sentinelas como `undefined`, `null`, `"undefined"` o `"null"` en campos opcionales del quick review móvil, especialmente `invoiceNumber`, `currencyCode` y `categoryCode`.
+    - El estado terminal tras `accept` exitoso no persiste `mobileTriage`; la limpieza debe ocurrir en el write principal que deja `File.isReviewed = true`, no en un segundo cleanup separado desde la review móvil.
+    - `/capture/review/[fileId]` debe bloquear server-side acciones sobre ficheros ya revisados, fuera del canal móvil, diferidos o servidos desde una URL obsoleta.
+    - `retry` móvil marca `mobileTriage.disposition = "pending"` antes del reencolado y, si el enqueue falla, debe restaurar la metadata previa para no dejar el documento en un falso `pending`.
+    - `retry` no debe reactivar documentos diferidos manualmente por el usuario (`user_deferred`) sin una acción explícita distinta.
+    - `retry` sobre un documento con `analysis_failed` debe limpiar `reasonCode` si el reencolado sale bien, para que el inbox deje de renderizar `ERROR`.
+    - si el enqueue inicial del análisis móvil falla, hay que persistir `reasonCode: "analysis_failed"` en `mobileTriage` para que el inbox siga mostrando error tras refrescar.
+    - un job activo no debe convertirse artificialmente en `deferred_to_desktop`; el inbox mantiene `analyzing` y usa `systemStatus`/`reasonCode` solo como señal auxiliar.
+    - `/api/mobile/inbox` debe cargar el usuario real y pasar `storageLimit/storageUsed` reales al backend móvil; no inventar cuotas ni usar sentinels artificiales.
+    - `getMobileSystemStatus()` debe priorizar `storage_unavailable` sobre bloqueos de LLM/worker cuando no quede espacio.
+    - el boundary real del inbox debe seguir aceptando metadata legacy con `disposition: "deferred_to_desktop"` y normalizarla a continuidad diferida.
+  - verificación dirigida reciente del hardening móvil:
+    - `tests/models/mobile/capture.test.mjs` OK
+    - `tests/models/mobile/inbox.test.mjs` OK
+    - `tests/models/mobile/triage.test.mjs` OK
+    - `tests/app/api/mobile/inbox.test.mjs` OK
+    - `tests/app/capture/review-actions.test.mjs` OK
+    - `tests/app/capture/routes.test.mjs` OK
+    - `tests/models/uploads.test.mjs` OK
+    - `tests/app/api/uploads.test.mjs` OK
+    - `tests/components/upload-widgets.test.mjs` OK
+
+## Reglas para futuras tareas
+
+- Este hilo y este archivo son la fuente de verdad operativa.
+- Cuando el usuario pida una tarea:
+  - no implementar desde el orquestador
+  - delegar a subagente
+  - dar ownership explicito de ficheros
+  - listar ficheros que no debe tocar
+  - indicar las skills de superpower que debe usar el subagente para esa tarea
+  - elegir siempre las skills que mejor encajen con el trabajo real; no usar una plantilla fija si otra skill aplica mejor
+  - incluir convenciones relevantes del repo
+  - indicar como verificar el trabajo
+- Si hay varias tareas independientes:
+  - lanzar varios subagentes en paralelo
+  - evitar solapamiento de write set
+- Tras recibir resultados:
+  - revisar riesgos y regresiones
+  - actualizar este archivo si cambia arquitectura, convenciones, decisiones o fragilidades
+
+## Plan fiscal de siguiente nivel
+
+- Plan maestro creado para la evolución fiscal de S.L. española estándar:
+  - `docs/superpowers/plans/2026-03-23-spanish-sl-fiscal-control-tower-plan.md`
+- Estado actual del plan:
+  - ejecutado de punta a punta
+  - `Phase 7` cerrada con hardening y smoke E2E real
+- Tesis de producto fijada:
+  - TaxHacker debe evolucionar como `torre de control colaborativa del cierre fiscal recurrente`
+  - núcleo inicial:
+    - `303`
+    - `115`
+    - revisión fiscal
+    - expediente de presentación
+    - colaboración asesoría-cliente
+    - archivo trimestral
+  - capa posterior:
+    - `111` manual
+    - `180`
+    - `390`
+    - `347`
+    - `349`
+  - fuera del core inicial:
+    - nómina
+    - `190`
+    - contabilidad completa
+    - automatización real de `200/202`
+    - cuentas anuales automatizadas
+- Cierre reciente de `Phase 7`:
+  - smoke fiscal real añadido y endurecido en:
+    - `tests/e2e/fiscal-obligations-smoke.spec.ts`
+    - `tests/e2e/fiscal-collaboration-smoke.spec.ts`
+  - endurecimientos del cierre:
+    - el smoke del expediente `303` espera el `POST` real del server action antes de recargar
+    - el smoke confirma persistencia en BD antes de validar UI del expediente
+    - los selectores de `115`, `390` y archivo anual ya evitan textos duplicados en la superficie fiscal
+  - verificación fresca del cierre:
+    - `npx playwright test tests/e2e/fiscal-obligations-smoke.spec.ts tests/e2e/fiscal-collaboration-smoke.spec.ts` OK
+    - `npx eslint playwright.config.ts tests/e2e/helpers/auth.ts tests/e2e/helpers/env.ts tests/e2e/helpers/fiscal-smoke-fixture.ts tests/e2e/fiscal-obligations-smoke.spec.ts tests/e2e/fiscal-collaboration-smoke.spec.ts` OK
+    - `npx prisma validate` OK
+    - `npx prisma generate` OK
+    - `npm run build` OK
+    - `npx tsc --noEmit --pretty false` OK
+- Corte siguiente ya aterrizado tras el cierre del plan:
+  - el hub fiscal en `app/(app)/tax/page.tsx` ya expone también:
+    - `111 manual` dentro del cockpit trimestral
+    - capa anual resumida con `180`, `390`, `347`, `349` según alcance real
+    - acceso directo al `handoff anual` en `/tax/archive/annual`
+  - nuevas piezas de UI:
+    - `components/tax/obligations/annual-fiscal-overview-card.tsx`
+    - `components/tax/layout/tax-workspace-sections.tsx` ya acepta `annualOverview`
+  - criterio de producto fijado:
+    - el hub fiscal no debe limitarse a `303/115`
+    - también debe hacer visible el trabajo anual ligero y el `111` manual sin obligar a navegar a formularios secundarios
+  - hardening adicional del hub anual:
+    - la capa anual ya no es solo visibilidad
+    - cada obligación anual expone `responsable`, `siguiente acción` y `señal operativa`
+    - el responsable anual ya no se deriva con la misma heurística que trimestral; prioriza `owner` real sobre el estado `waiting_on_documents`
+    - el handoff anual en `/tax/archive/annual` ya tiene `Seguimiento manual` editable por ítem
+    - el seguimiento manual ya persiste `status`, `owner` y `notes` en `fiscal_obligations`
+    - el `sync` de obligaciones ya preserva el estado manual de los ítems anuales y no machaca `202_handoff`, `200_handoff` ni mercantil al recalcular
+    - el smoke anual ya usa el `periodKey` real que muestra la propia página, no un ejercicio hardcodeado
+  - piezas nuevas/endurecidas del handoff anual:
+    - `app/(app)/tax/archive/annual/actions.ts`
+    - `components/tax/archive/annual-handoff-item-form.tsx`
+    - `components/tax/archive/annual-handoff-card.tsx`
+    - `models/fiscal/annual-handoff.ts`
+    - `models/fiscal/obligations.ts`
+    - `tests/models/fiscal/annual-handoff.test.mjs`
+    - `tests/models/fiscal/obligations.test.mjs`
+    - `tests/e2e/fiscal-obligations-smoke.spec.ts`
+  - cobertura añadida/endurecida:
+    - `tests/components/tax/obligations-cockpit.test.mjs`
+    - `tests/e2e/fiscal-obligations-smoke.spec.ts`
+    - `tests/e2e/fiscal-collaboration-smoke.spec.ts`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/components/tax/obligations-cockpit.test.mjs tests/app/tax/tenant-guards.test.mjs` OK
+    - `npx playwright test tests/e2e/fiscal-obligations-smoke.spec.ts tests/e2e/fiscal-collaboration-smoke.spec.ts` OK
+    - `npx playwright test tests/e2e/fiscal-obligations-smoke.spec.ts` OK tras reiniciar `npm run local:start` para levantar la build nueva
+    - `node --test --experimental-strip-types tests/components/tax/obligations-cockpit.test.mjs tests/models/fiscal/obligations.test.mjs tests/models/fiscal/annual-handoff.test.mjs` OK
+    - `npx eslint app/(app)/tax/page.tsx components/tax/layout/tax-workspace-sections.tsx components/tax/obligations/annual-fiscal-overview-card.tsx tests/components/tax/obligations-cockpit.test.mjs tests/e2e/fiscal-obligations-smoke.spec.ts` OK
+    - `npx eslint models/fiscal/obligations.ts tests/models/fiscal/obligations.test.mjs tests/e2e/fiscal-obligations-smoke.spec.ts` OK
+    - `npm run build` OK
+    - `npx tsc --noEmit --pretty false` OK
+
+## Producto para S.L. española
+
+- Hipótesis de trabajo actual:
+  - S.L. pequeña española
+  - ejercicio natural
+  - IVA trimestral
+  - fuera de SII salvo que el usuario diga lo contrario
+  - uso principal del producto: recibir y emitir facturas, registrar movimientos y preparar cierres
+  - contexto de negocio confirmado por el usuario:
+    - tiene empleados
+    - tiene alquiler con retención
+    - no tiene operaciones intracomunitarias
+- Conclusión actual:
+  - el repo ya sirve como base documental y operativa
+  - todavía no es un producto fiscal español sólido
+  - el mayor hueco no es la IA, sino el modelo fiscal y el workflow de cierre
+- Prioridad de producto recomendada para España:
+  - `periodos fiscales` por ejercicio y trimestre, con estados `pendiente / revisando / listo / presentado / cerrado`
+  - `clasificación fiscal española mínima` en transacciones: base imponible, cuota IVA, deducible, retención, intracomunitaria, exenta, inversión del sujeto pasivo, cobrado/pagado
+  - `maestro de terceros` con NIF, país, etiquetas fiscales y acumulados por periodo
+  - `panel de cierre trimestral` con incidencias y checklist
+  - `archivo legal` para modelos, justificantes AEAT, libros, cuentas anuales y documentación societaria
+  - `preparación de modelos` 303 / 111 / 115 / 347 / 390 y soporte posterior para 200/202
+- Decisión de diseño recomendada:
+  - no empezar por carpetas físicas
+  - modelar `periodos fiscales` como entidad o vista de producto y construir sobre eso carpetas virtuales, cierres, exportaciones y checklist
+- Advertencia normativa relevante:
+  - si TaxHacker emite facturas para una S.L. y no está en SII, la línea de cumplimiento `VERI*FACTU / sistemas informáticos de facturación` pasa a ser prioridad alta
+  - la factura electrónica B2B de la Ley Crea y Crece sigue siendo una zona cambiante; conviene preparar el modelo documental, pero no diseñar sobre una fecha cerrada hasta confirmar desarrollo reglamentario vigente
+- Estado de implementación ya arrancado:
+  - existe contrato fiscal V1 en `docs/superpowers/specs/2026-03-21-fiscal-domain-contract.md`
+  - existe dataset patrón/oracle en `docs/superpowers/specs/2026-03-21-golden-quarter-dataset.md` y `tests/fixtures/fiscal/golden-quarter.json`
+  - existe decisión de alcance para `111` en `docs/superpowers/specs/2026-03-21-model-111-scope.md`
+    - V1: `111` solo como `resumen trimestral manual`
+    - `190` queda bloqueado hasta tener fuente de nómina fiable y trazable
+  - existe delta contractual de asignación por obligación en `docs/superpowers/specs/2026-03-22-obligation-assignment-delta.md`
+    - `quarters`, `archive`, `303` y `115` deben leer siempre asignaciones persistidas
+    - el fallback por fecha queda solo dentro del motor de asignación y del backfill
+  - existe track documental de `VERI*FACTU` en `docs/superpowers/specs/2026-03-21-verifactu-track.md`
+  - ya existen en backend:
+    - `FiscalProfile`
+    - `Counterparty`
+    - `TransactionFiscal`
+    - `TransactionFiscalLine`
+    - motor de `review_status`
+    - `FiscalPeriod`
+    - `VAT books`
+    - `FiscalPeriodSnapshot`
+    - `FiscalAuditLog`
+    - `close.ts` para cerrar/reabrir periodos con snapshot reproducible y auditoría
+    - `legal-archive.ts` para manifiesto trimestral y trazabilidad de adjuntos
+    - `assignment-engine.ts` como resolvedor central de asignación fiscal por obligación
+    - `sync.ts` para backfill/sync on-demand desde `Transaction`
+  - ya existen en producto:
+    - `/settings/fiscal` como configuración fiscal canónica separada de `/settings/business`
+    - `/tax` como hub fiscal MVP dentro del shell autenticado
+    - `/tax/review`
+    - `/tax/quarters`
+    - `/tax/forms`
+    - `/tax/forms/303`
+    - `/tax/forms/115`
+    - `/tax/counterparties`
+    - `/tax/archive`
+    - `/tax/archive/[periodId]`
+    - `/tax/close`
+  - decisiones ya aterrizadas en código:
+    - `TransactionFiscal -> Counterparty` usa `RESTRICT`, no `SET NULL`, para no perder trazabilidad fuerte
+    - `review_status` bloquea facts sin `issue_date` antes de llegar a BD
+    - `upsertTransactionFiscal` no permite cambiar el `fiscal_document_id` estable de un `source_transaction_id` ya existente
+    - `TransactionFiscalHeader` ya persiste `payment_date`
+    - `FiscalProfile` ya persiste `vatCashAccountingEnabled`
+    - `assignment-engine.ts` resuelve IVA y retenciones con esta prioridad:
+      - IVA: `manual_override` > `payment_date` si `vatCashAccountingEnabled=true` > `operation_date` > `issue_date`
+      - retenciones: `manual_override` > `payment_date`
+    - `quarterly-draft`, `legal-archive`, `303`, `115` y `vat-books` ya no deben deducir trimestre al vuelo; consumen asignación persistida
+    - `ensureFiscalPeriod` preserva el estado existente si la llamada no trae `status`
+    - `/settings/business` ya no edita identidad fiscal canónica; redirige a `/settings/fiscal`
+    - el backfill de `FiscalProfile` ya no usa `user.name`; exige `businessName` y `businessTaxId`
+    - el hub fiscal ya expone `quarters`, `review`, `forms`, `archive` y `close` como módulos disponibles
+    - `archive` usa el mismo alcance fiscal que revisión/cierre y conserva fuentes inesperadas como señal explícita de trazabilidad rota
+    - `close` solo permite cerrar cuando el trimestre está limpio y reabrir con motivo explícito
+    - `close` y `upsertTransactionFiscal` tratan `closed` y `presented` como estados bloqueados para cualquier cambio fiscal sensible
+    - los cambios fiscales sensibles se auditan:
+      - bloqueo: `fiscal_document_edit_blocked`
+      - edición permitida: `fiscal_document_edited`
+    - el seam real de enforcement es `upsertTransactionFiscal`; no bypassearlo con escrituras Prisma directas sobre `transaction_fiscals`
+    - si faltan las migraciones/tablas fiscales en la base de datos, las páginas fiscales ya no deben caer con `P2021`; muestran estado de módulo no inicializado y las acciones responden con error amigable
+    - la detección central de tablas fiscales ausentes vive en `models/fiscal/storage.ts`; no duplicar `try/catch` ad hoc en nuevos módulos fiscales si se puede reutilizar esa guard
+    - `models/fiscal/quarterly-draft.ts` no debe envolver el cliente Prisma con una store intermedia para `fiscalPeriod`; esa capa provocó un runtime `Cannot read properties of undefined (reading 'findMany')` en `/tax/quarters`, `/tax/close` y rutas que dependían del borrador trimestral. Mantener acceso directo al delegado Prisma real
+    - cuando se añadan modelos nuevos a Prisma para el área fiscal, además de migrar la base hay que regenerar `prisma/client` (`npx prisma generate`) y reiniciar `next dev`; si no, el proceso puede seguir sirviendo un cliente viejo en memoria aunque `schema.prisma` y la base ya estén actualizados
+    - `FiscalPeriod` ya no requiere creación manual en V1: al guardar `FiscalProfile` y al entrar en flujos trimestrales se sincronizan automáticamente los 4 trimestres del ejercicio actual y del anterior mediante `syncDefaultSpanishFiscalPeriodsV1`
+    - los empty states de `quarters`, `close` y `archive` ya no deben sugerir una acción manual inexistente; si siguen vacíos tras la sync automática, el problema esperado es falta de actividad/documentos fiscales, no de un botón pendiente
+    - el área fiscal ya se autoalimenta desde `Transaction`:
+      - altas/ediciones manuales
+      - guardado desde `unsorted`
+      - guardado desde la miniapp de facturas
+    - antes de crear, editar o borrar una `Transaction` que afecte fiscalidad, los write-paths hacen preflight fiscal y rechazan la mutación si tocaría un periodo `closed` o `presented`
+    - el panel fiscal de `/transactions/[transactionId]` es la UI canónica para:
+      - editar `payment_date`
+      - hacer override manual de trimestre IVA/retenciones
+      - volver a asignación automática
+      - todo ello pasando por el mismo seam auditable
+  - verificado en sesión:
+    - `tests/forms/fiscal/profile.test.mjs`
+    - `tests/models/fiscal/profile.test.mjs`
+    - `tests/models/fiscal/storage.test.mjs`
+    - `tests/models/fiscal/quarterly-draft.test.mjs`
+    - `tests/models/fiscal/review-status.test.mjs`
+    - `tests/models/fiscal/transaction-fiscal.test.mjs`
+    - `tests/models/fiscal/sync.test.mjs`
+    - `tests/models/fiscal/periods.test.mjs`
+    - `tests/models/fiscal/vat-books.test.mjs`
+    - `tests/models/fiscal/review-queue.test.mjs`
+    - `components/tax/layout/content.test.mjs`
+    - `tests/models/fiscal/close.test.mjs`
+    - `tests/models/fiscal/legal-archive.test.mjs`
+    - `tests/models/tax-forms/model-303.test.mjs`
+    - `tests/models/tax-forms/model-115.test.mjs`
+    - `tests/app/transactions/fiscal-actions.test.mjs`
+    - `tests/app/transactions/fiscal-page.test.mjs`
+    - `npx tsc --noEmit --pretty false`
+  - estado operativo confirmado en esta sesión:
+    - `npx prisma migrate deploy` aplicado en local; la base `taxhacker` ya tiene las migraciones fiscales
+    - `npx prisma migrate status` devuelve `Database schema is up to date!`
+    - `/settings/fiscal`, `/tax`, `/tax/review`, `/tax/quarters`, `/tax/counterparties`, `/tax/archive` y `/tax/close` responden `200` en local sin `pageerror`
+  - pendiente todavía:
+    - modelos anuales y demás outputs:
+      - `390`
+      - `180`
+      - `347`
+      - `200` como advisor pack
+    - `111` sigue en modo manual hasta fuente de nómina fiable
+    - `190` sigue bloqueado hasta resolver el origen de nómina
+    - implementación del track `VERI*FACTU`
+
+## Plantilla minima de delegacion
+
+- Objetivo exacto.
+- Ficheros que posee.
+- Ficheros prohibidos.
+- Skills de superpower obligatorias o recomendadas para esa tarea.
+  - elegir las que mejor encajen con el tipo de trabajo
+  - ejemplos frecuentes:
+    - `test-driven-development` para implementación
+    - `verification-before-completion` antes de dar nada por cerrado
+    - `systematic-debugging` si hay fallo, test rojo o comportamiento inesperado
+    - `requesting-code-review` cuando el bloque ya esté terminado
+- Convenciones a respetar:
+  - App Router
+  - server/client boundaries
+  - `models/*` para acceso a datos
+  - server actions para mutaciones web
+  - rutas seguras con `lib/files.ts`
+  - no romper self-hosted ni worker de analisis
+- Verificacion requerida:
+  - tests relevantes
+  - lint si aplica
+  - comprobacion manual o build si el cambio lo justifica
+
+## Decisiones ya tomadas
+
+- Este repo se gestionara en modo orquestador.
+- El resumen de arquitectura queda fijado como baseline.
+- Se mantiene `ORCHESTRATOR.md` como memoria viva del repo.
+- En la fase inicial no se tocaron ficheros de aplicacion; solo se creo este documento cuando el usuario lo confirmo.
+- Se corrige la semántica de análisis de facturas para tratar `billing_*` como datos del emisor y usar contexto del negocio del usuario para no confundir nuestra empresa con la receptora.
+- Se añade `businessTaxId` al perfil de negocio y al contexto del prompt para reforzar la identificación del receptor/cliente cuando aparece su identificador fiscal en la factura.
+- Guided UX cerrado en esta sesión sin tocar la estética base:
+  - contrato transversal de `readiness + attention + next action`
+  - checklist real de `setup` en dashboard y settings
+  - dashboard como centro operativo con top action y secundarios
+  - `unsorted` como inbox canónico con resumen guiado, contexto masivo y handoff móvil-escritorio
+  - `transactions` como libro operativo con `quickView` real en URL/servidor y señales ligeras de excepción
+  - `tax` como flujo guiado con trimestre activo y CTA principal
+  - `sidebar` y `mobile menu` consumen el motor de atención como superficie ligera de guiado
+  - móvil usa copy humano para escalado y siguiente paso, sin cambiar el layout base
+  - cierre de review aplicado:
+    - el layout autenticado ya usa `getNavigationAttentionSummary()` en vez del agregador pesado completo
+    - `useTransactionFilters()` ya sincroniza con `router.replace()` y evita navegación redundante cuando la query no cambia
+    - `NewTransactionDialog` ya no renderiza `button` anidado dentro de `button` en el empty state de `transactions`
+- Verificación real del bloque Guided UX en esta sesión:
+  - tests dirigidos del bloque: `34/34` OK
+  - `eslint` del write set: OK
+  - `npx tsc --noEmit --pretty false`: OK
+  - `npm run build`: OK
+  - smoke manual en `dashboard`, `unsorted`, `transactions`, `tax`, `capture` y `capture/inbox`
+  - verificación final tras fixes de review:
+    - tests guiados dirigidos: `34/34` OK
+    - tests finales de `transactions/sidebar/attention/analyze-form`: `6/6` OK
+    - `eslint` del write set final: OK
+    - `npx tsc --noEmit --pretty false`: OK
+    - `npm run build`: OK
+    - smoke Playwright en `/transactions?quickView=incomplete`: sin errores de consola y sin `button button` en DOM
+- Cierre operativo SaaS/control plane en esta sesión:
+  - `platform_admin_assignments` ya no rompe el shell si la migración aún no está aplicada; `canAccessPlatformOps()` degrada a `false` en vez de lanzar `500`
+  - el usuario self-hosted se auto-bootstrappea como `platform_owner` al resolverse/crearse, así que `/ops` queda utilizable sin seed manual adicional
+  - el runtime local barato ya secuencia `infra -> migrate deploy -> build -> tmux`, evitando la carrera entre app y worker al arrancar `docker compose`
+  - `start-local-runtime-tmux.sh` limpia logs al iniciar para que la diagnosis operativa no mezcle sesiones viejas
+  - `/self-hosted/redirect` ya no usa `revalidatePath()` durante render; el flujo vuelve a entrar limpio a `dashboard`
+  - verificación real de este cierre:
+    - `tests/models/platform-admins.test.mjs` y `tests/models/users.test.mjs`: `7/7` OK
+    - `eslint` del write set nuevo: OK
+    - `npx prisma validate`: OK
+    - `npx prisma generate`: OK
+    - `npm run build`: OK
+    - `npx tsc --noEmit --pretty false`: OK
+    - `npm run local:start` deja `ledgerflow-app` y `ledgerflow-analysis-worker` en `up`
+    - `analysis-worker.log` arranca limpio, sin conflicto de recreación de `postgres`
+    - smoke real self-hosted:
+      - desbloqueo con token OK
+      - `dashboard` carga OK
+      - `/ops` carga OK en navegador con `platform_owner`
+- Remate final del plan SaaS en esta sesión:
+  - `organization_subscriptions` guarda `lastStripeEventId` y `lastStripeEventCreatedAt`, y `syncOrganizationSubscriptionContract()` ignora eventos Stripe más antiguos para evitar que un webhook fuera de orden pise un contrato más nuevo
+  - el webhook de Stripe propaga metadatos de orden (`stripeEventId`, `stripeEventCreatedAt`) hasta la sincronización de contrato
+  - el runtime tenant ya acepta acceso por `SupportAccessSession` sin convertir soporte en `membership`:
+    - `listOrganizationsForUser()` mezcla memberships y sesiones activas de soporte sin duplicar organizaciones
+    - `setCurrentOrganizationForUser()` permite cambiar al tenant soportado si hay sesión activa
+    - `getCurrentMembership()` devuelve un perfil virtual `support` con `supportAccessMode`
+  - se añade guard central de escritura:
+    - `requireCurrentTenantWriteAccess()`
+    - `requireCurrentWritableOrganizationId()`
+    - el modo `read_only` ya queda bloqueado en las rutas y acciones de mutación críticas de producto (`uploads`, `mobile capture`, `transactions`, `unsorted`, `tax`, `files`, `csv import`, `invoice save`)
+  - el último fallback runtime de cuota a `user.storageLimit` se elimina de `lib/files.ts`; el límite de storage ya sale solo del resolvedor de access por organización
+  - el helper legacy `getUserByStripeCustomerId()` se retira al no quedar uso runtime
+  - verificación real de este remate:
+    - tests dirigidos SaaS/billing/support/storage: `44/44` OK
+    - tests específicos de orden Stripe: `7/7` OK
+    - `eslint` del write set: OK
+    - `npx prisma validate`: OK
+    - `npx prisma generate`: OK
+    - `npm run build`: OK
+    - `npx tsc --noEmit --pretty false`: OK tras limpiar `tsconfig.tsbuildinfo` obsoleto
+- Impersonación segura desde `Ops` cerrada en esta sesión:
+  - `support_access_sessions` ya soporta `assumedUserId`, manteniendo actor, organización, modo y caducidad en una sola sesión auditable
+  - se añade cookie firmada `taxhacker_platform_impersonation` para resolver impersonación sin tocar Better Auth ni mezclar permisos de plataforma con tenant
+  - `getSession()` y `getCurrentUser()` ya distinguen actor real y usuario efectivo; `getCurrentActorUser()` y `getCurrentImpersonation()` permiten gobernar auditoría y banner de salida
+  - `lib/tenant.ts` ya respeta el `defaultOrganizationId` efectivo inyectado en runtime, así que la impersonación queda bloqueada a la empresa elegida sin mutar el usuario objetivo
+  - `/ops` ya permite seleccionar usuario objetivo, modo (`lectura`/`escritura`) y motivo para entrar como miembro de cualquier organización
+  - el layout autenticado muestra banner de impersonación activa y permite salir; el switcher de empresa queda bloqueado mientras dure la sesión
+  - las acciones de `Ops` pasan a usar `getCurrentActorUser()` para auditar y revocar correctamente incluso durante una impersonación activa
+  - verificación real de este bloque:
+    - tests nuevos de cookie/tenant/support/impersonation: `28/28` OK
+    - `eslint` del write set: OK
+    - `npx tsc --noEmit --pretty false`: OK
+    - `npx prisma validate`: OK
+    - `npx prisma generate`: OK
+    - `npm run build`: OK
+    - smoke Playwright:
+      - `/ops` muestra selector de usuario y acción `Entrar como`
+      - iniciar impersonación crea cookie y muestra banner en `dashboard`
+      - salir de la impersonación elimina cookie y restaura el estado normal
+- Plan siguiente de expansión del control plane ya fijado:
+  - plan guardado en `docs/superpowers/plans/2026-03-23-ops-control-plane-expansion-plan.md`
+  - dirección validada también con revisión paralela:
+    - primero ficha de empresa `read-first`
+    - después mutaciones comerciales
+    - después miembros/invitaciones
+    - después soporte profundo
+    - al final salud/uso/auditoría ampliada
+  - límites explícitos:
+    - no rehacer Stripe ni pricing
+    - no convertir `/ops` en editor genérico de datos de tenant
+    - no tocar de nuevo el contrato multitenant base

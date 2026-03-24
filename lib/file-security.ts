@@ -38,7 +38,10 @@ export function resolveRelativePath(...paths: string[]) {
 
 export function normalizeBackupFilePath(filePath: string) {
   const normalizedInputPath = filePath.replaceAll("\\", "/")
-  const strippedUploadsPrefix = normalizedInputPath.replace(/^.*\/uploads\//, "").replace(/^\/+/, "")
+  const canonicalMatch = normalizedInputPath.match(/(?:^|\/)(organizations\/[^/]+\/.+)$/)
+  const strippedUploadsPrefix = canonicalMatch
+    ? canonicalMatch[1]
+    : normalizedInputPath.replace(/^.*\/uploads\//, "").replace(/^\/+/, "")
   const normalizedRelativePath = path.posix.normalize(strippedUploadsPrefix)
   const pathSegments = normalizedRelativePath.split("/").filter(Boolean)
 

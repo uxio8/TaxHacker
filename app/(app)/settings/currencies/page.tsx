@@ -1,15 +1,15 @@
 import { addCurrencyAction, deleteCurrencyAction, editCurrencyAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
-import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getCurrencies } from "@/models/currencies"
 
 export const metadata = createPageMetadata("settings.currencies")
 
 export default async function CurrenciesSettingsPage() {
   const t = createTranslator()
-  const user = await getCurrentUser()
-  const currencies = await getCurrencies(user.id)
+  const organizationId = await requireCurrentOrganizationId()
+  const currencies = await getCurrencies(organizationId)
   const currenciesWithActions = currencies.map((currency) => ({
     ...currency,
     isEditable: true,
@@ -28,15 +28,15 @@ export default async function CurrenciesSettingsPage() {
         ]}
         onDelete={async (code) => {
           "use server"
-          return await deleteCurrencyAction(user.id, code)
+          return await deleteCurrencyAction(code)
         }}
         onAdd={async (data) => {
           "use server"
-          return await addCurrencyAction(user.id, data as { code: string; name: string })
+          return await addCurrencyAction(data as { code: string; name: string })
         }}
         onEdit={async (code, data) => {
           "use server"
-          return await editCurrencyAction(user.id, code, data as { name: string })
+          return await editCurrencyAction(code, data as { name: string })
         }}
       />
     </div>

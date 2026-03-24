@@ -1,11 +1,9 @@
 "use client"
 
 import { useNotification } from "@/app/(app)/context"
-import { uploadFilesAction } from "@/app/(app)/files/actions"
-import { uploadTransactionFilesAction } from "@/app/(app)/transactions/actions"
 import { useI18n } from "@/lib/i18n"
-import { getUploadFlowState } from "@/lib/upload-flow"
-import { AlertCircle, CloudUpload, Loader2 } from "lucide-react"
+import { notifyUploadSuccess, uploadFilesWithHttp } from "@/lib/upload-flow"
+import { AlertCircle, CloudUpload, Loader2, X } from "lucide-react"
 import { useParams, usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
@@ -21,6 +19,15 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
   const params = useParams()
   const rawTransactionId = params.transactionId
   const transactionId = Array.isArray(rawTransactionId) ? rawTransactionId[0] : rawTransactionId
+
+  const resetDragState = useCallback(() => {
+    dragCounter.current = 0
+    setIsDragging(false)
+  }, [])
+
+  const dismissUploadError = useCallback(() => {
+    setUploadError("")
+  }, [])
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -41,6 +48,7 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
 
     dragCounter.current++
     if (dragCounter.current === 1) {
+      dismissUploadError()
       setIsDragging(true)
     }
   }
@@ -53,7 +61,7 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    dragCounter.current--
+    dragCounter.current = Math.max(0, dragCounter.current - 1)
 
     if (dragCounter.current === 0) {
       setIsDragging(false)
@@ -66,43 +74,26 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
       e.stopPropagation()
 
       // Reset counter and dragging state
-      dragCounter.current = 0
-      setIsDragging(false)
+      resetDragState()
 
       const files = e.dataTransfer.files
       if (files && files.length > 0) {
         setIsUploading(true)
-        setUploadError("")
+        dismissUploadError()
 
         try {
-          const formData = new FormData()
-          if (transactionId) {
-            formData.append("transactionId", transactionId as string)
-          }
-          for (let i = 0; i < files.length; i++) {
-            formData.append("files", files[i])
-          }
-
-          const result = transactionId
-            ? await uploadTransactionFilesAction(formData)
-            : await uploadFilesAction(formData)
+          const result = await uploadFilesWithHttp({
+            files,
+            transactionId,
+          })
 
           if (result.success) {
-            const uploadFlow = getUploadFlowState({
+            notifyUploadSuccess({
               currentPath: pathname,
               destination: transactionId ? "transaction" : "unsorted",
+              router,
+              showNotification,
             })
-
-            showNotification({ code: uploadFlow.notificationCode, message: "new" })
-            setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
-
-            if (uploadFlow.redirectPath) {
-              router.push(uploadFlow.redirectPath)
-            }
-
-            if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
-              router.refresh()
-            }
           } else {
             setUploadError(result.error ? result.error : t("common.errors.generic"))
           }
@@ -114,23 +105,44 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
         }
       }
     },
-    [pathname, transactionId, router, showNotification]
+    [dismissUploadError, pathname, resetDragState, router, showNotification, t, transactionId]
   )
 
-  // Add event listeners to document body
   useEffect(() => {
     document.body.addEventListener("dragenter", handleDragEnter as unknown as EventListener)
     document.body.addEventListener("dragover", handleDragOver as unknown as EventListener)
     document.body.addEventListener("dragleave", handleDragLeave as unknown as EventListener)
     document.body.addEventListener("drop", handleDrop as unknown as EventListener)
+    window.addEventListener("blur", resetDragState)
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        resetDragState()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     return () => {
       document.body.removeEventListener("dragenter", handleDragEnter as unknown as EventListener)
       document.body.removeEventListener("dragover", handleDragOver as unknown as EventListener)
       document.body.removeEventListener("dragleave", handleDragLeave as unknown as EventListener)
       document.body.removeEventListener("drop", handleDrop as unknown as EventListener)
+      window.removeEventListener("blur", resetDragState)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isDragging, handleDrop])
+  }, [handleDrop, resetDragState])
+
+  useEffect(() => {
+    if (!uploadError) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setUploadError("")
+    }, 8000)
+
+    return () => window.clearTimeout(timeout)
+  }, [uploadError])
 
   return (
     <div className="relative min-h-screen w-full">
@@ -166,11 +178,23 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
       )}
 
       {uploadError && (
-        <div className="fixed inset-0 bg-opacity-20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center">
-            <AlertCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
-            <h3 className="text-xl font-semibold mb-2">{t("files.upload.errorTitle")}</h3>
-            <p className="text-gray-600 dark:text-gray-400">{uploadError}</p>
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-center sm:justify-end">
+          <div className="pointer-events-auto w-full max-w-md rounded-lg border bg-white p-4 shadow-xl dark:bg-gray-800">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold">{t("files.upload.errorTitle")}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{uploadError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissUploadError}
+                className="rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+                aria-label="Cerrar aviso"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

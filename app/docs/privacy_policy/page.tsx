@@ -4,6 +4,9 @@ import { createPageMetadata } from "@/lib/i18n"
 export const metadata = createPageMetadata("docs.privacy.title")
 
 export default async function PrivacyPolicy() {
+  const appName = config.app.title
+  const appUrl = config.app.baseURL
+
   return (
     <div className="prose prose-slate max-w-none">
       <h2 className="text-3xl font-bold mb-6 text-slate-900 border-b pb-2">
@@ -24,16 +27,16 @@ export default async function PrivacyPolicy() {
         </a>
         <br />
         <strong className="text-slate-700">Dominio</strong>:{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
+        <a href={appUrl} className="text-blue-600 hover:text-blue-800">
+          {appUrl}
         </a>
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker (&quot;nosotros&quot;) se compromete a proteger tu privacidad. Esta Política de privacidad describe
+        {appName} (&quot;nosotros&quot;) se compromete a proteger tu privacidad. Esta Política de privacidad describe
         cómo recopilamos, usamos, almacenamos y protegemos tus datos personales cuando utilizas nuestros servicios en{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          taxhacker.app
+        <a href={appUrl} className="text-blue-600 hover:text-blue-800">
+          {appUrl}
         </a>
         .
       </p>
@@ -43,7 +46,7 @@ export default async function PrivacyPolicy() {
       <h3 className="text-2xl font-semibold text-slate-800 mb-4">
         1. <strong>Qué datos recopilamos</strong>
       </h3>
-      <p className="text-slate-700 mb-3">Recopilamos los siguientes tipos de datos cuando usas TaxHacker:</p>
+      <p className="text-slate-700 mb-3">Recopilamos los siguientes tipos de datos cuando usas {appName}:</p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
           <strong className="text-slate-800">Datos de la cuenta</strong>: correo electrónico, nombre visible y avatar
@@ -74,7 +77,7 @@ export default async function PrivacyPolicy() {
       </h3>
       <p className="text-slate-700 mb-3">Usamos tus datos para:</p>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
-        <li>Crear y gestionar tu cuenta de TaxHacker</li>
+        <li>Crear y gestionar tu cuenta de {appName}</li>
         <li>Almacenar y analizar los archivos que subes</li>
         <li>Mejorar tu organización financiera mediante insights basados en IA</li>
         <li>Comunicarnos contigo sobre tu cuenta y sobre novedades del servicio</li>
@@ -96,7 +99,7 @@ export default async function PrivacyPolicy() {
       </ul>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        Al usar TaxHacker, consientes la transferencia de los datos necesarios a estos proveedores terceros para su
+        Al usar {appName}, consientes la transferencia de los datos necesarios a estos proveedores terceros para su
         procesamiento. Estos proveedores pueden operar fuera de la UE, con las salvaguardas adecuadas conforme al RGPD
         (por ejemplo, cláusulas contractuales tipo).
       </p>
@@ -107,7 +110,7 @@ export default async function PrivacyPolicy() {
         4. <strong>Cookies y seguimiento</strong>
       </h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker <strong className="text-slate-800">no usa cookies de seguimiento</strong> ni analítica de terceros.
+        {appName} <strong className="text-slate-800">no usa cookies de seguimiento</strong> ni analítica de terceros.
         Solo recopilamos registros agregados de acceso y estadísticas de uso mediante{" "}
         <strong className="text-slate-800">Cloudflare</strong> para rendimiento y seguridad de la infraestructura.
       </p>
@@ -196,7 +199,7 @@ export default async function PrivacyPolicy() {
         9. <strong>Privacidad de menores</strong>
       </h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker <strong className="text-slate-800">no está dirigido a menores de 18 años</strong>. No recopilamos ni
+        {appName} <strong className="text-slate-800">no está dirigido a menores de 18 años</strong>. No recopilamos ni
         almacenamos conscientemente datos de menores.
       </p>
 

@@ -1,5 +1,8 @@
 import config from "@/lib/config"
-import { getSelfHostedUser, getUserByEmail, getUserById, SELF_HOSTED_USER } from "@/models/users"
+import { PLATFORM_IMPERSONATION_COOKIE_NAME, resolvePlatformImpersonation } from "@/lib/impersonation"
+import { getSelfHostedUser, getUserByEmail, getUserById } from "@/models/users"
+import { getActiveSupportAccessSessionByIdForUser } from "@/models/support-access"
+import { isOrganizationAccessRestricted, type SidebarUserProfile } from "@/models/billing/runtime"
 import { User } from "@/prisma/client"
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
@@ -12,16 +15,7 @@ import { prisma } from "./db"
 import { resend, sendOTPCodeEmail } from "./email"
 import { hasSelfHostedAccess } from "./security"
 
-export type UserProfile = {
-  id: string
-  name: string
-  email: string
-  avatar?: string
-  membershipPlan: string
-  storageUsed: number
-  storageLimit: number
-  aiBalance: number
-}
+export type UserProfile = SidebarUserProfile
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
@@ -83,7 +77,7 @@ async function hasValidatedSelfHostedAccess() {
   )
 }
 
-export async function getSession() {
+async function getAuthenticatedSession() {
   if (config.selfHosted.isEnabled) {
     if (!(await hasValidatedSelfHostedAccess())) {
       return null
@@ -98,43 +92,148 @@ export async function getSession() {
   })
 }
 
-export async function getCurrentUser(): Promise<User> {
+export type CurrentImpersonation = {
+  actorUser: User
+  effectiveUser: User
+  session: {
+    id: string
+    organizationId: string
+    assumedUserId: string
+    mode: "read_only" | "read_write"
+    reason: string
+    expiresAt: Date
+  }
+}
+
+async function resolveCurrentAuthContext() {
+  const session = await getAuthenticatedSession()
+
+  if (!session?.user?.id) {
+    return null
+  }
+
+  const actorUser = await getUserById(session.user.id)
+
+  if (!actorUser) {
+    return null
+  }
+
+  const cookieStore = await cookies()
+  const impersonation = await resolvePlatformImpersonation(
+    {
+      actorUserId: actorUser.id,
+      cookieValue: cookieStore.get(PLATFORM_IMPERSONATION_COOKIE_NAME)?.value,
+    },
+    {
+      authSecret: config.auth.secret,
+      getActiveSupportAccessSessionByIdForUser,
+      getUserById,
+    }
+  )
+
+  if (!impersonation) {
+    return {
+      actorUser,
+      effectiveUser: actorUser,
+      impersonation: null,
+    }
+  }
+
+  return {
+    actorUser,
+    effectiveUser: impersonation.effectiveUser as User,
+    impersonation: {
+      actorUser,
+      effectiveUser: impersonation.effectiveUser as User,
+      session: {
+        id: impersonation.session.id,
+        organizationId: impersonation.session.organizationId,
+        assumedUserId: impersonation.session.assumedUserId,
+        mode: impersonation.session.mode,
+        reason: impersonation.session.reason,
+        expiresAt: impersonation.session.expiresAt,
+      },
+    } satisfies CurrentImpersonation,
+  }
+}
+
+export async function getSession() {
+  const authContext = await resolveCurrentAuthContext()
+
+  if (!authContext) {
+    return null
+  }
+
+  return {
+    user: authContext.effectiveUser,
+  }
+}
+
+export async function getCurrentActorUser(): Promise<User> {
+  const authContext = await resolveCurrentAuthContext()
+
+  if (authContext?.actorUser) {
+    return authContext.actorUser
+  }
+
   if (config.selfHosted.isEnabled) {
-    if (!(await hasValidatedSelfHostedAccess())) {
-      redirect(config.selfHosted.welcomeUrl)
-    }
-
-    const user = await getSelfHostedUser()
-    if (user) {
-      return user
-    } else {
-      redirect(config.selfHosted.welcomeUrl)
-    }
+    redirect(config.selfHosted.welcomeUrl)
   }
 
-  // Try to return user from session
-  const session = await getSession()
-  if (session && session.user) {
-    const user = await getUserById(session.user.id)
-    if (user) {
-      return user
-    }
-  }
-
-  // No session or user found
   redirect(config.auth.loginUrl)
 }
 
-export function isSubscriptionExpired(user: User) {
+export async function getCurrentImpersonation() {
+  const authContext = await resolveCurrentAuthContext()
+  return authContext?.impersonation ?? null
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const authContext = await resolveCurrentAuthContext()
+
+  if (authContext?.effectiveUser) {
+    return authContext.effectiveUser
+  }
+
+  if (config.selfHosted.isEnabled) {
+    redirect(config.selfHosted.welcomeUrl)
+  }
+
+  redirect(config.auth.loginUrl)
+}
+
+type SubscriptionAccessSubject = {
+  membershipExpiresAt?: Date | null
+  accessStatus?: string | null
+}
+
+export function isSubscriptionExpired(
+  user: SubscriptionAccessSubject
+) {
   if (config.selfHosted.isEnabled) {
     return false
+  }
+  if ("accessStatus" in user && isOrganizationAccessRestricted(user.accessStatus as never)) {
+    return true
   }
   return user.membershipExpiresAt && user.membershipExpiresAt < new Date()
 }
 
-export function isAiBalanceExhausted(user: User) {
-  if (config.selfHosted.isEnabled || user.membershipPlan === SELF_HOSTED_USER.membershipPlan) {
+type AiAccessSubject = {
+  membershipPlan?: string | null
+  aiBalance?: number | null
+  accessStatus?: string | null
+}
+
+export function isAiBalanceExhausted(
+  user: AiAccessSubject
+) {
+  if (
+    config.selfHosted.isEnabled
+    || user.membershipPlan === "unlimited"
+    || ("accessStatus" in user && isOrganizationAccessRestricted(user.accessStatus as never))
+  ) {
     return false
   }
-  return user.aiBalance <= 0
+  return (user.aiBalance ?? 0) <= 0
 }

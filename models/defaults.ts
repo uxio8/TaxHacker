@@ -5,9 +5,11 @@ import {
   DEFAULTS_SYNC_VERSION_SETTING_CODE,
   EXTRA_BILLING_DEFAULT_FIELDS,
   LEGACY_EXTRA_BILLING_DEFAULT_FIELDS,
+  PREVIOUS_EXTRA_BILLING_FIELD_LOCALIZATION,
   getMissingDefaultFields,
   shouldUpgradeDefaultAnalysisPrompt,
 } from "@/lib/default-field-sync"
+import { buildOrganizationOwnedCodeWhere, buildOrganizationOwnedCreateData, buildOrganizationOwnedScope } from "./organization-owned"
 
 export const DEFAULT_PROMPT_ANALYSE_NEW_FILE = CURRENT_DEFAULT_PROMPT_ANALYSE_NEW_FILE
 
@@ -39,7 +41,8 @@ const LEGACY_DEFAULT_SETTINGS = [
   {
     code: "prompt_analyse_new_file",
     name: "Prompt for Analyze Transaction",
-    description: "Allowed variables: {fields}, {categories}, {categories.code}, {projects}, {projects.code}",
+    description:
+      "Allowed variables: {fields}, {categories}, {categories.code}, {projects}, {projects.code}. User business context is added automatically.",
     value: DEFAULT_PROMPT_ANALYSE_NEW_FILE,
   },
   {
@@ -71,7 +74,8 @@ const DEFAULT_SETTING_LOCALIZATION: Partial<
   },
   prompt_analyse_new_file: {
     name: "Prompt del formulario de análisis de archivos",
-    description: "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}",
+    description:
+      "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}. El contexto del negocio del usuario se añade automáticamente.",
   },
   is_welcome_message_hidden: {
     name: "No mostrar el mensaje de bienvenida en el panel",
@@ -585,28 +589,28 @@ const DEFAULT_FIELD_LOCALIZATION: Partial<
     llm_prompt: "número de factura, id de factura, número de documento o número de serie",
   },
   billing_company_name: {
-    name: "Razón social de facturación",
-    llm_prompt: "razón social completa del cliente facturado o nombre legal de la empresa facturada",
+    name: "Razón social del emisor",
+    llm_prompt: "razón social completa de la empresa emisora, proveedora o vendedora",
   },
   billing_tax_id: {
-    name: "NIF/CIF de facturación",
-    llm_prompt: "NIF, CIF, VAT number, identificador fiscal o número fiscal del cliente facturado",
+    name: "NIF/CIF del emisor",
+    llm_prompt: "NIF, CIF, VAT number, identificador fiscal o número fiscal del emisor o proveedor",
   },
   billing_address: {
-    name: "Dirección de facturación",
-    llm_prompt: "dirección completa de facturación del cliente o empresa facturada",
+    name: "Dirección del emisor",
+    llm_prompt: "dirección completa de la empresa emisora, proveedora o vendedora",
   },
   billing_postal_code: {
-    name: "Código postal de facturación",
-    llm_prompt: "código postal o ZIP de facturación",
+    name: "Código postal del emisor",
+    llm_prompt: "código postal o ZIP del emisor o proveedor",
   },
   billing_city: {
-    name: "Ciudad de facturación",
-    llm_prompt: "ciudad o localidad de facturación",
+    name: "Ciudad del emisor",
+    llm_prompt: "ciudad o localidad del emisor o proveedor",
   },
   billing_country: {
-    name: "País de facturación",
-    llm_prompt: "nombre del país o código de país de facturación",
+    name: "País del emisor",
+    llm_prompt: "nombre del país o código de país del emisor o proveedor",
   },
   text: {
     name: "Texto extraído",
@@ -627,39 +631,45 @@ const legacyProjectsByCode = new Map(LEGACY_DEFAULT_PROJECTS.map((project) => [p
 const defaultProjectsByCode = new Map(DEFAULT_PROJECTS.map((project) => [project.code, project]))
 const legacyFieldsByCode = new Map(LEGACY_DEFAULT_FIELDS.map((field) => [field.code, field]))
 const defaultFieldsByCode = new Map(DEFAULT_FIELDS.map((field) => [field.code, field]))
+const previousLocalizedBillingFieldsByCode = new Map(
+  EXTRA_BILLING_DEFAULT_FIELDS.map((field) => [
+    field.code,
+    PREVIOUS_EXTRA_BILLING_FIELD_LOCALIZATION[field.code as keyof typeof PREVIOUS_EXTRA_BILLING_FIELD_LOCALIZATION],
+  ])
+)
 
-export async function createUserDefaults(userId: string) {
+export async function createUserDefaults(organizationId: string) {
   // Default projects
   for (const project of DEFAULT_PROJECTS) {
     await prisma.project.upsert({
-      where: { userId_code: { code: project.code, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, project.code),
       update: { name: project.name, color: project.color, llm_prompt: project.llm_prompt },
-      create: { ...project, userId },
+      create: buildOrganizationOwnedCreateData(organizationId, project),
     })
   }
 
   // Default categories
   for (const category of DEFAULT_CATEGORIES) {
     await prisma.category.upsert({
-      where: { userId_code: { code: category.code, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, category.code),
       update: { name: category.name, color: category.color, llm_prompt: category.llm_prompt },
-      create: { ...category, userId },
+      create: buildOrganizationOwnedCreateData(organizationId, category),
     })
   }
 
   // Default currencies
   for (const currency of DEFAULT_CURRENCIES) {
     await prisma.currency.upsert({
-      where: { userId_code: { code: currency.code, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, currency.code),
       update: { name: currency.name },
-      create: { ...currency, userId },
+      create: buildOrganizationOwnedCreateData(organizationId, currency),
     })
   }
 
   // Default fields
   for (const field of DEFAULT_FIELDS) {
     await prisma.field.upsert({
-      where: { userId_code: { code: field.code, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, field.code),
       update: {
         name: field.name,
         type: field.type,
@@ -669,40 +679,39 @@ export async function createUserDefaults(userId: string) {
         isRequired: field.isRequired,
         isExtra: field.isExtra,
       },
-      create: { ...field, userId },
+      create: buildOrganizationOwnedCreateData(organizationId, field),
     })
   }
 
   // Default settings
   for (const setting of DEFAULT_SETTINGS) {
     await prisma.setting.upsert({
-      where: { userId_code: { code: setting.code, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, setting.code),
       update: { name: setting.name, description: setting.description, value: setting.value },
-      create: { ...setting, userId },
+      create: buildOrganizationOwnedCreateData(organizationId, setting),
     })
   }
 
   await prisma.setting.upsert({
-    where: { userId_code: { code: DEFAULTS_SYNC_VERSION_SETTING_CODE, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, DEFAULTS_SYNC_VERSION_SETTING_CODE),
     update: { value: String(DEFAULTS_SYNC_VERSION), name: "Versión de sincronización de defaults", description: "" },
-    create: {
+    create: buildOrganizationOwnedCreateData(organizationId, {
       code: DEFAULTS_SYNC_VERSION_SETTING_CODE,
       value: String(DEFAULTS_SYNC_VERSION),
       name: "Versión de sincronización de defaults",
       description: "",
-      userId,
-    },
+    }),
   })
 }
 
-export async function isDatabaseEmpty(userId: string) {
-  const fieldsCount = await prisma.field.count({ where: { userId } })
+export async function isDatabaseEmpty(organizationId: string) {
+  const fieldsCount = await prisma.field.count({ where: buildOrganizationOwnedScope(organizationId) })
   return fieldsCount === 0
 }
 
-export async function ensureUserDefaultsVersion(userId: string) {
+export async function ensureUserDefaultsVersion(organizationId: string) {
   const versionSetting = await prisma.setting.findUnique({
-    where: { userId_code: { code: DEFAULTS_SYNC_VERSION_SETTING_CODE, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, DEFAULTS_SYNC_VERSION_SETTING_CODE),
     select: { value: true },
   })
 
@@ -713,19 +722,19 @@ export async function ensureUserDefaultsVersion(userId: string) {
   await prisma.$transaction(async (tx) => {
     const [existingFields, existingCategories, existingProjects, existingSettings] = await Promise.all([
       tx.field.findMany({
-        where: { userId },
+        where: buildOrganizationOwnedScope(organizationId),
         select: { code: true, llm_prompt: true, name: true },
       }),
       tx.category.findMany({
-        where: { userId },
+        where: buildOrganizationOwnedScope(organizationId),
         select: { code: true, llm_prompt: true, name: true },
       }),
       tx.project.findMany({
-        where: { userId },
+        where: buildOrganizationOwnedScope(organizationId),
         select: { code: true, llm_prompt: true, name: true },
       }),
       tx.setting.findMany({
-        where: { userId },
+        where: buildOrganizationOwnedScope(organizationId),
         select: { code: true, description: true, name: true, value: true },
       }),
     ])
@@ -735,15 +744,16 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
     for (const field of missingFields) {
       await tx.field.upsert({
-        where: { userId_code: { code: field.code, userId } },
+        where: buildOrganizationOwnedCodeWhere(organizationId, field.code),
         update: {},
-        create: { ...field, userId },
+        create: buildOrganizationOwnedCreateData(organizationId, field),
       })
     }
 
     for (const field of existingFields) {
       const legacyField = legacyFieldsByCode.get(field.code)
       const defaultField = defaultFieldsByCode.get(field.code)
+      const previousLocalizedBillingField = previousLocalizedBillingFieldsByCode.get(field.code)
 
       if (!legacyField || !defaultField) {
         continue
@@ -751,17 +761,17 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
       const updateData: { llm_prompt?: string; name?: string } = {}
 
-      if (field.name === legacyField.name) {
+      if (field.name === legacyField.name || field.name === previousLocalizedBillingField?.name) {
         updateData.name = defaultField.name
       }
 
-      if (field.llm_prompt === legacyField.llm_prompt) {
+      if (field.llm_prompt === legacyField.llm_prompt || field.llm_prompt === previousLocalizedBillingField?.llm_prompt) {
         updateData.llm_prompt = defaultField.llm_prompt
       }
 
       if (Object.keys(updateData).length > 0) {
         await tx.field.update({
-          where: { userId_code: { code: field.code, userId } },
+          where: buildOrganizationOwnedCodeWhere(organizationId, field.code),
           data: updateData,
         })
       }
@@ -787,7 +797,7 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
       if (Object.keys(updateData).length > 0) {
         await tx.category.update({
-          where: { userId_code: { code: category.code, userId } },
+          where: buildOrganizationOwnedCodeWhere(organizationId, category.code),
           data: updateData,
         })
       }
@@ -813,7 +823,7 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
       if (Object.keys(updateData).length > 0) {
         await tx.project.update({
-          where: { userId_code: { code: project.code, userId } },
+          where: buildOrganizationOwnedCodeWhere(organizationId, project.code),
           data: updateData,
         })
       }
@@ -839,7 +849,7 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
       if (Object.keys(updateData).length > 0) {
         await tx.setting.update({
-          where: { userId_code: { code: setting.code, userId } },
+          where: buildOrganizationOwnedCodeWhere(organizationId, setting.code),
           data: updateData,
         })
       }
@@ -849,38 +859,36 @@ export async function ensureUserDefaultsVersion(userId: string) {
 
     if (shouldUpgradeDefaultAnalysisPrompt(promptSetting?.value)) {
       await tx.setting.upsert({
-        where: { userId_code: { code: "prompt_analyse_new_file", userId } },
+        where: buildOrganizationOwnedCodeWhere(organizationId, "prompt_analyse_new_file"),
         update: {
           description:
-            "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}",
+            "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}. El contexto del negocio del usuario se añade automáticamente.",
           name: "Prompt del formulario de análisis de archivos",
           value: DEFAULT_PROMPT_ANALYSE_NEW_FILE,
         },
-        create: {
+        create: buildOrganizationOwnedCreateData(organizationId, {
           code: "prompt_analyse_new_file",
           name: "Prompt del formulario de análisis de archivos",
           description:
-            "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}",
+            "Variables permitidas: {fields}, {categories}, {categories.code}, {projects}, {projects.code}. El contexto del negocio del usuario se añade automáticamente.",
           value: DEFAULT_PROMPT_ANALYSE_NEW_FILE,
-          userId,
-        },
+        }),
       })
     }
 
     await tx.setting.upsert({
-      where: { userId_code: { code: DEFAULTS_SYNC_VERSION_SETTING_CODE, userId } },
+      where: buildOrganizationOwnedCodeWhere(organizationId, DEFAULTS_SYNC_VERSION_SETTING_CODE),
       update: {
         value: String(DEFAULTS_SYNC_VERSION),
         name: "Versión de sincronización de defaults",
         description: "",
       },
-      create: {
+      create: buildOrganizationOwnedCreateData(organizationId, {
         code: DEFAULTS_SYNC_VERSION_SETTING_CODE,
         value: String(DEFAULTS_SYNC_VERSION),
         name: "Versión de sincronización de defaults",
         description: "",
-        userId,
-      },
+      }),
     })
   })
 }

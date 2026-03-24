@@ -3,6 +3,8 @@ FROM node:23-slim AS base
 # Default environment variables
 ENV PORT=7331
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build stage
 FROM base AS builder
@@ -44,9 +46,6 @@ RUN npm install -g @openai/codex@0.116.0
 
 WORKDIR /app
 
-# Create upload directory and set permissions
-RUN mkdir -p /app/upload
-
 # Copy built assets from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
@@ -64,10 +63,10 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Create directory for uploads
-RUN mkdir -p /app/data
+# Create runtime directories used by local storage and the analysis worker heartbeat
+RUN mkdir -p /app/data/uploads /app/data/runtime
 
 EXPOSE 7331
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "start"]
+CMD ["sh", "-c", "exec ./node_modules/.bin/next start -p ${PORT:-7331}"]

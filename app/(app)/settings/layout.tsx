@@ -12,7 +12,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const settingsCategories = [
     { title: t("settings.general"), href: "/settings" },
     { title: t("settings.profileAndPlan"), href: "/settings/profile" },
+    { title: "Miembros", href: "/settings/members" },
+    { title: "Billing", href: "/settings/billing" },
     { title: t("settings.businessDetails"), href: "/settings/business" },
+    { title: t("settings.fiscal.title"), href: "/settings/fiscal" },
     { title: t("settings.llm"), href: "/settings/llm" },
     { title: t("common.fields"), href: "/settings/fields" },
     { title: t("common.categories"), href: "/settings/categories" },

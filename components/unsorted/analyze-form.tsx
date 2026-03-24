@@ -13,12 +13,16 @@ import { FormSelectType } from "@/components/forms/select-type"
 import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { canAnalyzeFileMimeType, getAnalyzeMimeTypeError } from "@/lib/analysis-support"
+import { buildAnalyzeFormState } from "@/components/unsorted/analyze-form-state"
+import type { UnsortedInboxSummary } from "@/models/unsorted-inbox"
+import { getAnalyzedDocumentTitle } from "@/lib/analyzed-file-name"
 import { useI18n, type Translator } from "@/lib/i18n"
 import { Category, Currency, Field, File, Project } from "@/prisma/client"
 import { format } from "date-fns"
-import { ArrowDownToLine, Brain, Loader2, Trash2 } from "lucide-react"
-import { startTransition, useActionState, useMemo, useState } from "react"
+import { ArrowDownToLine, Brain, ChevronDown, ChevronUp, Loader2, Settings, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { startTransition, useActionState, useEffect, useMemo, useState } from "react"
 
 const ANALYSIS_JOB_POLL_INTERVAL_MS = 1500
 const ANALYSIS_JOB_TIMEOUT_MS = 10 * 60 * 1000
@@ -45,6 +49,7 @@ export default function AnalyzeForm({
   currencies,
   fields,
   settings,
+  summary,
 }: {
   file: File
   categories: Category[]
@@ -52,17 +57,17 @@ export default function AnalyzeForm({
   currencies: Currency[]
   fields: Field[]
   settings: Record<string, string>
+  summary: UnsortedInboxSummary
 }) {
   const { showNotification } = useNotification()
   const { t } = useI18n()
+  const router = useRouter()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState<string>("")
   const [analyzeError, setAnalyzeError] = useState<string>("")
   const [deleteState, deleteAction, isDeleting] = useActionState(deleteUnsortedFileAction, null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const canAnalyzeCurrentFile = canAnalyzeFileMimeType(file.mimetype)
-
   const fieldMap = useMemo(() => {
     return fields.reduce(
       (acc, field) => {
@@ -78,7 +83,7 @@ export default function AnalyzeForm({
     () => extraFields.filter((field) => INVOICE_FIELD_CODES.has(field.code)),
     [extraFields]
   )
-  const billingFields = useMemo(
+  const issuerFields = useMemo(
     () => extraFields.filter((field) => BILLING_FIELD_CODES.has(field.code)),
     [extraFields]
   )
@@ -86,49 +91,31 @@ export default function AnalyzeForm({
     () => extraFields.filter((field) => !INVOICE_FIELD_CODES.has(field.code) && !BILLING_FIELD_CODES.has(field.code)),
     [extraFields]
   )
-  const initialFormState = useMemo(() => {
-    const baseState = {
-      name: file.filename,
-      merchant: "",
-      description: "",
-      type: settings.default_type,
-      total: 0.0,
-      currencyCode: settings.default_currency,
-      convertedTotal: 0.0,
-      convertedCurrencyCode: settings.default_currency,
-      categoryCode: settings.default_category,
-      projectCode: settings.default_project,
-      issuedAt: "",
-      note: "",
-      text: "",
-      items: [],
-    }
-
-    // Add extra fields
-    const extraFieldsState = extraFields.reduce(
-      (acc, field) => {
-        acc[field.code] = ""
-        return acc
-      },
-      {} as Record<string, string>
-    )
-
-    // Load cached results if they exist
-    const cachedResults = file.cachedParseResult
-      ? Object.fromEntries(
-          Object.entries(file.cachedParseResult as Record<string, string>).filter(
-            ([_, value]) => value !== null && value !== undefined && value !== ""
-          )
-        )
-      : {}
-
-    return {
-      ...baseState,
-      ...extraFieldsState,
-      ...cachedResults,
-    }
-  }, [file.filename, settings, extraFields, file.cachedParseResult])
+  const initialFormState = useMemo(
+    () =>
+      buildAnalyzeFormState({
+        filename: file.filename,
+        cachedParseResult: file.cachedParseResult as Record<string, unknown> | null | undefined,
+        settings,
+        extraFields,
+      }),
+    [file.filename, settings, extraFields, file.cachedParseResult]
+  )
   const [formData, setFormData] = useState(initialFormState)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(summary.defaultDetailsOpen)
+  const showHeaderDeleteAction = summary.state === "pending_analysis"
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      await deleteAction(file.id)
+    })
+  }
+
+  useEffect(() => {
+    if (deleteState?.success) {
+      router.refresh()
+    }
+  }, [deleteState, router])
 
   async function saveAsTransaction(formData: FormData) {
     setSaveError("")
@@ -189,9 +176,15 @@ export default function AnalyzeForm({
       } else {
         const output = await pollAnalysisJob(results.data.jobId)
         const nonEmptyFields = Object.fromEntries(
-          Object.entries(output).filter(([_, value]) => value !== null && value !== undefined && value !== "")
+          Object.entries(output).filter(([, value]) => value !== null && value !== undefined && value !== "")
         )
-        setFormData((prev) => ({ ...prev, ...nonEmptyFields }))
+        setFormData((prev) => ({
+          ...prev,
+          ...nonEmptyFields,
+          name: getAnalyzedDocumentTitle(file.filename, output),
+        }))
+        setIsDetailsOpen(true)
+        router.refresh()
       }
     } catch (error) {
       console.error("Analysis failed:", error)
@@ -204,61 +197,97 @@ export default function AnalyzeForm({
 
   return (
     <>
-      {file.isSplitted ? (
-        <div className="flex justify-end">
-          <Badge variant="outline">{t("analysis.fileSplit")}</Badge>
-        </div>
-      ) : !canAnalyzeCurrentFile ? (
-        <div className="mb-6 rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {getAnalyzeMimeTypeError(file.mimetype)}
-        </div>
-      ) : (
-        <Button className="w-full mb-6 py-6 text-lg" onClick={startAnalyze} disabled={isAnalyzing} data-analyze-button>
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              <span>{analyzeStep}</span>
-            </>
-          ) : (
-            <>
-              <Brain className="mr-1 h-4 w-4" />
-              <span>{t("analysis.analyze")}</span>
-            </>
-          )}
-        </Button>
-      )}
+      <div className="mb-6 rounded-xl border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{summary.stateLabel}</Badge>
+              {summary.reasonLabel ? <Badge variant="secondary">{summary.reasonLabel}</Badge> : null}
+              {summary.confidenceLabel ? <Badge variant="secondary">{summary.confidenceLabel}</Badge> : null}
+              {file.isSplitted ? <Badge variant="outline">{t("analysis.fileSplit")}</Badge> : null}
+            </div>
+            <p className="text-sm text-muted-foreground">{summary.description}</p>
+          </div>
 
-      <div>{analyzeError && <FormError>{analyzeError}</FormError>}</div>
+          <div className="flex flex-wrap gap-2">
+            {showHeaderDeleteAction ? (
+              <Button type="button" onClick={handleDelete} variant="destructive" disabled={isDeleting}>
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? t("common.feedback.deleting") : t("common.actions.delete")}</span>
+              </Button>
+            ) : null}
+
+            {summary.primaryAction.kind === "analyze" ? (
+              <Button onClick={startAnalyze} disabled={isAnalyzing} data-analyze-button>
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    <span>{analyzeStep}</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-1 h-4 w-4" />
+                    <span>{summary.primaryAction.label}</span>
+                  </>
+                )}
+              </Button>
+            ) : null}
+
+            {summary.primaryAction.kind === "open_settings" ? (
+              <Button asChild>
+                <Link href={summary.primaryAction.href}>
+                  <Settings className="mr-1 h-4 w-4" />
+                  <span>{summary.primaryAction.label}</span>
+                </Link>
+              </Button>
+            ) : null}
+
+            {summary.primaryAction.kind === "open_details" ? (
+              <Button type="button" variant="outline" onClick={() => setIsDetailsOpen((currentState) => !currentState)}>
+                {isDetailsOpen ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+                <span>{isDetailsOpen ? "Ocultar detalles" : summary.primaryAction.label}</span>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        {analyzeError && <FormError>{analyzeError}</FormError>}
+        {deleteState?.error && <FormError>{deleteState.error}</FormError>}
+      </div>
 
       <form className="space-y-4" action={saveAsTransaction}>
         <input type="hidden" name="fileId" value={file.id} />
-        <FormInput
-          title={fieldMap.name.name}
-          name="name"
-          value={formData.name}
-          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-          required={fieldMap.name.isRequired}
-        />
+        {isDetailsOpen ? (
+          <>
+            <FormInput
+              title={fieldMap.name.name}
+              name="name"
+              value={formData.name}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              required={fieldMap.name.isRequired}
+            />
 
-        <FormInput
-          title={fieldMap.merchant.name}
-          name="merchant"
-          value={formData.merchant}
-          onChange={(e) => setFormData((prev) => ({ ...prev, merchant: e.target.value }))}
-          hideIfEmpty={!fieldMap.merchant.isVisibleInAnalysis}
-          required={fieldMap.merchant.isRequired}
-        />
+            <FormInput
+              title={fieldMap.merchant.name}
+              name="merchant"
+              value={formData.merchant}
+              onChange={(e) => setFormData((prev) => ({ ...prev, merchant: e.target.value }))}
+              hideIfEmpty={!fieldMap.merchant.isVisibleInAnalysis}
+              required={fieldMap.merchant.isRequired}
+            />
 
-        <FormInput
-          title={fieldMap.description.name}
-          name="description"
-          value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          hideIfEmpty={!fieldMap.description.isVisibleInAnalysis}
-          required={fieldMap.description.isRequired}
-        />
+            <FormInput
+              title={fieldMap.description.name}
+              name="description"
+              value={formData.description}
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              hideIfEmpty={!fieldMap.description.isVisibleInAnalysis}
+              required={fieldMap.description.isRequired}
+            />
 
-        <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4">
           <FormInput
             title={fieldMap.total.name}
             name="total"
@@ -267,7 +296,9 @@ export default function AnalyzeForm({
             value={formData.total || ""}
             onChange={(e) => {
               const newValue = parseFloat(e.target.value || "0")
-              !isNaN(newValue) && setFormData((prev) => ({ ...prev, total: newValue }))
+              if (!isNaN(newValue)) {
+                setFormData((prev) => ({ ...prev, total: newValue }))
+              }
             }}
             className="w-32"
             required={fieldMap.total.isRequired}
@@ -291,9 +322,9 @@ export default function AnalyzeForm({
             hideIfEmpty={!fieldMap.type.isVisibleInAnalysis}
             required={fieldMap.type.isRequired}
           />
-        </div>
+            </div>
 
-        {formData.total != 0 && formData.currencyCode && formData.currencyCode !== settings.default_currency && (
+            {formData.total != 0 && formData.currencyCode && formData.currencyCode !== settings.default_currency && (
           <ToolWindow
             title={t("analysis.exchangeRateOn", {
               date: format(new Date(formData.issuedAt || Date.now()), "dd/MM/yyyy"),
@@ -308,9 +339,9 @@ export default function AnalyzeForm({
             />
             <input type="hidden" name="convertedCurrencyCode" value={settings.default_currency} />
           </ToolWindow>
-        )}
+            )}
 
-        <div className="flex flex-row gap-4">
+            <div className="flex flex-row gap-4">
           <FormInput
             title={fieldMap.issuedAt.name}
             type="date"
@@ -320,9 +351,9 @@ export default function AnalyzeForm({
             hideIfEmpty={!fieldMap.issuedAt.isVisibleInAnalysis}
             required={fieldMap.issuedAt.isRequired}
           />
-        </div>
+            </div>
 
-        <div className="flex flex-row gap-4">
+            <div className="flex flex-row gap-4">
           <FormSelectCategory
             title={fieldMap.categoryCode.name}
             categories={categories}
@@ -346,18 +377,18 @@ export default function AnalyzeForm({
               required={fieldMap.projectCode.isRequired}
             />
           )}
-        </div>
+            </div>
 
-        <FormInput
+            <FormInput
           title={fieldMap.note.name}
           name="note"
           value={formData.note}
           onChange={(e) => setFormData((prev) => ({ ...prev, note: e.target.value }))}
           hideIfEmpty={!fieldMap.note.isVisibleInAnalysis}
           required={fieldMap.note.isRequired}
-        />
+            />
 
-        {invoiceFields.length > 0 && (
+            {invoiceFields.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
               {t("analysis.sectionInvoice")}
@@ -375,15 +406,15 @@ export default function AnalyzeForm({
               />
             ))}
           </div>
-        )}
+            )}
 
-        {billingFields.length > 0 && (
+            {issuerFields.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
               {t("analysis.sectionBillingDetails")}
             </h3>
             <div className="grid gap-4 md:grid-cols-2">
-              {billingFields.map((field) => (
+              {issuerFields.map((field) => (
                 <FormInput
                   key={field.code}
                   type="text"
@@ -397,9 +428,9 @@ export default function AnalyzeForm({
               ))}
             </div>
           </div>
-        )}
+            )}
 
-        {remainingExtraFields.map((field) => (
+            {remainingExtraFields.map((field) => (
           <FormInput
             key={field.code}
             type="text"
@@ -410,15 +441,15 @@ export default function AnalyzeForm({
             hideIfEmpty={!field.isVisibleInAnalysis}
             required={field.isRequired}
           />
-        ))}
+            ))}
 
-        {formData.items && formData.items.length > 0 && (
+            {formData.items && formData.items.length > 0 && (
           <ToolWindow title={t("analysis.detectedItems")}>
             <ItemsDetectTool file={file} data={formData} />
           </ToolWindow>
-        )}
+            )}
 
-        <div className="hidden">
+            <div className="hidden">
           <input type="text" name="items" value={JSON.stringify(formData.items)} readOnly />
           <FormTextarea
             title={fieldMap.text.name}
@@ -427,12 +458,12 @@ export default function AnalyzeForm({
             onChange={(e) => setFormData((prev) => ({ ...prev, text: e.target.value }))}
             hideIfEmpty={!fieldMap.text.isVisibleInAnalysis}
           />
-        </div>
+            </div>
 
-        <div className="flex justify-between gap-4 pt-6">
+            <div className="flex justify-between gap-4 pt-6">
           <Button
             type="button"
-            onClick={() => startTransition(() => deleteAction(file.id))}
+            onClick={handleDelete}
             variant="destructive"
             disabled={isDeleting}
           >
@@ -453,12 +484,13 @@ export default function AnalyzeForm({
               </>
             )}
           </Button>
-        </div>
+            </div>
 
-        <div>
-          {deleteState?.error && <FormError>{deleteState.error}</FormError>}
-          {saveError && <FormError>{saveError}</FormError>}
-        </div>
+            <div>
+              {saveError && <FormError>{saveError}</FormError>}
+            </div>
+          </>
+        ) : null}
       </form>
     </>
   )

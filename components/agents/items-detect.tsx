@@ -1,12 +1,11 @@
 import { formatCurrency } from "@/lib/utils"
 import { useI18n } from "@/lib/i18n"
-import { Save, Split } from "lucide-react"
+import { Loader2, Split } from "lucide-react"
 import { Button } from "../ui/button"
 import { TransactionData } from "@/models/transactions"
 import { splitFileIntoItemsAction } from "@/app/(app)/unsorted/actions"
 import { useNotification } from "@/app/(app)/context"
 import { useState } from "react"
-import { Loader2 } from "lucide-react"
 import { File } from "@/prisma/client"
 
 export const ItemsDetectTool = ({ file, data }: { file?: File; data: TransactionData }) => {

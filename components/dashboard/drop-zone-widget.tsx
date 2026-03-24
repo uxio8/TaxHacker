@@ -1,11 +1,10 @@
 "use client"
 
 import { useNotification } from "@/app/(app)/context"
-import { uploadFilesAction } from "@/app/(app)/files/actions"
 import { FormError } from "@/components/forms/error"
 import config from "@/lib/config"
 import { useI18n } from "@/lib/i18n"
-import { getUploadFlowState, resetFileInputValue } from "@/lib/upload-flow"
+import { notifyUploadSuccess, resetFileInputValue, uploadFilesWithHttp } from "@/lib/upload-flow"
 import { Camera, Loader2 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { startTransition, useState } from "react"
@@ -29,34 +28,22 @@ export default function DashboardDropZoneWidget() {
 
     setIsUploading(true)
     setUploadError("")
-    const formData = new FormData()
-
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i])
-    }
 
     startTransition(async () => {
       try {
-        const result = await uploadFilesAction(formData)
+        const result = await uploadFilesWithHttp({ files })
         if (result.success) {
-          const uploadFlow = getUploadFlowState({
+          notifyUploadSuccess({
             currentPath: pathname,
             destination: "unsorted",
+            router,
+            showNotification,
           })
-
-          showNotification({ code: uploadFlow.notificationCode, message: "new" })
-          setTimeout(() => showNotification({ code: uploadFlow.notificationCode, message: "" }), 3000)
-
-          if (uploadFlow.redirectPath) {
-            router.push(uploadFlow.redirectPath)
-          }
-
-          if (uploadFlow.redirectPath || uploadFlow.shouldRefresh) {
-            router.refresh()
-          }
         } else {
           setUploadError(result.error ? result.error : t("common.errors.generic"))
         }
+      } catch (error) {
+        setUploadError(error instanceof Error ? error.message : t("common.errors.generic"))
       } finally {
         resetFileInputValue(input)
         setIsUploading(false)
@@ -69,7 +56,6 @@ export default function DashboardDropZoneWidget() {
       <label className="relative w-full h-full border-2 border-dashed rounded-lg transition-colors hover:border-primary cursor-pointer">
         <input
           type="file"
-          id="fileInput"
           className="hidden"
           multiple
           accept={config.upload.acceptedMimeTypes}

@@ -1,7 +1,7 @@
 import { addProjectAction, deleteProjectAction, editProjectAction } from "@/app/(app)/settings/actions"
 import { CrudTable } from "@/components/settings/crud"
-import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { randomHexColor } from "@/lib/utils"
 import { getProjects } from "@/models/projects"
 import { Prisma } from "@/prisma/client"
@@ -10,8 +10,8 @@ export const metadata = createPageMetadata("common.projects")
 
 export default async function ProjectsSettingsPage() {
   const t = createTranslator()
-  const user = await getCurrentUser()
-  const projects = await getProjects(user.id)
+  const organizationId = await requireCurrentOrganizationId()
+  const projects = await getProjects(organizationId)
   const projectsWithActions = projects.map((project) => ({
     ...project,
     isEditable: true,
@@ -31,15 +31,15 @@ export default async function ProjectsSettingsPage() {
         ]}
         onDelete={async (code) => {
           "use server"
-          return await deleteProjectAction(user.id, code)
+          return await deleteProjectAction(code)
         }}
         onAdd={async (data) => {
           "use server"
-          return await addProjectAction(user.id, data as Prisma.ProjectCreateInput)
+          return await addProjectAction(data as Prisma.ProjectCreateInput)
         }}
         onEdit={async (code, data) => {
           "use server"
-          return await editProjectAction(user.id, code, data as Prisma.ProjectUpdateInput)
+          return await editProjectAction(code, data as Prisma.ProjectUpdateInput)
         }}
       />
     </div>

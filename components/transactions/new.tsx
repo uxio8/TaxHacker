@@ -8,26 +8,34 @@ import {
 } from "@/components/ui/dialog"
 import { getCurrentUser } from "@/lib/auth"
 import { createTranslator } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getProjects } from "@/models/projects"
 import { getSettings } from "@/models/settings"
-import { Button } from "../ui/button"
+import { buttonVariants, type ButtonProps } from "../ui/button"
 import TransactionCreateForm from "./create"
 
-export async function NewTransactionDialog({ children }: { children: React.ReactNode }) {
+export async function NewTransactionDialog({
+  children,
+  triggerVariant,
+}: {
+  children: React.ReactNode
+  triggerVariant?: ButtonProps["variant"]
+}) {
   const t = createTranslator()
   const user = await getCurrentUser()
-  const categories = await getCategories(user.id)
-  const currencies = await getCurrencies(user.id)
-  const settings = await getSettings(user.id)
-  const projects = await getProjects(user.id)
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
+  const categories = await getCategories(organizationId)
+  const currencies = await getCurrencies(organizationId)
+  const settings = await getSettings(organizationId)
+  const projects = await getProjects(organizationId)
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button>{children}</Button>
-      </DialogTrigger>
+      <DialogTrigger className={buttonVariants({ variant: triggerVariant })}>{children}</DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{t("transactions.newTitle")}</DialogTitle>

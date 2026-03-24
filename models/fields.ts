@@ -3,47 +3,41 @@ import { codeFromName } from "@/lib/utils"
 import { Prisma } from "@/prisma/client"
 import { cache } from "react"
 import { ensureUserDefaultsVersion } from "./defaults"
+import { buildOrganizationOwnedCodeWhere, buildOrganizationOwnedCreateData, buildOrganizationOwnedScope } from "./organization-owned"
 
 export type FieldData = {
   [key: string]: unknown
 }
 
-export const getFields = cache(async (userId: string) => {
-  await ensureUserDefaultsVersion(userId)
+export const getFields = cache(async (organizationId: string) => {
+  await ensureUserDefaultsVersion(organizationId)
 
   return await prisma.field.findMany({
-    where: { userId },
+    where: buildOrganizationOwnedScope(organizationId),
     orderBy: {
       createdAt: "asc",
     },
   })
 })
 
-export const createField = async (userId: string, field: FieldData) => {
+export const createField = async (organizationId: string, field: FieldData) => {
   if (!field.code) {
     field.code = codeFromName(field.name as string)
   }
   return await prisma.field.create({
-    data: {
-      ...field,
-      user: {
-        connect: {
-          id: userId,
-        },
-      },
-    } as Prisma.FieldCreateInput,
+    data: buildOrganizationOwnedCreateData(organizationId, field) as unknown as Prisma.FieldUncheckedCreateInput,
   })
 }
 
-export const updateField = async (userId: string, code: string, field: FieldData) => {
+export const updateField = async (organizationId: string, code: string, field: FieldData) => {
   return await prisma.field.update({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
     data: field,
   })
 }
 
-export const deleteField = async (userId: string, code: string) => {
+export const deleteField = async (organizationId: string, code: string) => {
   return await prisma.field.delete({
-    where: { userId_code: { code, userId } },
+    where: buildOrganizationOwnedCodeWhere(organizationId, code),
   })
 }

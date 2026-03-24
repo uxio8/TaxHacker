@@ -4,22 +4,15 @@
 
 <br>
 
-# TaxHacker — self-hosted AI accountant
-
-[![GitHub Stars](https://img.shields.io/github/stars/vas3k/TaxHacker?color=ffcb47&labelColor=black&style=flat-square)](https://github.com/vas3k/TaxHacker/stargazers)
-[![License](https://img.shields.io/badge/license-MIT-ffcb47?labelColor=black&style=flat-square)](https://github.com/vas3k/TaxHacker/blob/main/LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/vas3k/TaxHacker?color=ff80eb&labelColor=black&style=flat-square)](https://github.com/vas3k/TaxHacker/issues)
-[![Donate](https://img.shields.io/badge/-Donate-f04f88?logo=githubsponsors&logoColor=white&style=flat-square)](https://vas3k.com/donate/)
+# LedgerFlow — self-hosted AI workspace for receipts and operations
 
 </div>
 
-TaxHacker is a self-hosted accounting app designed for freelancers, indie hackers, and small businesses who want to save time and automate expense and income tracking using the power of modern AI.
+LedgerFlow is a self-hosted accounting workspace designed for freelancers, indie hackers, and small businesses who want to save time and automate expense and income tracking using modern AI.
 
-Upload photos of receipts, invoices, or PDFs, and TaxHacker will automatically recognize and extract all the important data you need for accounting: product names, amounts, items, dates, merchants, taxes, and save it into a structured Excel-like database. You can even create custom fields with your own AI prompts to extract any specific information you need.
+Upload photos of receipts, invoices, or PDFs, and LedgerFlow will automatically recognize and extract the important data you need for accounting: product names, amounts, items, dates, merchants, taxes, and save it into a structured Excel-like database. You can even create custom fields with your own AI prompts to extract any specific information you need.
 
-The app features automatic currency conversion (including crypto!) based on historical exchange rates from the transaction date. With built-in filtering, multi-project support, import/export capabilities, and custom categories, TaxHacker simplifies reporting and makes tax filing a bit easier.
-
-> 🎥 [Watch demo video](https://taxhacker.app/landing/video.mp4)
+The app features automatic currency conversion (including crypto) based on historical exchange rates from the transaction date. With built-in filtering, multi-project support, import/export capabilities, and custom categories, LedgerFlow simplifies reporting and makes tax filing a bit easier.
 
 ![Dashboard](public/landing/main-page.webp)
 
@@ -33,7 +26,7 @@ The app features automatic currency conversion (including crypto!) based on hist
 
 ![Currency Conversion](public/landing/ai-scanner-big.webp)
 
-Snap a photo of any receipt or upload an invoice PDF, and TaxHacker will automatically recognize, extract, categorize, and store all the information in a structured database.
+Snap a photo of any receipt or upload an invoice PDF, and LedgerFlow will automatically recognize, extract, categorize, and store the information in a structured database.
 
 - **Upload and organize your docs**: Store multiple documents in "unsorted" until you're ready to process them manually or with AI assistance
 - **AI data extraction**: Use AI to automatically pull key information like dates, amounts, vendors, and line items
@@ -42,13 +35,13 @@ Snap a photo of any receipt or upload an invoice PDF, and TaxHacker will automat
 - **Structured storage**: Everything gets saved in an organized database for easy filtering and retrieval
 - **Customizable AI providers**: Choose from OpenAI, Google Gemini, Mistral, or Pool Cloud
 
-TaxHacker works with a wide variety of documents, including store receipts, restaurant bills, invoices, bank statements, letters, even handwritten receipts. It handles any language and any currency with ease.
+LedgerFlow works with a wide variety of documents, including store receipts, restaurant bills, invoices, bank statements, letters, and even handwritten receipts. It handles any language and any currency with ease.
 
 ### `2` Multi-currency support with automatic conversion (even crypto!)
 
 ![Currency Conversion](public/landing/multi-currency.webp)
 
-TaxHacker automatically detects currencies in your documents and converts them to your base currency using historical exchange rates.
+LedgerFlow automatically detects currencies in your documents and converts them to your base currency using historical exchange rates.
 
 - **Foreight currency detection**: Automatically identify the currency used in any document
 - **Historical rates**: Get conversion rates from the actual transaction date
@@ -59,7 +52,7 @@ TaxHacker automatically detects currencies in your documents and converts them t
 
 ![Transactions Table](public/landing/transactions-big.webp)
 
-Adapt TaxHacker to your unique needs with unlimited customization options. Create custom fields, projects, and categories that better suit your specific needs, idustry standards or country.
+Adapt LedgerFlow to your unique needs with unlimited customization options. Create custom fields, projects, and categories that better suit your specific needs, industry standards, or country.
 
 - **Custom categories and projecst**: Create your own categories and projects to group your transactions in any convenient way
 - **Custom fields**: You can create unlimited number of custom fields to extraxt more information from your invoices (it's like creating extra columns in Excel)
@@ -72,7 +65,7 @@ Adapt TaxHacker to your unique needs with unlimited customization options. Creat
 
 ![Custom Categories](public/landing/custom-llm.webp)
 
-Take full control of how TaxHacker's AI processes your documents. Write custom AI prompts for fields, categories, and projects, or modify the built-in ones to match your specific needs.
+Take full control of how LedgerFlow's AI processes your documents. Write custom AI prompts for fields, categories, and projects, or modify the built-in ones to match your specific needs.
 
 - **Customizable system prompts**: Modify the general prompt template in settings to suit your business
 - **Field or project-specific prompts**: Create custom extraction rules for your industry-specific documents
@@ -80,7 +73,7 @@ Take full control of how TaxHacker's AI processes your documents. Write custom A
 - **Industry optimization**: Fine-tune the AI to understand your specific type of business documents
 - **Full transparency**: Every aspect of the AI extraction process is under your control and can be changed right in settings
 
-TaxHacker is 100% adaptable and tunable to your unique requirements — whether you need to extract emails, addresses, project codes, or any other custom information from your documents.
+LedgerFlow is fully adaptable to your unique requirements, whether you need to extract emails, addresses, project codes, or any other custom information from your documents.
 
 ### `5` Flexible data filtering and export
 
@@ -97,7 +90,7 @@ Once your documents are processed, easily view, filter, and export your complete
 
 ![Self-hosting](docs/screenshots/exported_archive.png)
 
-Keep complete control over your financial data with local storage and self-hosting options. TaxHacker respects your privacy and gives you full ownership of your information.
+Keep complete control over your financial data with local storage and self-hosting options. LedgerFlow respects your privacy and gives you full ownership of your information.
 
 - **Home server ready**: Host on your own infrastructure for maximum privacy and control
 - **Docker native**: Simple setup with provided Docker containers and compose files
@@ -107,7 +100,7 @@ Keep complete control over your financial data with local storage and self-hosti
 
 ## 🛳 Deployment and Self-hosting
 
-TaxHacker can be easily self-hosted on your own infrastructure for complete control over your data and application environment. AI extraction runs through asynchronous analysis jobs, so you need both the web app and the analysis worker.
+LedgerFlow can be self-hosted on your own infrastructure for complete control over your data and application environment. AI extraction runs through asynchronous analysis jobs, so you need both the web app and the analysis worker.
 
 ```bash
 cp .env.example .env
@@ -116,7 +109,7 @@ docker compose -f docker-compose.build.yml up --build
 
 The Docker Compose setup includes:
 
-- TaxHacker application container
+- LedgerFlow application container
 - Analysis worker container (`npm run worker:analysis`)
 - PostgreSQL 17 database (or connect to your existing database)
 - Automatic database migrations on startup
@@ -124,6 +117,14 @@ The Docker Compose setup includes:
 - Production-ready configuration
 
 For advanced setups, you can customize the Docker Compose configuration to fit your infrastructure. The provided compose files build from the local [Dockerfile](./Dockerfile) so the analysis worker has the source files and the `codex` CLI available.
+
+Both compose files now publish PostgreSQL to the host as `localhost:${POSTGRES_PORT:-5432}`. This keeps local `next dev`, Prisma commands, and the analysis worker aligned with a typical `.env` like `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ledgerflow`. If `5432` is already taken on your machine, override it when starting the stack, for example:
+
+```bash
+POSTGRES_PORT=55432 docker compose up -d postgres
+```
+
+If you override `POSTGRES_PORT`, make sure your local `DATABASE_URL` points to the same host port.
 
 Example custom configuration:
 
@@ -139,7 +140,7 @@ services:
       - "7331:7331"
     environment:
       - UPLOAD_PATH=/app/data/uploads
-      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/taxhacker
+      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ledgerflow
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -151,35 +152,81 @@ services:
       - .env
     command: ["npm", "run", "worker:analysis"]
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/taxhacker
+      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ledgerflow
       - UPLOAD_PATH=/app/data/uploads
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
 ```
 
-When `SELF_HOSTED_MODE=true`, the instance no longer auto-logs the first visitor in. You must set `SELF_HOSTED_ADMIN_TOKEN` and use that token on the `/self-hosted` screen to unlock the app. On the first successful access, TaxHacker now only asks for the admin token and base currency. AI providers are configured afterwards from Settings.
+When `SELF_HOSTED_MODE=true`, the instance no longer auto-logs the first visitor in. You must set `SELF_HOSTED_ADMIN_TOKEN` and use that token on the `/self-hosted` screen to unlock the app. On the first successful access, LedgerFlow now only asks for the admin token and base currency. AI providers are configured afterwards from Settings.
 
 Pool Cloud is configured entirely through environment variables. When `POOL_CLOUD_URL`, `POOL_CLOUD_TOKEN`, and `POOL_CLOUD_SLUG` are present, the provider appears in LLM settings as an environment-managed option. No user-level API key is requested for it.
 
+### Cheapest practical setup while you polish the product
+
+If you want to use LedgerFlow yourself on desktop and mobile before spending money on a real VM, the supported cheap path is:
+
+- run `postgres + cloudflared` in Docker and `app + analysis-worker` on your own machine
+- keep `STORAGE_PROVIDER=local`
+- expose it over HTTPS with `Cloudflare Tunnel`
+- run a daily local backup with `npm run backup:local`
+
+Optional tunnel override:
+
+```bash
+cp .env.tunnel.example .env.tunnel
+cp .env.localdeploy.example .env.localdeploy
+npm run local:start
+```
+
+Runtime control:
+
+```bash
+npm run local:status
+npm run local:stop
+```
+
+Daily backup:
+
+```bash
+npm run backup:local
+```
+
+Install the daily macOS backup agent:
+
+```bash
+./scripts/install-backup-launchd.sh
+launchctl list com.ledgerflow.backup-local
+```
+
+Operational runbook:
+
+- [Cheap local deployment runbook](docs/superpowers/specs/2026-03-23-cheap-local-deploy-runbook.md)
+
 ### Environment Variables
 
-Configure TaxHacker for your specific needs with these environment variables:
+Configure LedgerFlow for your specific needs with these environment variables:
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `UPLOAD_PATH` | Yes | Local directory for file uploads and storage | `./data/uploads` |
-| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user@localhost:5432/taxhacker` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user@localhost:5432/ledgerflow` |
 | `PORT` | No | Port to run the application on | `7331` (default) |
 | `BASE_URL` | No | Base URL for the application | `http://localhost:7331` |
+| `POSTGRES_PORT` | No, only for local Docker Compose | Host port published by the bundled PostgreSQL service | `5432` |
 | `SELF_HOSTED_MODE` | No | Set to `true` to enable the self-hosted flow, custom API keys, and instance-level configuration | `true` |
 | `SELF_HOSTED_ADMIN_TOKEN` | Yes when `SELF_HOSTED_MODE=true` | Shared secret required to unlock the self-hosted instance and complete first-time setup | `replace-with-a-long-random-string` |
 | `DISABLE_SIGNUP` | No | Disable new user registration on your instance | `false` |
 | `BETTER_AUTH_SECRET` | Yes | Secret key for authentication (minimum 16 characters) | `your-secure-random-key` |
 | `POOL_CLOUD_URL` | No | Base URL for the Pool Cloud control plane | `https://pool.example.com` |
 | `POOL_CLOUD_TOKEN` | No | Bearer token used to acquire and renew leases | `pc_...` |
-| `POOL_CLOUD_SLUG` | No | Pool identifier to use for receipt analysis leases | `taxhacker-main` |
-| `POOL_CLOUD_CLIENT_INSTANCE_ID` | No | Stable instance identifier sent when acquiring leases | `taxhacker-prod-1` |
+| `POOL_CLOUD_SLUG` | No | Pool identifier to use for receipt analysis leases | `ledgerflow-main` |
+| `POOL_CLOUD_CLIENT_INSTANCE_ID` | No | Stable instance identifier sent when acquiring leases | `ledgerflow-prod-1` |
 
 You can also configure LLM provider settings in the application or via environment variables:
 
@@ -203,8 +250,8 @@ Set up your local development environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/vas3k/TaxHacker.git
-cd TaxHacker
+git clone <your-fork-url>
+cd ledgerflow
 
 # Install dependencies
 npm install
@@ -214,7 +261,7 @@ cp .env.example .env
 
 # Edit .env with your configuration
 # Make sure to set DATABASE_URL to your PostgreSQL connection string
-# Example: postgresql://user@localhost:5432/taxhacker
+# Example: postgresql://user@localhost:5432/ledgerflow
 
 # Initialize the database
 npx prisma generate && npx prisma migrate dev
@@ -224,7 +271,7 @@ npm run dev
 npm run worker:analysis
 ```
 
-Visit `http://localhost:7331` to see your local TaxHacker instance in action.
+Visit `http://localhost:7331` to see your local LedgerFlow instance in action.
 
 For local Pool Cloud usage, also set `POOL_CLOUD_URL`, `POOL_CLOUD_TOKEN`, and `POOL_CLOUD_SLUG` in `.env`. The worker acquires a lease, downloads an `auth.json` snapshot, runs `codex exec`, renews the lease while it is busy, and completes or releases the lease when done.
 
@@ -242,7 +289,7 @@ npm run start
 
 ## 🤝 Contributing
 
-We welcome contributions to TaxHacker! Here's how you can help make it even better:
+We welcome contributions to LedgerFlow. Here's how you can help make it even better:
 
 - **🐛 Bug Reports**: File detailed issues when you encounter problems
 - **💡 Feature Requests**: Share your ideas for new features and improvements
@@ -252,14 +299,6 @@ We welcome contributions to TaxHacker! Here's how you can help make it even bett
 
 All development happens on GitHub through issues and pull requests. We appreciate any help.
 
-[![PRs Welcome](https://img.shields.io/badge/🤯_PRs-welcome-ffcb47?labelColor=black&style=for-the-badge)](https://github.com/vas3k/TaxHacker/pulls)
-
-## ❤️ Support the Project
-
-If TaxHacker has helped you save time or manage your finances better, consider supporting its continued development! Your donations help us maintain the project, add new features, and keep it free and open source. Every contribution helps ensure we can keep improving and maintaining this tool for the community.
-
-[![Thank the TaxHacker devs](https://img.shields.io/badge/❤️-donate%20to%20Taxhacker%20devs-f08080?labelColor=black&style=for-the-badge)](https://vas3k.com/donate/)
-
 ## 📄 License
 
-TaxHacker is licensed under the [MIT License](LICENSE).
+LedgerFlow is licensed under the [MIT License](LICENSE).

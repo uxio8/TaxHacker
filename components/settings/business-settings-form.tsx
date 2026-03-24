@@ -2,11 +2,12 @@
 
 import { saveProfileAction } from "@/app/(app)/settings/actions"
 import { FormError } from "@/components/forms/error"
-import { FormAvatar, FormInput, FormTextarea } from "@/components/forms/simple"
+import { FormAvatar, FormTextarea } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import { User } from "@/prisma/client"
 import { CircleCheckBig } from "lucide-react"
+import Link from "next/link"
 import { useActionState } from "react"
 
 export default function BusinessSettingsForm({ user }: { user: User }) {
@@ -16,12 +17,13 @@ export default function BusinessSettingsForm({ user }: { user: User }) {
   return (
     <div>
       <form action={saveAction} className="space-y-4">
-        <FormInput
-          title={t("settings.business.name")}
-          name="businessName"
-          placeholder="Acme Inc."
-          defaultValue={user.businessName ?? ""}
-        />
+        <p className="text-sm text-muted-foreground">
+          {t("settings.business.fiscalIdentityHint")}{" "}
+          <Link href="/settings/fiscal" className="underline underline-offset-4">
+            {t("settings.business.fiscalIdentityLink")}
+          </Link>
+          .
+        </p>
 
         <FormTextarea
           title={t("settings.business.address")}

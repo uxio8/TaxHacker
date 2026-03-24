@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth"
 import { createPageMetadata } from "@/lib/i18n"
+import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getAppData } from "@/models/apps"
 import { getCurrencies } from "@/models/currencies"
 import { getSettings } from "@/models/settings"
@@ -17,8 +18,11 @@ export const metadata = createPageMetadata("apps.invoices.title", {
 
 export default async function InvoicesApp() {
   const user = await getCurrentUser()
-  const settings = await getSettings(user.id)
-  const currencies = await getCurrencies(user.id)
+  const organizationId = await requireCurrentOrganizationId({
+    getCurrentUser: async () => user,
+  })
+  const settings = await getSettings(organizationId)
+  const currencies = await getCurrencies(organizationId)
   const appData = (await getAppData(user, "invoices")) as InvoiceAppData | null
 
   return (
