@@ -1058,6 +1058,11 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
       - hacer override manual de trimestre IVA/retenciones
       - volver a asignación automática
       - todo ello pasando por el mismo seam auditable
+    - el mapeo de auditoría del panel fiscal ya no debe vivir embebido solo en el server action:
+      - `buildTransactionFiscalPanelAuditReason()`
+      - `getCounterpartyResolutionAuditEvent()`
+      - viven en `app/(app)/transactions/fiscal-panel-shared.ts` y deben mantenerse cubiertos con tests puros
+    - `models/fiscal/sync.ts` ya permite inyectar `appendFiscalAuditEvent` en tests del autolink de contraparte; no volver a acoplar esa ruta al writer real de Prisma en tests unitarios
   - verificado en sesión:
     - `tests/forms/fiscal/profile.test.mjs`
     - `tests/models/fiscal/profile.test.mjs`
@@ -1235,9 +1240,9 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
     - documental:
       - `WORKFLOW_DOCUMENT_SLICE`
       - `dashboard`, `unsorted`, `capture/inbox`
-    - fiscal:
-      - `WORKFLOW_FISCAL_SLICE`
-      - `tax`, `tax/archive`, `tax/archive/[periodId]`, `tax/archive/annual`
+  - fiscal:
+    - `WORKFLOW_FISCAL_SLICE`
+    - `tax`, `tax/archive`, `tax/archive/[periodId]`, `tax/archive/annual`
     - libro:
       - `WORKFLOW_TRANSACTIONS_SLICE`
       - `/transactions`
@@ -1275,3 +1280,124 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
     - `npm run build`: OK
     - `npx tsc --noEmit --pretty false`: OK
     - `npx playwright test tests/e2e/fiscal-obligations-smoke.spec.ts tests/e2e/fiscal-collaboration-smoke.spec.ts`: OK
+
+- 2026-03-24: counterparty resolution slice 3.1
+  - la cola de revisión fiscal ya expone `acción pendiente` y `resolución de contraparte`, en vez del warning genérico anterior
+  - `models/fiscal/review-queue.ts` ahora adjunta un resumen ligero de resolución de contraparte:
+    - `decision`
+    - `active_candidate_count`
+    - `conflict_reason`
+    - `suggested_candidate`
+  - el resumen se calcula sin cambiar la fuente de verdad del documento fiscal; solo proyecta usando el motor conservador existente
+  - `components/tax/review/review-status-badge.tsx` ya reutiliza `getReviewStatusLabel` de `components/tax/quarters/quarterly-shared.tsx` para evitar divergencia de copy entre cola y trimestral
+  - `lib/i18n/messages.ts` ya no deja labels de review en inglés dentro de `es-ES` para este slice:
+    - `Bloquea el cierre`
+    - `Pendiente de confirmar`
+    - `Bloqueos`
+  - cobertura añadida:
+    - `tests/models/fiscal/review-queue.test.mjs`
+    - `tests/app/tax-review-queue-copy.test.mjs`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/fiscal/review-queue.test.mjs tests/app/tax-review-queue-copy.test.mjs`: OK
+    - `node --test --experimental-strip-types tests/models/fiscal/review-status.test.mjs tests/models/fiscal/review-queue.test.mjs tests/app/tax-review-request-flow.test.mjs`: OK
+    - `npx eslint` del write set de review queue: OK
+    - `npx tsc --noEmit --pretty false`: OK
+
+- 2026-03-24: counterparty resolution slices 3.2 y 3.3
+  - criterio V1 fijado en `docs/superpowers/specs/2026-03-22-counterparty-resolution-policy.md`:
+    - alquiler con retención sin `counterparty_id` -> `needs_review`
+    - alquiler con retención sin `counterparty_tax_id` -> `blocked`
+  - `models/fiscal/review-status.ts` aplica ya el endurecimiento solo al flujo sensible de alquiler con retención; no se ha extendido a facturas estándar
+  - el cambio se ha hecho sin meter más abstracción:
+    - helper local `isRentWithholdingCounterpartyTaxIdBlockingReason`
+    - `hasBlockingReasons` pasa a depender de `header` y `lines`
+  - regresiones cubiertas:
+    - `tests/models/fiscal/review-status.test.mjs`
+    - `tests/models/tax-forms/model-115.test.mjs`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/fiscal/review-status.test.mjs`: OK
+    - `node --test --experimental-strip-types tests/models/tax-forms/model-115.test.mjs`: OK
+    - bloque combinado local de contraparte (`sync`, audit log, review, 115, UI copy): OK
+    - `npx eslint` del write set fiscal local: OK
+    - `npx tsc --noEmit --pretty false`: OK
+
+- 2026-03-24: counterparty resolution task 4.1
+  - añadido `scripts/backfill-counterparty-resolution.ts` con enfoque conservador:
+    - `dry-run` por defecto
+    - `--apply` explícito para escribir
+    - reevaluación solo de documentos fiscales sin `counterparty_id`
+  - el backfill usa el mismo motor `resolveCounterpartyResolution(...)` del producto y solo aplica casos `auto_linked`
+  - cuando aplica un autolink:
+    - persiste el nuevo `counterparty_id` mediante `upsertTransactionFiscal(...)`
+    - emite `counterparty_auto_linked` en el audit log
+  - resumen operativo expuesto por CLI:
+    - `scanned`
+    - `autoLinked`
+    - `stillInReview`
+    - `conflictsFound`
+    - `applied`
+    - `dryRun`
+  - script añadido en `package.json`:
+    - `npm run fiscal:backfill-counterparty-resolution`
+  - cobertura añadida:
+    - `tests/scripts/backfill-counterparty-resolution.test.mjs`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/scripts/backfill-counterparty-resolution.test.mjs`: OK
+    - `npx eslint scripts/backfill-counterparty-resolution.ts tests/scripts/backfill-counterparty-resolution.test.mjs`: OK
+    - `npx tsc --noEmit --pretty false`: OK
+
+- 2026-03-24: counterparty resolution task 4.2 y review final
+  - creada la matriz de QA en `docs/superpowers/specs/2026-03-22-counterparty-resolution-qa-matrix.md`
+  - la matriz deja cerrados:
+    - escenarios obligatorios de aceptación
+    - comandos mínimos de verificación
+    - checklist manual de smoke
+    - gate final de release
+  - review técnica externa del write set ejecutada y resuelta
+  - hallazgo corregido tras review:
+    - la review queue ya no muestra una candidata “segura” cuando la resolución devuelve conflicto (`multiple_*`, `document_counterparty_id_conflict`, etc.)
+    - `models/fiscal/review-queue.ts` anula `suggested_candidate` cuando `decision=needs_review_no_safe_candidate`
+    - `components/tax/review/review-queue-list.tsx` también prioriza conflicto sobre sugerencia como defensa extra
+  - cobertura añadida tras review:
+    - `tests/models/fiscal/review-queue.test.mjs` cubre duplicado por NIF con `suggested_candidate=null`
+    - `tests/app/tax-review-queue-copy.test.mjs` exige la guardia de conflicto en la UI
+  - estado del gate:
+    - review técnica: completada
+    - smoke del detalle de transacción: cubierto con `tests/e2e/counterparty-resolution-smoke.spec.ts`
+  - verificación fresca:
+    - `node --test --experimental-strip-types tests/models/fiscal/review-queue.test.mjs tests/app/tax-review-queue-copy.test.mjs`: OK
+    - `npx eslint models/fiscal/review-queue.ts components/tax/review/review-queue-list.tsx tests/models/fiscal/review-queue.test.mjs tests/app/tax-review-queue-copy.test.mjs`: OK
+    - `npx tsc --noEmit --pretty false`: OK
+
+- 2026-03-24: smoke E2E de detalle fiscal de contraparte
+  - ampliada `tests/e2e/helpers/fiscal-smoke-fixture.ts` para crear también la contraparte exacta del documento en revisión
+  - añadido `tests/e2e/counterparty-resolution-smoke.spec.ts`
+  - el smoke recorre la app real y valida:
+    - sugerencia segura visible en el detalle de transacción
+    - confirmación desde el panel fiscal
+    - persistencia de `counterparty_id`
+    - auditoría `counterparty_confirmed`
+    - recarga posterior con el documento ya enlazado
+  - verificación fresca:
+    - `npx playwright test tests/e2e/counterparty-resolution-smoke.spec.ts`: OK
+
+- 2026-03-24: cierre final de counterparty resolution
+  - `components/transactions/fiscal-panel.tsx` ya expone nombre accesible explícito para ambos `Motivo interno (opcional)`, evitando deriva entre JSX y árbol accesible en el smoke E2E
+  - añadida cobertura contractual mínima en `tests/components/transactions/fiscal-panel-accessibility.test.mjs`
+  - la entrada al resolver de contraparte ya no se recompone a mano en cada frontera:
+    - `buildCounterpartyResolutionDocumentInput(...)`
+    - `mapCounterpartyToResolutionInput(...)`
+    - `mapCounterpartiesToResolutionInput(...)`
+  - call sites alineados:
+    - `models/fiscal/sync.ts`
+    - `models/fiscal/review-queue.ts`
+    - `scripts/backfill-counterparty-resolution.ts`
+    - `app/(app)/transactions/[transactionId]/page.tsx`
+    - `models/workflow/transaction-read-api.ts`
+  - follow-up explícito dejado en la spec:
+    - optimizar la review queue con una proyección normalizada/indexada de contrapartes si la latencia crece por tamaño de tenant
+  - verificación fresca final:
+    - suite focal `node --test --experimental-strip-types ...counterparty...`: OK
+    - `npx eslint` del write set: OK
+    - `npx tsc --noEmit --pretty false`: OK
+    - `npx playwright test tests/e2e/counterparty-resolution-smoke.spec.ts`: OK

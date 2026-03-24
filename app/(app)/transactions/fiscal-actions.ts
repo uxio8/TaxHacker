@@ -1,10 +1,13 @@
 "use server"
 
-import { collectAffectedPeriodKeys, buildTransactionFiscalPanelDocumentInput, parseTransactionFiscalPanelIntent, type TransactionFiscalPanelIntent } from "./fiscal-panel-shared.ts"
 import {
-  FISCAL_AUDIT_EVENT_COUNTERPARTY_CONFIRMED,
-  FISCAL_AUDIT_EVENT_COUNTERPARTY_CREATED_AND_LINKED,
-  FISCAL_AUDIT_EVENT_COUNTERPARTY_KEPT_IN_REVIEW,
+  buildTransactionFiscalPanelAuditReason,
+  buildTransactionFiscalPanelDocumentInput,
+  collectAffectedPeriodKeys,
+  getCounterpartyResolutionAuditEvent,
+  parseTransactionFiscalPanelIntent,
+} from "./fiscal-panel-shared.ts"
+import {
   appendFiscalAuditEvent,
 } from "../../../models/fiscal/audit-log.ts"
 import { getCounterpartyById, upsertCounterparty } from "../../../models/fiscal/counterparties.ts"
@@ -27,61 +30,6 @@ function normalizeDateOnly(value?: string | null): string | null {
   return normalized ? normalized.slice(0, 10) : null
 }
 
-function buildTransactionFiscalPanelAuditReason(
-  intent: TransactionFiscalPanelIntent,
-  periodKey?: string | null,
-  paymentDate?: string | null,
-  counterpartyLabel?: string | null
-) {
-  if (intent === "save_payment_date") {
-    return paymentDate
-      ? `Panel fiscal: se fija payment_date=${paymentDate}`
-      : "Panel fiscal: se vacía payment_date"
-  }
-
-  if (intent === "override_vat_manual") {
-    return `Panel fiscal: override manual de IVA a ${periodKey ?? "sin periodo"}`
-  }
-
-  if (intent === "reset_vat_automatic") {
-    return "Panel fiscal: IVA vuelve a asignación automática"
-  }
-
-  if (intent === "override_withholding_manual") {
-    return `Panel fiscal: override manual de retenciones a ${periodKey ?? "sin periodo"}`
-  }
-
-  if (intent === "link_counterparty") {
-    return `Panel fiscal: se confirma contraparte ${counterpartyLabel ?? "sin identificar"}`
-  }
-
-  if (intent === "create_counterparty_and_link") {
-    return `Panel fiscal: se crea y enlaza contraparte ${counterpartyLabel ?? "sin identificar"}`
-  }
-
-  if (intent === "keep_counterparty_in_review") {
-    return "Panel fiscal: se mantiene la resolución de contraparte en revisión"
-  }
-
-  return "Panel fiscal: retenciones vuelven a asignación automática"
-}
-
-function getCounterpartyResolutionAuditEvent(intent: TransactionFiscalPanelIntent) {
-  if (intent === "link_counterparty") {
-    return FISCAL_AUDIT_EVENT_COUNTERPARTY_CONFIRMED
-  }
-
-  if (intent === "create_counterparty_and_link") {
-    return FISCAL_AUDIT_EVENT_COUNTERPARTY_CREATED_AND_LINKED
-  }
-
-  if (intent === "keep_counterparty_in_review") {
-    return FISCAL_AUDIT_EVENT_COUNTERPARTY_KEPT_IN_REVIEW
-  }
-
-  return null
-}
-
 export async function saveTransactionFiscalPanelAction(
   _prevState: ActionState<TransactionFiscalDocument> | null,
   formData: FormData
@@ -102,6 +50,9 @@ export async function saveTransactionFiscalPanelAction(
     const requestedCounterpartyId = trimToNull(formData.get("counterpartyId")?.toString())
     const counterpartyDisplayName = trimToNull(formData.get("counterpartyDisplayName")?.toString())
     const counterpartyTaxId = trimToNull(formData.get("counterpartyTaxId")?.toString())
+    const counterpartyResolutionNote = trimToNull(
+      formData.get("counterpartyResolutionNote")?.toString()
+    )
     const assignedAt = new Date()
     const user = await getCurrentUser()
     const organizationId = await requireCurrentWritableOrganizationId({
@@ -194,7 +145,8 @@ export async function saveTransactionFiscalPanelAction(
             intent,
             periodKey,
             paymentDate,
-            selectedCounterpartyLabel
+            selectedCounterpartyLabel,
+            counterpartyResolutionNote
           ),
         }
       )
@@ -214,7 +166,8 @@ export async function saveTransactionFiscalPanelAction(
           intent,
           periodKey,
           paymentDate,
-          selectedCounterpartyLabel
+          selectedCounterpartyLabel,
+          counterpartyResolutionNote
         ),
         occurredAt: assignedAt,
         details: {
@@ -223,6 +176,7 @@ export async function saveTransactionFiscalPanelAction(
           chosen_counterparty_id: updatedDocument.header.counterparty_id,
           detected_counterparty_name: document.header.counterparty_name,
           detected_counterparty_tax_id: document.header.counterparty_tax_id,
+          operator_note: counterpartyResolutionNote,
         },
       })
     }

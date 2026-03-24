@@ -1,11 +1,13 @@
 import { resolveFiscalReviewRequestAction } from "@/app/(app)/tax/review/actions"
+import {
+  getReviewReasonLabel,
+} from "@/components/tax/quarters/quarterly-shared"
 import { ReviewRequestComposer } from "@/components/tax/review/review-request-composer"
 import { ReviewStatusBadge } from "@/components/tax/review/review-status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { MessageKey, Translator } from "@/lib/i18n"
 import type { ReviewQueueItem } from "@/models/fiscal/review-queue"
-import type { ReviewReason } from "@/models/fiscal/review-status"
 import Link from "next/link"
 
 function getDocumentKindLabel(documentKind: string, t: Translator): string {
@@ -19,25 +21,6 @@ function getDocumentKindLabel(documentKind: string, t: Translator): string {
           : "tax.review.documentKind.unknown"
 
   return t(messageKey)
-}
-
-function getReviewReasonLabel(reason: ReviewReason, t: Translator): string {
-  const messageKey: Record<ReviewReason, MessageKey> = {
-    missing_invoice_number: "tax.review.reason.missing_invoice_number",
-    missing_counterparty_relation: "tax.review.reason.missing_counterparty_relation",
-    missing_counterparty_tax_id: "tax.review.reason.missing_counterparty_tax_id",
-    missing_vat_breakdown: "tax.review.reason.missing_vat_breakdown",
-    mixed_tax_treatment_unresolved: "tax.review.reason.mixed_tax_treatment_unresolved",
-    missing_rent_withholding: "tax.review.reason.missing_rent_withholding",
-    employee_payroll_source_missing: "tax.review.reason.employee_payroll_source_missing",
-    period_assignment_unclear: "tax.review.reason.period_assignment_unclear",
-    manual_override_required: "tax.review.reason.manual_override_required",
-    header_totals_mismatch: "tax.review.reason.header_totals_mismatch",
-    invalid_currency_code: "tax.review.reason.invalid_currency_code",
-    invalid_direction_document_kind_combo: "tax.review.reason.invalid_direction_document_kind_combo",
-  }
-
-  return t(messageKey[reason])
 }
 
 function getCounterpartyLabel(item: ReviewQueueItem, t: Translator): string {
@@ -64,6 +47,59 @@ function getAffectedObligationLabel(code: ReviewQueueItem["affected_obligation_c
   return `Modelo ${code}`
 }
 
+function needsCounterpartyResolution(item: ReviewQueueItem) {
+  return (
+    item.review_reasons.includes("missing_counterparty_relation")
+    || item.review_reasons.includes("missing_counterparty_tax_id")
+  )
+}
+
+function getCounterpartyResolutionMatchLabel(matchReasons: string[], t: Translator) {
+  if (matchReasons.includes("tax_id_exact")) {
+    return t("tax.review.counterpartyResolution.match.taxIdExact")
+  }
+
+  if (matchReasons.includes("name_exact")) {
+    return t("tax.review.counterpartyResolution.match.nameExact")
+  }
+
+  return t("tax.review.counterpartyResolution.match.suggested")
+}
+
+function getCounterpartyResolutionConflictLabel(
+  conflictReason: string | null,
+  t: Translator
+) {
+  const messageKey: Record<string, MessageKey> = {
+    document_counterparty_id_conflict: "tax.review.counterpartyResolution.conflict.document_counterparty_id_conflict",
+    multiple_name_candidates: "tax.review.counterpartyResolution.conflict.multiple_name_candidates",
+    multiple_tax_id_candidates: "tax.review.counterpartyResolution.conflict.multiple_tax_id_candidates",
+    no_identity_signal: "tax.review.counterpartyResolution.conflict.no_identity_signal",
+    no_name_match: "tax.review.counterpartyResolution.conflict.no_name_match",
+    no_tax_id_match: "tax.review.counterpartyResolution.conflict.no_tax_id_match",
+    name_match_inactive_only: "tax.review.counterpartyResolution.conflict.name_match_inactive_only",
+    tax_id_match_inactive_only: "tax.review.counterpartyResolution.conflict.tax_id_match_inactive_only",
+  }
+
+  if (!conflictReason || !messageKey[conflictReason]) {
+    return t("tax.review.counterpartyResolution.noSafeCandidate")
+  }
+
+  return t(messageKey[conflictReason])
+}
+
+function getPendingActionLabel(item: ReviewQueueItem, t: Translator) {
+  if (item.review_reasons.includes("missing_counterparty_tax_id")) {
+    return t("tax.review.pendingAction.missingCounterpartyTaxId")
+  }
+
+  if (item.review_reasons.includes("missing_counterparty_relation")) {
+    return t("tax.review.pendingAction.missingCounterpartyRelation")
+  }
+
+  return t("tax.review.pendingAction.default")
+}
+
 export function ReviewQueueList({ items, t }: { items: ReviewQueueItem[]; t: Translator }) {
   if (items.length === 0) {
     return (
@@ -78,7 +114,13 @@ export function ReviewQueueList({ items, t }: { items: ReviewQueueItem[]; t: Tra
 
   return (
     <section className="space-y-4" aria-label={t("tax.review.queue.sectionLabel")}>
-      {items.map((item) => (
+      {items.map((item) => {
+        const counterpartyResolutionRequired = needsCounterpartyResolution(item)
+        const openLabel = counterpartyResolutionRequired
+          ? t("tax.review.openResolution")
+          : t("tax.review.openSource")
+
+        return (
         <Card key={item.fiscal_document_id} className="shadow-sm">
           <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-3">
@@ -103,7 +145,7 @@ export function ReviewQueueList({ items, t }: { items: ReviewQueueItem[]; t: Tra
             </div>
 
             <Button asChild variant="outline" className="w-full md:w-auto">
-              <Link href={item.drilldown_href}>{t("tax.review.openSource")}</Link>
+              <Link href={item.drilldown_href}>{openLabel}</Link>
             </Button>
           </CardHeader>
 
@@ -183,6 +225,61 @@ export function ReviewQueueList({ items, t }: { items: ReviewQueueItem[]; t: Tra
                   </div>
                 </div>
               ) : null}
+              <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("tax.review.pendingAction.title")}
+                  </p>
+                  <p className="text-sm font-medium">{getPendingActionLabel(item, t)}</p>
+                </div>
+                {item.counterparty_resolution ? (
+                  <div className="space-y-1 rounded-md border bg-background p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t("tax.review.counterpartyResolution.title")}
+                    </p>
+                    {(() => {
+                      const showSuggestedCandidate = Boolean(
+                        item.counterparty_resolution?.suggested_candidate
+                        && item.counterparty_resolution.decision !== "needs_review_no_safe_candidate"
+                        && !item.counterparty_resolution.conflict_reason
+                      )
+
+                      return (
+                        <>
+                          <p className="text-sm font-medium">
+                            {showSuggestedCandidate
+                              ? item.counterparty_resolution.suggested_candidate?.display_name
+                              : t("tax.review.counterpartyResolution.noSafeCandidate")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {showSuggestedCandidate
+                              ? [
+                                  item.counterparty_resolution.suggested_candidate?.tax_id,
+                                  getCounterpartyResolutionMatchLabel(
+                                    item.counterparty_resolution.suggested_candidate?.match_reasons ?? [],
+                                    t
+                                  ),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : getCounterpartyResolutionConflictLabel(
+                                  item.counterparty_resolution.conflict_reason,
+                                  t
+                                )}
+                          </p>
+                        </>
+                      )
+                    })()}
+                  </div>
+                ) : null}
+                <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
+                  <Link href={item.drilldown_href}>
+                    {needsCounterpartyResolution(item)
+                      ? t("tax.review.openResolution")
+                      : t("tax.review.openSource")}
+                  </Link>
+                </Button>
+              </div>
               {item.active_request_count > 0 ? (
                 <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
                   <p className="text-sm font-semibold">
@@ -213,12 +310,15 @@ export function ReviewQueueList({ items, t }: { items: ReviewQueueItem[]; t: Tra
               ) : null}
               <ReviewRequestComposer fiscalDocumentId={item.fiscal_document_id} />
               <p className="text-xs text-muted-foreground">
-                El panel fiscal está dentro del detalle de la transacción enlazada.
+                {needsCounterpartyResolution(item)
+                  ? t("tax.review.openResolutionHint")
+                  : t("tax.review.openSourceHint")}
               </p>
             </div>
           </CardContent>
         </Card>
-      ))}
+        )
+      })}
     </section>
   )
 }

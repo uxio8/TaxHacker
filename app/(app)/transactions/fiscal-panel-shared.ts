@@ -1,4 +1,9 @@
 import { assignTransactionFiscalPeriodAssignments } from "../../../models/fiscal/assignment-engine.ts"
+import {
+  FISCAL_AUDIT_EVENT_COUNTERPARTY_CONFIRMED,
+  FISCAL_AUDIT_EVENT_COUNTERPARTY_CREATED_AND_LINKED,
+  FISCAL_AUDIT_EVENT_COUNTERPARTY_KEPT_IN_REVIEW,
+} from "../../../models/fiscal/audit-log.ts"
 import { buildFiscalPeriodAssignment } from "../../../models/fiscal/periods.ts"
 import type { FiscalPeriodAssignment, TransactionFiscalHeader } from "../../../models/fiscal/review-status.ts"
 import type {
@@ -17,6 +22,11 @@ export type TransactionFiscalPanelIntent =
   | "link_counterparty"
   | "create_counterparty_and_link"
   | "keep_counterparty_in_review"
+
+export type TransactionFiscalPanelAuditEvent =
+  | typeof FISCAL_AUDIT_EVENT_COUNTERPARTY_CONFIRMED
+  | typeof FISCAL_AUDIT_EVENT_COUNTERPARTY_CREATED_AND_LINKED
+  | typeof FISCAL_AUDIT_EVENT_COUNTERPARTY_KEPT_IN_REVIEW
 
 type TransactionFiscalPanelMutationInput = {
   intent: TransactionFiscalPanelIntent
@@ -169,6 +179,59 @@ export function buildTransactionFiscalPanelDocumentInput(
       ...line,
     })),
   }
+}
+
+export function buildTransactionFiscalPanelAuditReason(
+  intent: TransactionFiscalPanelIntent,
+  periodKey?: string | null,
+  paymentDate?: string | null,
+  counterpartyLabel?: string | null,
+  operatorNote?: string | null
+) {
+  const normalizedOperatorNote = trimToNull(operatorNote)
+  let reason: string
+
+  if (intent === "save_payment_date") {
+    reason = paymentDate
+      ? `Panel fiscal: se fija payment_date=${paymentDate}`
+      : "Panel fiscal: se vacía payment_date"
+  } else if (intent === "override_vat_manual") {
+    reason = `Panel fiscal: override manual de IVA a ${periodKey ?? "sin periodo"}`
+  } else if (intent === "reset_vat_automatic") {
+    reason = "Panel fiscal: IVA vuelve a asignación automática"
+  } else if (intent === "override_withholding_manual") {
+    reason = `Panel fiscal: override manual de retenciones a ${periodKey ?? "sin periodo"}`
+  } else if (intent === "link_counterparty") {
+    reason = `Panel fiscal: se confirma contraparte ${counterpartyLabel ?? "sin identificar"}`
+  } else if (intent === "create_counterparty_and_link") {
+    reason = `Panel fiscal: se crea y enlaza contraparte ${counterpartyLabel ?? "sin identificar"}`
+  } else if (intent === "keep_counterparty_in_review") {
+    reason = "Panel fiscal: se mantiene la resolución de contraparte en revisión"
+  } else {
+    reason = "Panel fiscal: retenciones vuelven a asignación automática"
+  }
+
+  return normalizedOperatorNote
+    ? `${reason}. Motivo interno: ${normalizedOperatorNote}`
+    : reason
+}
+
+export function getCounterpartyResolutionAuditEvent(
+  intent: TransactionFiscalPanelIntent
+): TransactionFiscalPanelAuditEvent | null {
+  if (intent === "link_counterparty") {
+    return FISCAL_AUDIT_EVENT_COUNTERPARTY_CONFIRMED
+  }
+
+  if (intent === "create_counterparty_and_link") {
+    return FISCAL_AUDIT_EVENT_COUNTERPARTY_CREATED_AND_LINKED
+  }
+
+  if (intent === "keep_counterparty_in_review") {
+    return FISCAL_AUDIT_EVENT_COUNTERPARTY_KEPT_IN_REVIEW
+  }
+
+  return null
 }
 
 function collectPeriodKey(

@@ -157,3 +157,33 @@ Frontera de fallo:
 - dejar listo un alquiler con retención sin identificación suficiente o sin confirmación canónica
 - mostrar copy que haga parecer que el problema legal y el problema interno de linkage son lo mismo
 - sobrescribir evidencia fiscal del documento con datos del master al enlazar
+
+## 9. Signoff 2026-03-24 para alquiler con retención
+
+Decisión operativa aprobada para V1:
+
+- si un documento de `alquiler con retención` no tiene `counterparty_id`, el documento sigue en `needs_review`
+- si un documento de `alquiler con retención` no tiene `counterparty_tax_id`, el documento pasa a `blocked`
+- el endurecimiento afecta al flujo sensible de `115/180`; no cambia el comportamiento de las facturas estándar sin retención de alquiler
+
+Racional:
+
+- la falta de vínculo canónico exige confirmación humana, pero sigue siendo una incidencia de resolución
+- la falta de NIF del arrendador sí es una carencia identificativa fiscal material para `115/180`, así que en V1 se trata como bloqueante
+
+## 10. Nota de frontera técnica 2026-03-24
+
+Boundary review cerrada para V1:
+
+- el motor `resolveCounterpartyResolution(...)` sigue viviendo en `models/fiscal/counterparty-resolution.ts`
+- `sync`, `review-queue`, `backfill` y el detalle de transacción ya no recomponen su `document` de forma ad hoc; usan un adaptador compartido:
+  - `buildCounterpartyResolutionDocumentInput(...)`
+- la normalización del input de contrapartes también queda centralizada en:
+  - `mapCounterpartyToResolutionInput(...)`
+  - `mapCounterpartiesToResolutionInput(...)`
+- la UI no decide heurísticas; solo proyecta la decisión y dispara acciones auditables
+
+Follow-up explícito, fuera de este cierre:
+
+- si la `review queue` empieza a degradarse por tamaño de tenant, precomputar una proyección normalizada de contrapartes por petición e indexarla por `taxIdNormalized` y `normalizedName`
+- ese ajuste es de rendimiento, no de corrección, y no bloquea la salida de V1

@@ -215,8 +215,28 @@ function dedupeObligationCodes(
   return [...new Set(values)]
 }
 
-function hasBlockingReasons(reasons: ReviewReason[]): boolean {
-  return reasons.some((reason) => BLOCKING_REASONS.has(reason))
+function isRentWithholdingCounterpartyTaxIdBlockingReason(
+  reason: ReviewReason,
+  header: TransactionFiscalHeader,
+  lines: TransactionFiscalLine[]
+) {
+  return (
+    reason === "missing_counterparty_tax_id" &&
+    header.document_kind !== "payroll_placeholder" &&
+    lines.some((line) => line.withholding_regime === "rent")
+  )
+}
+
+function hasBlockingReasons(
+  reasons: ReviewReason[],
+  header: TransactionFiscalHeader,
+  lines: TransactionFiscalLine[]
+): boolean {
+  return reasons.some(
+    (reason) =>
+      BLOCKING_REASONS.has(reason)
+      || isRentWithholdingCounterpartyTaxIdBlockingReason(reason, header, lines)
+  )
 }
 
 function matchesDirectionForDocumentKind(
@@ -732,7 +752,7 @@ export function deriveTransactionFiscalReview(
   }
 
   const review_reasons = deriveReviewReasons(header, lines)
-  const review_status = hasBlockingReasons(review_reasons)
+  const review_status = hasBlockingReasons(review_reasons, header, lines)
     ? REVIEW_STATUS_BLOCKED
     : review_reasons.length > 0
       ? REVIEW_STATUS_NEEDS_REVIEW

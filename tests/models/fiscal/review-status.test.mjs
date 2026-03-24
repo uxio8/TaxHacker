@@ -84,6 +84,23 @@ test("deriveTransactionFiscalReview mantiene needs_review en alquiler con retenc
   assert.deepEqual(review.ready_line_ids_for_withholding_books, [])
 })
 
+test("deriveTransactionFiscalReview bloquea alquiler con retención si falta el NIF del arrendador", () => {
+  const golden = getGoldenDocument("received-rent-withholding")
+
+  const review = deriveTransactionFiscalReview(
+    {
+      ...golden.document.header,
+      counterparty_tax_id: null,
+    },
+    golden.document.lines
+  )
+
+  assert.equal(review.review_status, "blocked")
+  assert.deepEqual(review.review_reasons, ["missing_counterparty_tax_id"])
+  assert.deepEqual(review.ready_line_ids_for_vat_books, [])
+  assert.deepEqual(review.ready_line_ids_for_withholding_books, [])
+})
+
 test("deriveTransactionFiscalReview no bloquea una factura recibida completa solo por faltar counterparty_id", () => {
   const golden = getGoldenDocument("received-missing-counterparty-relation")
 

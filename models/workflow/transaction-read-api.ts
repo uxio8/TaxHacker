@@ -1,11 +1,18 @@
 import { buildTransactionWorkflowItems } from "./projectors/transactions.ts"
 import { buildWorkflowReadModelFromSlices } from "./rebuild.ts"
+import {
+  buildCounterpartyResolutionDocumentInput,
+  mapCounterpartiesToResolutionInput,
+} from "../fiscal/counterparty-resolution.ts"
+import type {
+  CounterpartyResolution,
+  CounterpartyResolutionCounterpartyInput,
+} from "../fiscal/counterparty-resolution.ts"
 import type {
   TransactionAttentionSignal,
   TransactionFilters,
   TransactionListItem,
 } from "../transactions.ts"
-import type { CounterpartyResolution } from "../fiscal/counterparty-resolution.ts"
 import type { FiscalProfileAccess } from "../fiscal/profile.ts"
 import type { SettingsMap } from "../settings.ts"
 import type { TransactionFiscalDocument } from "../fiscal/transaction-fiscal.ts"
@@ -98,7 +105,7 @@ type FiscalPeriodLike = {
   status: string | null
 }
 
-type CounterpartyLike = FiscalPanelCounterpartyOption
+type CounterpartyLike = CounterpartyResolutionCounterpartyInput
 
 type TransactionDetailFiscalDependencies = {
   getTransactionFiscalBySourceTransactionId?: (
@@ -400,7 +407,7 @@ export async function getTransactionWorkflowDetailView(
       if (!document.header.counterparty_id) {
         fiscalPanel.counterpartyResolution = fiscalDeps.resolveCounterpartyResolution({
           ownerScopeId: fiscalProfileAccess.profile.id,
-          document: {
+          document: buildCounterpartyResolutionDocumentInput({
             fiscal_document_id: document.header.fiscal_document_id,
             source_transaction_id: document.header.source_transaction_id,
             document_kind: document.header.document_kind,
@@ -412,8 +419,8 @@ export async function getTransactionWorkflowDetailView(
             total_payable_cents: document.header.total_payable_cents,
             total_vat_cents: document.header.total_vat_cents,
             total_withholding_cents: document.header.total_withholding_cents,
-          },
-          counterparties,
+          }),
+          counterparties: mapCounterpartiesToResolutionInput(counterparties),
         })
       }
 

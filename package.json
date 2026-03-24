@@ -8,6 +8,7 @@
     "worker:analysis": "node --experimental-strip-types ./scripts/analysis-worker.ts",
     "backup:local": "node --experimental-strip-types ./scripts/backup-local.ts",
     "billing:backfill": "node --experimental-strip-types ./scripts/backfill-organization-billing.ts",
+    "fiscal:backfill-counterparty-resolution": "node --experimental-strip-types ./scripts/backfill-counterparty-resolution.ts",
     "local:start": "./scripts/start-local-runtime-tmux.sh",
     "local:stop": "./scripts/stop-local-runtime-tmux.sh",
     "local:status": "./scripts/status-local-runtime.sh",

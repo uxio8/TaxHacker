@@ -588,7 +588,7 @@ export const EN_MESSAGES = {
   "tax.quarters.status.period.presented": "Filed",
   "tax.quarters.status.period.closed": "Closed",
   "tax.quarters.status.review.ready": "Ready",
-  "tax.quarters.status.review.needs_review": "Needs review",
+  "tax.quarters.status.review.needs_review": "Pending confirmation",
   "tax.quarters.status.review.blocked": "Blocked",
   "tax.quarters.status.review.pending": "Pending",
   "tax.quarters.counterparty.unknown": "Unknown counterparty",
@@ -752,7 +752,7 @@ export const EN_MESSAGES = {
   "tax.review.reason.invalid_direction_document_kind_combo": "Document type and direction do not match",
   "tax.review.reason.manual_override_required": "Requires manual fiscal override",
   "tax.review.reason.missing_counterparty_relation":
-    "The document counterparty is identified, but its canonical link still needs confirmation",
+    "The fiscal identity is present, but the canonical counterparty link is still unresolved",
   "tax.review.reason.missing_counterparty_tax_id": "Counterparty tax ID is missing",
   "tax.review.reason.missing_invoice_number": "Invoice number is missing",
   "tax.review.reason.missing_rent_withholding": "Rent withholding data is missing",
@@ -763,15 +763,47 @@ export const EN_MESSAGES = {
   "tax.review.setup.action": "Open fiscal settings",
   "tax.review.setup.description": "Configure the fiscal profile first so the review queue can resolve the company scope correctly.",
   "tax.review.setup.title": "Fiscal profile required",
-  "tax.review.status.blocked": "Blocked",
-  "tax.review.status.needs_review": "Needs review",
-  "tax.review.summary.blocked": "Blocked",
+  "tax.review.status.blocked": "Blocks close",
+  "tax.review.status.needs_review": "Pending confirmation",
+  "tax.review.summary.blocked": "Blocking",
   "tax.review.summary.blockedDescription": "Documents that stop books or quarterly close until fixed.",
-  "tax.review.summary.needsReview": "Needs review",
+  "tax.review.summary.needsReview": "Pending confirmation",
   "tax.review.summary.needsReviewDescription": "Documents with traceability but still pending fiscal confirmation.",
   "tax.review.summary.sectionLabel": "Fiscal review queue summary",
   "tax.review.summary.total": "Open issues",
   "tax.review.summary.totalDescription": "Documents outside ready and pending resolution before closing the quarter.",
+  "tax.review.pendingAction.title": "Pending action",
+  "tax.review.pendingAction.default": "Open the source transaction and resolve the fiscal issue from the detail view.",
+  "tax.review.pendingAction.missingCounterpartyTaxId":
+    "Complete the counterparty tax ID before confirming the canonical link.",
+  "tax.review.pendingAction.missingCounterpartyRelation":
+    "Confirm, create, or keep the canonical counterparty in review from the fiscal panel.",
+  "tax.review.counterpartyResolution.title": "Counterparty resolution",
+  "tax.review.counterpartyResolution.noSafeCandidate": "No safe candidate",
+  "tax.review.counterpartyResolution.match.taxIdExact": "Exact tax ID match",
+  "tax.review.counterpartyResolution.match.nameExact": "Exact name match",
+  "tax.review.counterpartyResolution.match.suggested": "Suggested match",
+  "tax.review.counterpartyResolution.conflict.document_counterparty_id_conflict":
+    "The document already points to a different canonical counterparty.",
+  "tax.review.counterpartyResolution.conflict.multiple_name_candidates":
+    "There are several active candidates with the same normalized name.",
+  "tax.review.counterpartyResolution.conflict.multiple_tax_id_candidates":
+    "There are several active candidates with the same tax ID.",
+  "tax.review.counterpartyResolution.conflict.no_identity_signal":
+    "There is not enough fiscal identity to suggest a canonical counterparty.",
+  "tax.review.counterpartyResolution.conflict.no_name_match":
+    "No active counterparty matches the detected fiscal name.",
+  "tax.review.counterpartyResolution.conflict.no_tax_id_match":
+    "No active counterparty matches the detected tax ID.",
+  "tax.review.counterpartyResolution.conflict.name_match_inactive_only":
+    "Only inactive counterparties match the detected name.",
+  "tax.review.counterpartyResolution.conflict.tax_id_match_inactive_only":
+    "Only inactive counterparties match the detected tax ID.",
+  "tax.review.openResolution": "Open fiscal resolution",
+  "tax.review.openResolutionHint":
+    "The counterparty resolution lives inside the fiscal panel of the source transaction.",
+  "tax.review.openSourceHint":
+    "The fiscal panel and the underlying document remain inside the source transaction detail.",
   "tax.review.title": "Fiscal review queue",
   "tax.modules.open": "Open module",
   "tax.modules.status.available": "Available",
@@ -1491,10 +1523,10 @@ export const ES_ES_MESSAGES: MessageCatalog = {
   "tax.quarters.status.period.ready": "Listo",
   "tax.quarters.status.period.presented": "Presentado",
   "tax.quarters.status.period.closed": "Cerrado",
-  "tax.quarters.status.review.ready": "Ready",
-  "tax.quarters.status.review.needs_review": "Needs review",
-  "tax.quarters.status.review.blocked": "Blocked",
-  "tax.quarters.status.review.pending": "Pending",
+  "tax.quarters.status.review.ready": "Listo",
+  "tax.quarters.status.review.needs_review": "Pendiente de confirmar",
+  "tax.quarters.status.review.blocked": "Bloqueado",
+  "tax.quarters.status.review.pending": "Pendiente",
   "tax.quarters.counterparty.unknown": "Contraparte sin identificar",
   "tax.quarters.counterparty.taxIdMissing": "NIF pendiente",
   "tax.quarters.invoice.missing": "Número de factura pendiente",
@@ -1636,7 +1668,7 @@ export const ES_ES_MESSAGES: MessageCatalog = {
   "tax.review.documentKind.payroll_placeholder": "Nómina provisional",
   "tax.review.documentKind.received_invoice": "Factura recibida",
   "tax.review.documentKind.unknown": "Documento",
-  "tax.review.eyebrow": "Issue Queue",
+  "tax.review.eyebrow": "Cola de incidencias",
   "tax.review.empty.description": "Todos los documentos fiscales están listos. Puedes seguir con el cierre trimestral.",
   "tax.review.empty.title": "No hay revisión fiscal pendiente",
   "tax.review.fields.counterparty": "Contraparte",
@@ -1648,7 +1680,7 @@ export const ES_ES_MESSAGES: MessageCatalog = {
   "tax.review.issueDate": "Fecha de emisión",
   "tax.review.openSource": "Abrir transacción origen",
   "tax.review.profile.description": "La cola se resuelve contra el perfil fiscal actualmente asignado a la sociedad.",
-  "tax.review.profile.scope": "Aquí solo aparecen documentos marcados como needs review o blocked.",
+  "tax.review.profile.scope": "Aquí solo aparecen documentos marcados como pendientes de confirmar o bloqueados.",
   "tax.review.profile.title": "Perfil fiscal activo",
   "tax.review.quarter.missing": "Sin trimestre asignado",
   "tax.review.queue.sectionLabel": "Cola de incidencias de revisión fiscal",
@@ -1658,7 +1690,7 @@ export const ES_ES_MESSAGES: MessageCatalog = {
   "tax.review.reason.invalid_direction_document_kind_combo": "No encajan el tipo de documento y la dirección",
   "tax.review.reason.manual_override_required": "Requiere override fiscal manual",
   "tax.review.reason.missing_counterparty_relation":
-    "La contraparte del documento ya está identificada, pero falta confirmar su vínculo canónico",
+    "La identidad fiscal está detectada, pero falta resolver la contraparte canónica",
   "tax.review.reason.missing_counterparty_tax_id": "Falta el NIF de la contraparte",
   "tax.review.reason.missing_invoice_number": "Falta el número de factura",
   "tax.review.reason.missing_rent_withholding": "Faltan datos de retención del alquiler",
@@ -1669,15 +1701,47 @@ export const ES_ES_MESSAGES: MessageCatalog = {
   "tax.review.setup.action": "Abrir ajustes fiscales",
   "tax.review.setup.description": "Configura primero el perfil fiscal para que la cola pueda resolver correctamente el alcance de la sociedad.",
   "tax.review.setup.title": "Hace falta un perfil fiscal",
-  "tax.review.status.blocked": "Blocked",
-  "tax.review.status.needs_review": "Needs review",
-  "tax.review.summary.blocked": "Blocked",
+  "tax.review.status.blocked": "Bloquea el cierre",
+  "tax.review.status.needs_review": "Pendiente de confirmar",
+  "tax.review.summary.blocked": "Bloqueos",
   "tax.review.summary.blockedDescription": "Documentos que frenan libros o cierre trimestral hasta corregirlos.",
-  "tax.review.summary.needsReview": "Needs review",
+  "tax.review.summary.needsReview": "Pendientes de confirmar",
   "tax.review.summary.needsReviewDescription": "Documentos con trazabilidad, pero todavía pendientes de validación fiscal.",
   "tax.review.summary.sectionLabel": "Resumen de la cola fiscal",
   "tax.review.summary.total": "Incidencias abiertas",
   "tax.review.summary.totalDescription": "Documentos fuera de ready y pendientes de resolver antes del cierre.",
+  "tax.review.pendingAction.title": "Acción pendiente",
+  "tax.review.pendingAction.default": "Abre la transacción origen y corrige la incidencia fiscal desde el detalle.",
+  "tax.review.pendingAction.missingCounterpartyTaxId":
+    "Completa el NIF de la contraparte antes de confirmar el vínculo canónico.",
+  "tax.review.pendingAction.missingCounterpartyRelation":
+    "Confirma, crea o mantén en revisión la contraparte canónica desde el panel fiscal.",
+  "tax.review.counterpartyResolution.title": "Resolución de contraparte",
+  "tax.review.counterpartyResolution.noSafeCandidate": "Sin candidata segura",
+  "tax.review.counterpartyResolution.match.taxIdExact": "Coincidencia exacta por NIF",
+  "tax.review.counterpartyResolution.match.nameExact": "Coincidencia exacta por nombre",
+  "tax.review.counterpartyResolution.match.suggested": "Coincidencia sugerida",
+  "tax.review.counterpartyResolution.conflict.document_counterparty_id_conflict":
+    "El documento ya apunta a una contraparte canónica distinta.",
+  "tax.review.counterpartyResolution.conflict.multiple_name_candidates":
+    "Hay varias candidatas activas con el mismo nombre normalizado.",
+  "tax.review.counterpartyResolution.conflict.multiple_tax_id_candidates":
+    "Hay varias candidatas activas con el mismo NIF.",
+  "tax.review.counterpartyResolution.conflict.no_identity_signal":
+    "No hay identidad fiscal suficiente para proponer una contraparte canónica.",
+  "tax.review.counterpartyResolution.conflict.no_name_match":
+    "No hay ninguna contraparte activa que encaje con el nombre fiscal detectado.",
+  "tax.review.counterpartyResolution.conflict.no_tax_id_match":
+    "No hay ninguna contraparte activa que encaje con el NIF detectado.",
+  "tax.review.counterpartyResolution.conflict.name_match_inactive_only":
+    "Solo hay coincidencias inactivas por nombre.",
+  "tax.review.counterpartyResolution.conflict.tax_id_match_inactive_only":
+    "Solo hay coincidencias inactivas por NIF.",
+  "tax.review.openResolution": "Abrir resolución fiscal",
+  "tax.review.openResolutionHint":
+    "La resolución de contraparte vive dentro del panel fiscal de la transacción origen.",
+  "tax.review.openSourceHint":
+    "El panel fiscal y el documento soporte siguen dentro del detalle de la transacción origen.",
   "tax.review.title": "Cola de revisión fiscal",
   "tax.modules.open": "Abrir módulo",
   "tax.modules.status.available": "Disponible",

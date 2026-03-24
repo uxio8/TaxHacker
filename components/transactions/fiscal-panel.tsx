@@ -349,6 +349,18 @@ export function FiscalPanel({
               </select>
             </label>
 
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Motivo interno (opcional)</span>
+              <textarea
+                name="counterpartyResolutionNote"
+                aria-label="Motivo interno (opcional)"
+                rows={3}
+                disabled={counterpartyPending}
+                placeholder="Deja contexto interno si rechazas la sugerencia o fuerzas otro vínculo."
+                className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </label>
+
             <div className="flex flex-wrap gap-3">
               <Button type="submit" name="intent" value="link_counterparty" disabled={counterpartyPending}>
                 {counterpartyPending ? "Guardando..." : "Confirmar contraparte"}
@@ -386,6 +398,18 @@ export function FiscalPanel({
                 defaultValue={currentDocument.header.counterparty_tax_id ?? ""}
                 placeholder="B12345678"
                 disabled={counterpartyPending}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="text-sm font-medium">Motivo interno (opcional)</span>
+              <textarea
+                name="counterpartyResolutionNote"
+                aria-label="Motivo interno (opcional)"
+                rows={3}
+                disabled={counterpartyPending}
+                placeholder="Anota por qué creas una contraparte nueva o sustituyes la sugerencia."
+                className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </label>
 

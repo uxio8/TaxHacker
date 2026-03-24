@@ -5,7 +5,9 @@ import {
 } from "./audit-log.ts"
 import { assertFiscalDocumentMutationAllowed } from "./close.ts"
 import {
+  buildCounterpartyResolutionDocumentInput,
   COUNTERPARTY_RESOLUTION_DECISION,
+  mapCounterpartiesToResolutionInput,
   resolveCounterpartyResolution,
   type CounterpartyResolution,
   type CounterpartyResolutionCounterpartyInput,
@@ -45,6 +47,7 @@ type SyncDependencies = {
   getTransactionFiscalBySourceTransactionId?: typeof getTransactionFiscalBySourceTransactionId
   upsertTransactionFiscal?: typeof upsertTransactionFiscal
   getCounterparties?: typeof getCounterparties
+  appendFiscalAuditEvent?: typeof appendFiscalAuditEvent
 }
 
 type EnsureDependencies = SyncDependencies & {
@@ -301,29 +304,20 @@ function applyCounterpartyResolutionToDocument(
 
   const resolution = resolveCounterpartyResolution({
     ownerScopeId,
-    document: {
+    document: buildCounterpartyResolutionDocumentInput({
       fiscal_document_id: document.header.fiscal_document_id,
       source_transaction_id: document.header.source_transaction_id,
-      document_kind: trimToNull(document.header.document_kind),
-      counterparty_id: trimToNull(document.header.counterparty_id),
-      counterparty_name: trimToNull(document.header.counterparty_name),
-      counterparty_tax_id: trimToNull(document.header.counterparty_tax_id),
-      counterparty_role: trimToNull(document.header.counterparty_role),
+      document_kind: document.header.document_kind,
+      counterparty_id: document.header.counterparty_id,
+      counterparty_name: document.header.counterparty_name,
+      counterparty_tax_id: document.header.counterparty_tax_id,
+      counterparty_role: document.header.counterparty_role,
       issue_date: parseDateOnly(document.header.issue_date),
-      total_payable_cents:
-        typeof document.header.total_payable_cents === "number"
-          ? document.header.total_payable_cents
-          : null,
-      total_vat_cents:
-        typeof document.header.total_vat_cents === "number"
-          ? document.header.total_vat_cents
-          : null,
-      total_withholding_cents:
-        typeof document.header.total_withholding_cents === "number"
-          ? document.header.total_withholding_cents
-          : null,
-    },
-    counterparties,
+      total_payable_cents: document.header.total_payable_cents,
+      total_vat_cents: document.header.total_vat_cents,
+      total_withholding_cents: document.header.total_withholding_cents,
+    }),
+    counterparties: mapCounterpartiesToResolutionInput(counterparties),
   })
 
   if (
@@ -598,6 +592,7 @@ export async function syncTransactionFiscalFromTransaction(
     getTransactionFiscalBySourceTransactionId
   const persistDocument = dependencies.upsertTransactionFiscal ?? upsertTransactionFiscal
   const listCounterparties = dependencies.getCounterparties ?? getCounterparties
+  const appendAuditEvent = dependencies.appendFiscalAuditEvent ?? appendFiscalAuditEvent
   const existingDocument = await getExistingDocument(transaction.id, profile.id)
   const counterparties = await listCounterparties(profile.id)
   const { document, resolution } = applyCounterpartyResolutionToDocument(
@@ -617,7 +612,7 @@ export async function syncTransactionFiscalFromTransaction(
     resolution.linked_counterparty_id &&
     !existingDocument?.header.counterparty_id
   ) {
-    await appendFiscalAuditEvent(profile.id, {
+    await appendAuditEvent(profile.id, {
       event: FISCAL_AUDIT_EVENT_COUNTERPARTY_AUTO_LINKED,
       fiscalDocumentId: persisted.header.fiscal_document_id,
       actor: {

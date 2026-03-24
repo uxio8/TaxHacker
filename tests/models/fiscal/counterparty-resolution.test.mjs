@@ -2,11 +2,13 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildCounterpartyResolutionDocumentInput,
   COUNTERPARTY_CONFLICT_REASON,
   COUNTERPARTY_RESOLUTION_DECISION,
   COUNTERPARTY_RESOLUTION_RULE_VERSION,
   getCounterpartyResolutionQualityStatus,
   getCounterpartyResolutionMaterialityBucket,
+  mapCounterpartyToResolutionInput,
   resolveCounterpartyResolution,
 } from "../../../models/fiscal/counterparty-resolution.ts"
 
@@ -159,4 +161,56 @@ test("getCounterpartyResolutionQualityStatus solo trata como fiable el match aut
     }),
     "needs_review"
   )
+})
+
+test("buildCounterpartyResolutionDocumentInput normaliza nullables y números opcionales", () => {
+  const document = buildCounterpartyResolutionDocumentInput({
+    fiscal_document_id: "fd_q1_009",
+    source_transaction_id: "tx_q1_009",
+    document_kind: " received_invoice ",
+    counterparty_id: " ",
+    counterparty_name: " Proveedor Demo SL ",
+    counterparty_tax_id: undefined,
+    counterparty_role: undefined,
+    issue_date: undefined,
+    total_payable_cents: undefined,
+    total_vat_cents: 2100,
+    total_withholding_cents: undefined,
+  })
+
+  assert.deepEqual(document, {
+    fiscal_document_id: "fd_q1_009",
+    source_transaction_id: "tx_q1_009",
+    document_kind: "received_invoice",
+    counterparty_id: null,
+    counterparty_name: "Proveedor Demo SL",
+    counterparty_tax_id: null,
+    counterparty_role: null,
+    issue_date: null,
+    total_payable_cents: null,
+    total_vat_cents: 2100,
+    total_withholding_cents: null,
+  })
+})
+
+test("mapCounterpartyToResolutionInput convierte el sentinel none en null", () => {
+  const counterparty = mapCounterpartyToResolutionInput({
+    id: "cp_2",
+    displayName: "Proveedor Demo SL",
+    normalizedName: "PROVEEDOR DEMO SL",
+    taxId: "B12345678",
+    taxIdNormalized: "none",
+    isActive: true,
+    canonicalIdentityKey: "ES:NIF:B12345678",
+  })
+
+  assert.deepEqual(counterparty, {
+    id: "cp_2",
+    displayName: "Proveedor Demo SL",
+    normalizedName: "PROVEEDOR DEMO SL",
+    taxId: "B12345678",
+    taxIdNormalized: null,
+    isActive: true,
+    canonicalIdentityKey: "ES:NIF:B12345678",
+  })
 })

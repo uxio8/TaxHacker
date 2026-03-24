@@ -10,6 +10,7 @@ import { getOrCreateSelfHostedUser } from "../../../models/users.ts"
 
 const FIXTURE_IDS = {
   landlordCounterpartyId: "11111111-1111-4111-8111-111111111111",
+  reviewCounterpartyId: "11111111-1111-4111-8111-222222222222",
   rentTransactionId: "22222222-2222-4222-8222-222222222222",
   reviewTransactionId: "33333333-3333-4333-8333-333333333333",
   rentFiscalDocumentId: "fiscal-smoke-rent-2026-q1",
@@ -142,7 +143,9 @@ export async function seedFiscalSmokeData() {
 
   await prisma.counterparty.deleteMany({
     where: {
-      id: FIXTURE_IDS.landlordCounterpartyId,
+      id: {
+        in: [FIXTURE_IDS.landlordCounterpartyId, FIXTURE_IDS.reviewCounterpartyId],
+      },
     },
   })
 
@@ -157,6 +160,10 @@ export async function seedFiscalSmokeData() {
     displayName: String(rentHeader.counterparty_name),
     taxId: String(rentHeader.counterparty_tax_id),
   })
+  const reviewIdentity = buildCounterpartyIdentity({
+    displayName: String(reviewHeader.counterparty_name),
+    taxId: String(reviewHeader.counterparty_tax_id),
+  })
 
   await prisma.counterparty.create({
     data: {
@@ -169,6 +176,21 @@ export async function seedFiscalSmokeData() {
       taxId: landlordIdentity.taxId,
       taxIdNormalized: landlordIdentity.taxIdNormalized,
       countryCode: landlordIdentity.countryCode,
+      isActive: true,
+    },
+  })
+
+  await prisma.counterparty.create({
+    data: {
+      id: FIXTURE_IDS.reviewCounterpartyId,
+      ownerScopeId: fiscalProfile.id,
+      canonicalIdentityKey: reviewIdentity.canonicalIdentityKey,
+      identityBasis: reviewIdentity.identityBasis,
+      displayName: reviewIdentity.displayName,
+      normalizedName: reviewIdentity.normalizedName,
+      taxId: reviewIdentity.taxId,
+      taxIdNormalized: reviewIdentity.taxIdNormalized,
+      countryCode: reviewIdentity.countryCode,
       isActive: true,
     },
   })
@@ -328,8 +350,10 @@ export async function seedFiscalSmokeData() {
     periodKey: "2026-Q1",
     annualPeriodKey: "2026-Y",
     rentInvoiceNumber: String(rentHeader.invoice_number),
+    reviewCounterpartyId: FIXTURE_IDS.reviewCounterpartyId,
     reviewFiscalDocumentId: FIXTURE_IDS.reviewFiscalDocumentId,
     reviewInvoiceNumber: String(reviewHeader.invoice_number),
     reviewCounterpartyName: String(reviewHeader.counterparty_name),
+    reviewTransactionId: FIXTURE_IDS.reviewTransactionId,
   }
 }

@@ -251,6 +251,99 @@ test("syncTransactionFiscalFromTransaction usa payment_date para IVA cuando el p
   assert.equal(calls[0]?.options?.vatCashAccountingEnabled, true)
 })
 
+test("syncTransactionFiscalFromTransaction audita el auto-link conservador por NIF exacto", async () => {
+  const calls = []
+  const auditCalls = []
+  const transaction = createTransaction({
+    id: "autolink-2222-2222-2222-222222222222",
+    merchant: "Proveedor Demo SL",
+    extra: {
+      invoice_number: "REC-2026-022",
+      counterparty_name: "Proveedor Demo SL",
+      counterparty_tax_id: "B12345678",
+      vat: "210",
+      vat_rate: "21",
+    },
+  })
+  const profile = createProfile()
+
+  const result = await syncTransactionFiscalFromTransaction(transaction, profile, {
+    ...createSyncDependencies(calls),
+    getCounterparties: async () => [
+      {
+        id: "cp_supplier_001",
+        displayName: "Proveedor Demo SL",
+        normalizedName: "PROVEEDOR DEMO SL",
+        taxId: "B12345678",
+        taxIdNormalized: "B12345678",
+        canonicalIdentityKey: "ES:NIF:B12345678",
+        isActive: true,
+      },
+    ],
+    appendFiscalAuditEvent: async (...args) => {
+      auditCalls.push(args)
+      return null
+    },
+  })
+
+  assert.equal(result.status, "synced")
+  assert.equal(result.document?.header.counterparty_id, "cp_supplier_001")
+  assert.equal(auditCalls.length, 1)
+  assert.equal(auditCalls[0]?.[0], "fp_1")
+  assert.equal(auditCalls[0]?.[1]?.event, "counterparty_auto_linked")
+  assert.equal(auditCalls[0]?.[1]?.fiscalDocumentId, "fd_tx_autolink-2222-2222-2222-222222222222")
+  assert.equal(auditCalls[0]?.[1]?.details?.chosen_counterparty_id, "cp_supplier_001")
+  assert.equal(auditCalls[0]?.[1]?.details?.rule_version, "counterparty-resolution/v1")
+})
+
+test("syncTransactionFiscalFromTransaction no audita auto-link si el documento ya estaba enlazado", async () => {
+  const calls = []
+  const auditCalls = []
+  const transaction = createTransaction({
+    id: "autolink-keep-3333-3333-333333333333",
+    merchant: "Proveedor Demo SL",
+    extra: {
+      invoice_number: "REC-2026-023",
+      counterparty_name: "Proveedor Demo SL",
+      counterparty_tax_id: "B12345678",
+    },
+  })
+  const profile = createProfile()
+  const existingDocument = createExistingDocument({
+    header: {
+      source_transaction_id: transaction.id,
+      fiscal_document_id: `fd_tx_${transaction.id}`,
+      counterparty_id: "cp_existing",
+      counterparty_name: "Proveedor Demo SL",
+      counterparty_tax_id: "B12345678",
+    },
+  })
+
+  const result = await syncTransactionFiscalFromTransaction(transaction, profile, {
+    ...createSyncDependencies(calls),
+    getTransactionFiscalBySourceTransactionId: async () => existingDocument,
+    getCounterparties: async () => [
+      {
+        id: "cp_supplier_001",
+        displayName: "Proveedor Demo SL",
+        normalizedName: "PROVEEDOR DEMO SL",
+        taxId: "B12345678",
+        taxIdNormalized: "B12345678",
+        canonicalIdentityKey: "ES:NIF:B12345678",
+        isActive: true,
+      },
+    ],
+    appendFiscalAuditEvent: async (...args) => {
+      auditCalls.push(args)
+      return null
+    },
+  })
+
+  assert.equal(result.status, "synced")
+  assert.equal(result.document?.header.counterparty_id, "cp_existing")
+  assert.equal(auditCalls.length, 0)
+})
+
 test("syncTransactionFiscalFromTransaction preserva payment_date y asignaciones persistidas si Transaction no las trae", async () => {
   const calls = []
   const transaction = createTransaction({

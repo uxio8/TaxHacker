@@ -115,6 +115,30 @@ export type CounterpartyResolution = {
 
 export type CounterpartyResolutionQualityStatus = "reliable" | "needs_review"
 
+type CounterpartyResolutionDocumentLike = {
+  fiscal_document_id: string
+  source_transaction_id: string
+  document_kind?: string | null
+  counterparty_id?: string | null
+  counterparty_name?: string | null
+  counterparty_tax_id?: string | null
+  counterparty_role?: string | null
+  issue_date?: string | null
+  total_payable_cents?: number | null
+  total_vat_cents?: number | null
+  total_withholding_cents?: number | null
+}
+
+type CounterpartyResolutionCounterpartyLike = {
+  id: string
+  displayName: string
+  normalizedName: string
+  taxId: string | null
+  taxIdNormalized: string | null
+  isActive: boolean
+  canonicalIdentityKey: string
+}
+
 function trimToNull(value: string | null | undefined): string | null {
   const normalized = value?.trim()
   return normalized ? normalized : null
@@ -163,6 +187,49 @@ function normalizeCounterpartyName(value: string | null | undefined): string | n
 
 function normalizeInteger(value: number | null | undefined): number {
   return Number.isInteger(value) ? (value as number) : 0
+}
+
+export function buildCounterpartyResolutionDocumentInput(
+  document: CounterpartyResolutionDocumentLike
+): CounterpartyResolutionDocumentInput {
+  return {
+    fiscal_document_id: document.fiscal_document_id,
+    source_transaction_id: document.source_transaction_id,
+    document_kind: trimToNull(document.document_kind),
+    counterparty_id: trimToNull(document.counterparty_id),
+    counterparty_name: trimToNull(document.counterparty_name),
+    counterparty_tax_id: trimToNull(document.counterparty_tax_id),
+    counterparty_role: trimToNull(document.counterparty_role),
+    issue_date: trimToNull(document.issue_date),
+    total_payable_cents:
+      typeof document.total_payable_cents === "number" ? document.total_payable_cents : null,
+    total_vat_cents: typeof document.total_vat_cents === "number" ? document.total_vat_cents : null,
+    total_withholding_cents:
+      typeof document.total_withholding_cents === "number" ? document.total_withholding_cents : null,
+  }
+}
+
+export function mapCounterpartyToResolutionInput(
+  counterparty: CounterpartyResolutionCounterpartyLike
+): CounterpartyResolutionCounterpartyInput {
+  return {
+    id: counterparty.id,
+    displayName: counterparty.displayName,
+    normalizedName: counterparty.normalizedName,
+    taxId: counterparty.taxId,
+    taxIdNormalized:
+      counterparty.taxIdNormalized && counterparty.taxIdNormalized !== "none"
+        ? counterparty.taxIdNormalized
+        : null,
+    isActive: counterparty.isActive,
+    canonicalIdentityKey: counterparty.canonicalIdentityKey,
+  }
+}
+
+export function mapCounterpartiesToResolutionInput(
+  counterparties: CounterpartyResolutionCounterpartyLike[]
+): CounterpartyResolutionCounterpartyInput[] {
+  return counterparties.map(mapCounterpartyToResolutionInput)
 }
 
 function getMaterialityBucket(

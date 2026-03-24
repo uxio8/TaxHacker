@@ -3,8 +3,10 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  buildTransactionFiscalPanelAuditReason,
   buildTransactionFiscalPanelDocumentInput,
   collectAffectedPeriodKeys,
+  getCounterpartyResolutionAuditEvent,
 } from "../../../app/(app)/transactions/fiscal-panel-shared.ts"
 
 function loadGoldenQuarter() {
@@ -126,4 +128,49 @@ test("buildTransactionFiscalPanelDocumentInput mantiene el documento en revision
   assert.equal(updated.header.counterparty_id, document.header.counterparty_id)
   assert.deepEqual(updated.header.vat_period_assignment, document.header.vat_period_assignment)
   assert.deepEqual(updated.header.withholding_period_assignment, document.header.withholding_period_assignment)
+})
+
+test("buildTransactionFiscalPanelAuditReason describe la confirmacion manual de contraparte", () => {
+  assert.equal(
+    buildTransactionFiscalPanelAuditReason(
+      "link_counterparty",
+      null,
+      null,
+      "Proveedor Demo SL"
+    ),
+    "Panel fiscal: se confirma contraparte Proveedor Demo SL"
+  )
+})
+
+test("buildTransactionFiscalPanelAuditReason describe mantener la contraparte en revisión", () => {
+  assert.equal(
+    buildTransactionFiscalPanelAuditReason("keep_counterparty_in_review"),
+    "Panel fiscal: se mantiene la resolución de contraparte en revisión"
+  )
+})
+
+test("buildTransactionFiscalPanelAuditReason adjunta el motivo interno cuando existe", () => {
+  assert.equal(
+    buildTransactionFiscalPanelAuditReason(
+      "create_counterparty_and_link",
+      null,
+      null,
+      "Proveedor Demo SL",
+      "Se crea nueva ficha porque la sugerencia anterior estaba obsoleta."
+    ),
+    "Panel fiscal: se crea y enlaza contraparte Proveedor Demo SL. Motivo interno: Se crea nueva ficha porque la sugerencia anterior estaba obsoleta."
+  )
+})
+
+test("getCounterpartyResolutionAuditEvent resuelve los eventos auditables del flujo manual", () => {
+  assert.equal(getCounterpartyResolutionAuditEvent("link_counterparty"), "counterparty_confirmed")
+  assert.equal(
+    getCounterpartyResolutionAuditEvent("create_counterparty_and_link"),
+    "counterparty_created_and_linked"
+  )
+  assert.equal(
+    getCounterpartyResolutionAuditEvent("keep_counterparty_in_review"),
+    "counterparty_kept_in_review"
+  )
+  assert.equal(getCounterpartyResolutionAuditEvent("save_payment_date"), null)
 })

@@ -12,7 +12,12 @@ import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getFields } from "@/models/fields"
 import { getFilesByTransactionId } from "@/models/files"
-import { resolveCounterpartyResolution, type CounterpartyResolution } from "@/models/fiscal/counterparty-resolution"
+import {
+  buildCounterpartyResolutionDocumentInput,
+  mapCounterpartiesToResolutionInput,
+  resolveCounterpartyResolution,
+  type CounterpartyResolution,
+} from "@/models/fiscal/counterparty-resolution"
 import { getCounterparties } from "@/models/fiscal/counterparties"
 import { getFiscalProfileAccessByOrganizationId } from "@/models/fiscal/profile"
 import { getFiscalPeriodByKey, syncDefaultSpanishFiscalPeriodsV1 } from "@/models/fiscal/periods"
@@ -160,7 +165,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
         if (!document.header.counterparty_id) {
           counterpartyResolution = resolveCounterpartyResolution({
             ownerScopeId: fiscalProfileAccess.profile.id,
-            document: {
+            document: buildCounterpartyResolutionDocumentInput({
               fiscal_document_id: document.header.fiscal_document_id,
               source_transaction_id: document.header.source_transaction_id,
               document_kind: document.header.document_kind,
@@ -172,8 +177,8 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
               total_payable_cents: document.header.total_payable_cents,
               total_vat_cents: document.header.total_vat_cents,
               total_withholding_cents: document.header.total_withholding_cents,
-            },
-            counterparties,
+            }),
+            counterparties: mapCounterpartiesToResolutionInput(counterparties),
           })
         }
 

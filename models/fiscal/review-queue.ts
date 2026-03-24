@@ -6,6 +6,15 @@ import {
   type ReviewReason,
 } from "./review-status.ts"
 import {
+  buildCounterpartyResolutionDocumentInput,
+  COUNTERPARTY_RESOLUTION_DECISION,
+  mapCounterpartiesToResolutionInput,
+  resolveCounterpartyResolution,
+  type CounterpartyConflictReason,
+  type CounterpartyMatchReason,
+  type CounterpartyResolutionDecision,
+} from "./counterparty-resolution.ts"
+import {
   listOpenFiscalReviewRequestsByDocumentIds,
   type FiscalReviewRequest,
   type FiscalReviewRequestOwner,
@@ -22,10 +31,14 @@ type ReviewQueueRecord = {
   sourceTransactionId: string
   documentKind: string
   issueDate: Date
+  counterpartyId: string | null
   counterpartyRole: string
   counterpartyName: string | null
   counterpartyTaxId: string | null
   counterpartyCountryCode: string | null
+  totalPayableCents: number | null
+  totalVatCents: number | null
+  totalWithholdingCents: number | null
   reviewStatus: string
   reviewReasons: ReviewReason[]
   vatPeriodAssignment: FiscalPeriodAssignment | null
@@ -36,6 +49,18 @@ export type ReviewQueueQuarter = Pick<
   FiscalPeriodAssignment,
   "basis" | "fiscal_year" | "period_key" | "quarter"
 >
+
+export type ReviewQueueCounterpartyResolutionSummary = {
+  decision: CounterpartyResolutionDecision
+  active_candidate_count: number
+  conflict_reason: CounterpartyConflictReason | null
+  suggested_candidate: {
+    id: string
+    display_name: string
+    tax_id: string | null
+    match_reasons: CounterpartyMatchReason[]
+  } | null
+}
 
 export type ReviewQueueItem = {
   fiscal_document_id: string
@@ -52,6 +77,7 @@ export type ReviewQueueItem = {
   quarter: ReviewQueueQuarter | null
   drilldown_href: string
   owner: FiscalReviewRequestOwner
+  counterparty_resolution: ReviewQueueCounterpartyResolutionSummary | null
   active_request_count: number
   active_requests: Array<{
     id: string
@@ -80,10 +106,14 @@ const REVIEW_QUEUE_SELECT = {
   sourceTransactionId: true,
   documentKind: true,
   issueDate: true,
+  counterpartyId: true,
   counterpartyRole: true,
   counterpartyName: true,
   counterpartyTaxId: true,
   counterpartyCountryCode: true,
+  totalPayableCents: true,
+  totalVatCents: true,
+  totalWithholdingCents: true,
   reviewStatus: true,
   reviewReasons: true,
   vatPeriodAssignment: true,
@@ -101,6 +131,23 @@ type ReviewQueueStore = {
       }
       select: typeof REVIEW_QUEUE_SELECT
     }): Promise<ReviewQueueRecord[]>
+  }
+  counterparty?: {
+    findMany(args: {
+      where: { ownerScopeId: string }
+      orderBy: { displayName: "asc" | "desc" }
+    }): Promise<
+      Array<{
+        id: string
+        ownerScopeId: string
+        displayName: string
+        normalizedName: string
+        taxId: string | null
+        taxIdNormalized: string
+        canonicalIdentityKey: string
+        isActive: boolean
+      }>
+    >
   }
   fiscalReviewRequest?: {
     findMany: (args: {
@@ -183,7 +230,8 @@ function pickQuarter(record: ReviewQueueRecord): ReviewQueueQuarter | null {
 
 function toReviewQueueItem(
   record: ReviewQueueRecord,
-  activeRequests: FiscalReviewRequest[] = []
+  activeRequests: FiscalReviewRequest[] = [],
+  counterpartyResolution: ReviewQueueCounterpartyResolutionSummary | null = null
 ): ReviewQueueItem {
   const reviewStatus = isReviewQueueStatus(record.reviewStatus)
     ? record.reviewStatus
@@ -209,6 +257,7 @@ function toReviewQueueItem(
     quarter: pickQuarter(record),
     drilldown_href: `${REVIEW_QUEUE_DRILLDOWN_BASE_PATH}/${record.sourceTransactionId}`,
     owner,
+    counterparty_resolution: counterpartyResolution,
     active_request_count: activeRequests.length,
     active_requests: activeRequests.map((request) => ({
       id: request.id,
@@ -259,6 +308,67 @@ async function listOpenRequests(
   })
 }
 
+async function listCounterparties(
+  ownerScopeId: string,
+  store?: ReviewQueueStore
+) {
+  const counterpartyStore = store?.counterparty
+    ?? ((await import("../../lib/db.ts")).prisma as unknown as {
+      counterparty: NonNullable<ReviewQueueStore["counterparty"]>
+    }).counterparty
+
+  return counterpartyStore.findMany({
+    where: { ownerScopeId },
+    orderBy: { displayName: "asc" },
+  })
+}
+
+function buildCounterpartyResolutionSummary(
+  record: ReviewQueueRecord,
+  counterparties: Awaited<ReturnType<typeof listCounterparties>>
+): ReviewQueueCounterpartyResolutionSummary | null {
+  if (!record.reviewReasons.includes("missing_counterparty_relation")) {
+    return null
+  }
+
+  const resolution = resolveCounterpartyResolution({
+    ownerScopeId: record.ownerScopeId,
+    document: buildCounterpartyResolutionDocumentInput({
+      fiscal_document_id: record.id,
+      source_transaction_id: record.sourceTransactionId,
+      document_kind: record.documentKind,
+      counterparty_id: record.counterpartyId,
+      counterparty_name: record.counterpartyName,
+      counterparty_tax_id: record.counterpartyTaxId,
+      counterparty_role: record.counterpartyRole,
+      issue_date: serializeDateOnly(record.issueDate),
+      total_payable_cents: record.totalPayableCents,
+      total_vat_cents: record.totalVatCents,
+      total_withholding_cents: record.totalWithholdingCents,
+    }),
+    counterparties: mapCounterpartiesToResolutionInput(counterparties),
+  })
+
+  const suggestedCandidate =
+    resolution.decision === COUNTERPARTY_RESOLUTION_DECISION.NEEDS_REVIEW_NO_SAFE_CANDIDATE
+      ? null
+      : resolution.relevant_candidates.find((candidate) => candidate.is_active) ?? null
+
+  return {
+    decision: resolution.decision,
+    active_candidate_count: resolution.evidence.active_candidate_count,
+    conflict_reason: resolution.evidence.conflict_reason,
+    suggested_candidate: suggestedCandidate
+      ? {
+          id: suggestedCandidate.id,
+          display_name: suggestedCandidate.display_name,
+          tax_id: suggestedCandidate.tax_id,
+          match_reasons: suggestedCandidate.match_reasons,
+        }
+      : null,
+  }
+}
+
 async function resolveStore(store?: ReviewQueueStore): Promise<ReviewQueueStore> {
   if (store) {
     return store
@@ -289,9 +399,17 @@ export async function getFiscalReviewQueue(
       },
       select: REVIEW_QUEUE_SELECT,
     })
+    const needsCounterpartyResolution = records.some(
+      (record) =>
+        Array.isArray(record.reviewReasons)
+        && record.reviewReasons.includes("missing_counterparty_relation")
+    )
     const fiscalDocumentIds = records.map((record) => record.id)
     const requestsByDocumentId = new Map<string, FiscalReviewRequest[]>()
     const openRequests = await listOpenRequests(normalizedOwnerScopeId, fiscalDocumentIds, store)
+    const counterparties = needsCounterpartyResolution
+      ? await listCounterparties(normalizedOwnerScopeId, store)
+      : []
 
     for (const request of openRequests) {
       const requests = requestsByDocumentId.get(request.fiscalDocumentId) ?? []
@@ -301,7 +419,13 @@ export async function getFiscalReviewQueue(
 
     const items = records
       .filter((record) => isReviewQueueStatus(record.reviewStatus))
-      .map((record) => toReviewQueueItem(record, requestsByDocumentId.get(record.id) ?? []))
+      .map((record) =>
+        toReviewQueueItem(
+          record,
+          requestsByDocumentId.get(record.id) ?? [],
+          buildCounterpartyResolutionSummary(record, counterparties)
+        )
+      )
       .sort(compareReviewQueueItems)
 
     return {

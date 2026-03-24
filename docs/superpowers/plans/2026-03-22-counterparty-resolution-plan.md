@@ -129,11 +129,11 @@
 **Verification:**
 - reviewed by `risk-manager`
 - approved before any code changes to review rules
-- [ ] Write the spec document
-- [ ] Review current rules and flows
-- [ ] Encode the conservative policy matrix
-- [ ] Define naming and status semantics
-- [ ] Dispatch reviewer and resolve comments
+- [x] Write the spec document
+- [x] Review current rules and flows
+- [x] Encode the conservative policy matrix
+- [x] Define naming and status semantics
+- [x] Dispatch reviewer and resolve comments
 
 ### Task 0.2: Technical Boundary Review
 
@@ -157,9 +157,9 @@
   - sync integration
 **Verification:**
 - architecture note appended to spec
-- [ ] Review policy matrix
-- [ ] Review current file boundaries
-- [ ] Approve or request boundary changes
+- [x] Review policy matrix
+- [x] Review current file boundaries
+- [x] Approve or request boundary changes
 
 ## Phase 1: Resolution Domain And Auditability
 
@@ -190,11 +190,11 @@
   - inactive exact match
   - name-only candidate
   - prior manual rejection
-- [ ] Write failing tests for decision outcomes
-- [ ] Implement minimal decision types and rules
-- [ ] Add candidate lookup helpers
-- [ ] Run targeted tests
-- [ ] Self-review conflict edge cases
+- [x] Write failing tests for decision outcomes
+- [x] Implement minimal decision types and rules
+- [x] Add candidate lookup helpers
+- [x] Run targeted tests
+- [x] Self-review conflict edge cases
 
 ### Task 1.2: Review Status Refactor
 
@@ -221,11 +221,11 @@
   - low-risk missing canonical link
   - rent withholding stricter path
   - exact NIF auto-link path
-- [ ] Add failing tests for policy-driven review states
-- [ ] Refactor reason derivation
-- [ ] Preserve existing unrelated behaviors
-- [ ] Run review-status tests
-- [ ] Validate no regressions in VAT/withholding tests
+- [x] Add failing tests for policy-driven review states
+- [x] Refactor reason derivation
+- [x] Preserve existing unrelated behaviors
+- [x] Run review-status tests
+- [x] Validate no regressions in VAT/withholding tests
 
 ### Task 1.3: Fiscal Audit Events For Resolution
 
@@ -257,11 +257,11 @@
 **Verification:**
 - append/list tests for new events
 - payload validation tests
-- [ ] Add failing tests for new audit events
-- [ ] Extend event constants and payload typing
-- [ ] Wire normalization and parsing
-- [ ] Run audit-log tests
-- [ ] Review payload size and backwards compatibility
+- [x] Add failing tests for new audit events
+- [x] Extend event constants and payload typing
+- [x] Wire normalization and parsing
+- [x] Run audit-log tests
+- [x] Review payload size and backwards compatibility
 
 ## Phase 2: Sync Integration And Transaction Workflow
 
@@ -292,11 +292,11 @@
   - duplicate match
   - no match
   - inactive match
-- [ ] Add failing sync tests
-- [ ] Integrate resolution engine into sync path
-- [ ] Append audit on safe auto-link
-- [ ] Run sync and transaction-fiscal tests
-- [ ] Review idempotency and re-sync behavior
+- [x] Add failing sync tests
+- [x] Integrate resolution engine into sync path
+- [x] Append audit on safe auto-link
+- [x] Run sync and transaction-fiscal tests
+- [x] Review idempotency and re-sync behavior
 
 ### Task 2.2: Transaction Detail Resolution UI
 
@@ -330,11 +330,11 @@
 **Verification:**
 - component tests or server-action tests for intent parsing
 - manual flow check in transaction detail
-- [ ] Add failing tests for action parsing/state transitions
-- [ ] Build card UI with current design system
-- [ ] Add explicit semantic actions
-- [ ] Wire server action to domain engine and audit
-- [ ] Run targeted tests and manual smoke check
+- [x] Add failing tests for action parsing/state transitions
+- [x] Build card UI with current design system
+- [x] Add explicit semantic actions
+- [x] Wire server action to domain engine and audit
+- [x] Run targeted tests and manual smoke check
 
 ### Task 2.3: Counterparty Picker And Create-And-Link Flow
 
@@ -361,11 +361,11 @@
   - create new counterparty from detected NIF/name
   - select existing active counterparty
   - reject suggestion and keep in review
-- [ ] Add failing tests for picker/create flows
-- [ ] Implement search/select helpers
-- [ ] Implement create-and-link action
-- [ ] Persist rejection/override reasons
-- [ ] Run tests and manual smoke checks
+- [x] Add failing tests for picker/create flows
+- [x] Implement search/select helpers
+- [x] Implement create-and-link action
+- [x] Persist rejection/override reasons
+- [x] Run tests and manual smoke checks
 
 ## Phase 3: Review Queue And Product Semantics
 
@@ -394,11 +394,11 @@
 **Verification:**
 - snapshot or rendering tests for labels
 - manual review queue inspection
-- [ ] Add failing UI assertions for new labels/CTAs
-- [ ] Update copy and mapping functions
-- [ ] Add pending-action summary rendering
-- [ ] Run UI tests and manual smoke check
-- [ ] Verify no misleading legal wording remains
+- [x] Add failing UI assertions for new labels/CTAs
+- [x] Update copy and mapping functions
+- [x] Add pending-action summary rendering
+- [x] Run UI tests and manual smoke check
+- [x] Verify no misleading legal wording remains
 
 ### Task 3.2: Flow-Specific Strictness For Rent/Withholding
 
@@ -422,9 +422,9 @@
 **Verification:**
 - written signoff appended to policy spec
 - backend tests added in paired execution task
-- [ ] Review rent/withholding rules
-- [ ] Freeze stricter decision table
-- [ ] Hand off concrete rule changes to backend implementer
+- [x] Review rent/withholding rules
+- [x] Freeze stricter decision table
+- [x] Hand off concrete rule changes to backend implementer
 
 ### Task 3.3: Backend Enforcement For Sensitive Flows
 
@@ -445,10 +445,10 @@
 - no impact on unrelated VAT-only flows unless intended
 **Verification:**
 - tests for rent-specific review behavior
-- [ ] Add failing tests for rent-sensitive paths
-- [ ] Implement approved stricter rules
-- [ ] Run fiscal review and model tests
-- [ ] Confirm unaffected flows remain green
+- [x] Add failing tests for rent-sensitive paths
+- [x] Implement approved stricter rules
+- [x] Run fiscal review and model tests
+- [x] Confirm unaffected flows remain green
 
 ## Phase 4: Backfill, QA, And Rollout
 
@@ -475,10 +475,10 @@
 - no destructive writes without explicit flag
 **Verification:**
 - script test or fixture-backed dry-run check
-- [ ] Add fixture-backed dry-run validation
-- [ ] Implement script with dry-run and apply modes
-- [ ] Run against sample/fixture data
-- [ ] Review summary output for operator clarity
+- [x] Add fixture-backed dry-run validation
+- [x] Implement script with dry-run and apply modes
+- [x] Run against sample/fixture data
+- [x] Review summary output for operator clarity
 
 ### Task 4.2: QA Matrix And Release Gate
 
@@ -504,10 +504,10 @@
   - backfill dry-run
 **Verification:**
 - reviewed by final `reviewer`
-- [ ] Build acceptance matrix
-- [ ] Define mandatory commands and expected results
-- [ ] Define manual smoke checklist
-- [ ] Dispatch final reviewer
+- [x] Build acceptance matrix
+- [x] Define mandatory commands and expected results
+- [x] Define manual smoke checklist
+- [x] Dispatch final reviewer
 
 ## Execution Strategy
 
