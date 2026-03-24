@@ -31,6 +31,10 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
   - `docs/superpowers/plans/2026-03-24-compatibility-first-refactor-plan.md`
 - Runbook operativo de gates del refactor:
   - `docs/superpowers/specs/2026-03-24-refactor-gates-runbook.md`
+- Siguiente objetivo operativo inmediato:
+  - `release MVP` mínimo y observable
+  - plan: `docs/superpowers/plans/2026-03-24-release-mvp-discipline-plan.md`
+  - runbook: `docs/superpowers/specs/2026-03-24-release-mvp-runbook.md`
 - Estado actual del refactor compatibility-first:
   - harness crítico y reglas de frontera ya añadidos en `tests/critical/*` y `tests/architecture/*`
   - fachadas públicas ya congeladas en:
