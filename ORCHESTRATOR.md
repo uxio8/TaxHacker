@@ -27,6 +27,8 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
   - `docs/superpowers/plans/2026-03-23-spanish-sl-fiscal-control-tower-plan.md`
 - Plan técnico siguiente para motor de flujo `human-first` y `agent-ready`:
   - `docs/superpowers/plans/2026-03-23-human-first-workflow-engine-plan.md`
+- Plan técnico siguiente para limpieza y escalado sin regresión:
+  - `docs/superpowers/plans/2026-03-24-compatibility-first-refactor-plan.md`
 - Expansión del control plane `/ops` cerrada:
   - spec de alcance:
     - `docs/superpowers/specs/2026-03-23-ops-control-plane-scope.md`

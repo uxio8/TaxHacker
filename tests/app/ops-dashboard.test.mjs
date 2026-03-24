@@ -37,6 +37,7 @@ test("ops expone un formulario para crear empresas desde superadmin", async () =
   assert.match(opsPageSource, /xl:grid-cols-\[minmax\(0,1\.4fr\)_minmax\(0,1fr\)\]/)
   assert.match(createFormSource, /Crear empresa/)
   assert.match(createFormSource, /Email del owner/)
+  assert.match(createFormSource, /creado y asignado al momento/)
   assert.match(createFormSource, /Usuarios iniciales/)
   assert.match(createFormSource, /Añadir usuario/)
   assert.doesNotMatch(createFormSource, /CardTitle/)

@@ -54,6 +54,13 @@ type OrganizationStoreTransaction = {
         defaultOrganizationId: string
       }
     }) => Promise<unknown>
+    create: (args: {
+      data: {
+        email: string
+        name: string
+        defaultOrganizationId: string
+      }
+    }) => Promise<OrganizationLookupUser>
   }
   organization: {
     findUnique: (args: {
@@ -194,6 +201,17 @@ export function buildDefaultOrganizationName(user: {
   }
 
   return "Organization"
+}
+
+export function buildDefaultUserNameFromEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  const [localPart] = normalizedEmail.split("@")
+
+  if (localPart?.trim()) {
+    return localPart.trim()
+  }
+
+  return normalizedEmail || "Owner"
 }
 
 type CreateOrganizationForOpsInput = {
@@ -667,6 +685,40 @@ async function provisionOrganizationAccess(
       type: "existing_user",
       userId: user.id,
       email: user.email,
+      role: input.role,
+    }
+  }
+
+  if (input.role === "owner") {
+    const createdUser = await options.store.user.create({
+      data: {
+        email: normalizedEmail,
+        name: buildDefaultUserNameFromEmail(normalizedEmail),
+        defaultOrganizationId: input.organizationId,
+      },
+    })
+
+    await options.store.membership.upsert({
+      where: {
+        userId_organizationId: {
+          userId: createdUser.id,
+          organizationId: input.organizationId,
+        },
+      },
+      update: {
+        role: input.role,
+      },
+      create: {
+        userId: createdUser.id,
+        organizationId: input.organizationId,
+        role: input.role,
+      },
+    })
+
+    return {
+      type: "existing_user",
+      userId: createdUser.id,
+      email: createdUser.email,
       role: input.role,
     }
   }
