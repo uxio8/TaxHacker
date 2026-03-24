@@ -25,5 +25,14 @@ test("AnalyzeForm usa resumen guiado y progressive disclosure sin romper la card
 test("AnalyzeForm expone borrado directo para archivos pendientes de análisis", async () => {
   const formSource = await readProjectFile("components/unsorted/analyze-form.tsx")
 
-  assert.match(formSource, /summary\.state === "pending_analysis"[\s\S]*deleteAction\(file\.id\)/)
+  assert.match(formSource, /effectiveSummary\.state === "pending_analysis"[\s\S]*deleteAction\(file\.id\)/)
+})
+
+test("AnalyzeForm recalcula la cabecera desde el borrador local cuando la IA devuelve datos", async () => {
+  const formSource = await readProjectFile("components/unsorted/analyze-form.tsx")
+
+  assert.match(formSource, /buildUnsortedInboxSummary/)
+  assert.match(formSource, /localCachedParseResult/)
+  assert.match(formSource, /effectiveSummary\s*=\s*useMemo/)
+  assert.match(formSource, /effectiveSummary\.primaryAction/)
 })

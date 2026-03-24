@@ -5,8 +5,11 @@ import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { requireCurrentOrganizationId } from "@/lib/tenant"
+import { getCurrentOrganizationUserBillingProjection } from "@/models/billing/access"
+import { buildOrganizationActionUser } from "@/models/billing/runtime"
 import { getFiscalProfileAccessByOrganizationId } from "@/models/fiscal/profile"
 import { getFiscalReviewQueue } from "@/models/fiscal/review-queue"
+import { getCaptureWorkflowInboxView } from "@/models/workflow/document-read-api"
 import { cookies } from "next/headers"
 
 interface InboxPageResponse {
@@ -34,30 +37,52 @@ export default async function CaptureInboxPage() {
   const organizationId = await requireCurrentOrganizationId({
     getCurrentUser: async () => user,
   })
-  const cookieStore = await cookies()
-  const cookie = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ")
   let inbox = EMPTY_INBOX_RESPONSE
   let openClientReviewRequestCount = 0
 
-  try {
-    const response = await fetch(`${config.app.baseURL}/api/mobile/inbox`, {
-      cache: "no-store",
-      headers: {
-        cookie,
+  if (config.workflow.documentSliceEnabled) {
+    const billingProjection = await getCurrentOrganizationUserBillingProjection(organizationId)
+    const actionUser = buildOrganizationActionUser(
+      {
+        id: user.id,
+        email: user.email,
       },
-    })
+      {
+        organizationId,
+        storageLimit: billingProjection.storageLimit,
+        storageUsed: billingProjection.storageUsed,
+        membershipExpiresAt: billingProjection.membershipExpiresAt,
+        accessStatus: billingProjection.accessStatus,
+      }
+    )
+    const workflowView = await getCaptureWorkflowInboxView(actionUser)
 
-    if (response.ok) {
-      inbox = (await response.json()) as InboxPageResponse
+    inbox = workflowView.inbox
+    openClientReviewRequestCount = workflowView.openClientReviewRequestCount
+  } else {
+    const cookieStore = await cookies()
+    const cookie = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ")
+
+    try {
+      const response = await fetch(`${config.app.baseURL}/api/mobile/inbox`, {
+        cache: "no-store",
+        headers: {
+          cookie,
+        },
+      })
+
+      if (response.ok) {
+        inbox = (await response.json()) as InboxPageResponse
+      }
+    } catch {
+      inbox = EMPTY_INBOX_RESPONSE
     }
-  } catch {
-    inbox = EMPTY_INBOX_RESPONSE
-  }
 
-  const fiscalProfileAccess = await getFiscalProfileAccessByOrganizationId(organizationId, user.id)
-  if (fiscalProfileAccess.status === "ready") {
-    const reviewQueue = await getFiscalReviewQueue(fiscalProfileAccess.profile.id)
-    openClientReviewRequestCount = reviewQueue.items.filter((item) => item.owner === "client").length
+    const fiscalProfileAccess = await getFiscalProfileAccessByOrganizationId(organizationId, user.id)
+    if (fiscalProfileAccess.status === "ready") {
+      const reviewQueue = await getFiscalReviewQueue(fiscalProfileAccess.profile.id)
+      openClientReviewRequestCount = reviewQueue.items.filter((item) => item.owner === "client").length
+    }
   }
 
   return (

@@ -1,39 +1,33 @@
-import { FiscalStorageNotReady } from "@/components/tax/fiscal-storage-not-ready"
-import { TaxWorkspaceHeader } from "@/components/tax/layout/tax-workspace-header"
-import { TaxWorkspaceSections } from "@/components/tax/layout/tax-workspace-sections"
-import type { AnnualFiscalOverview } from "@/components/tax/obligations/annual-fiscal-overview-card"
-import type { ObligationCockpitItem } from "@/components/tax/obligations/obligations-cockpit"
-import { getCurrentUser } from "@/lib/auth"
-import config from "@/lib/config"
-import { createPageMetadata, createTranslator } from "@/lib/i18n"
-import { requireCurrentOrganizationId } from "@/lib/tenant"
-import { buildAnnualHandoffPack, resolveAnnualHandoffFiscalYear } from "@/models/fiscal/annual-handoff"
-import { getCounterparties } from "@/models/fiscal/counterparties"
+import { buildAnnualHandoffPack, getAnnualHandoffPackForOrganization, resolveAnnualHandoffFiscalYear } from "../fiscal/annual-handoff.ts"
+import { getCounterparties } from "../fiscal/counterparties.ts"
 import {
-  getFiscalObligationByCodeAndPeriod,
+  getLegalArchivePeriodDetail,
+  listLegalArchivePeriods,
+  type LegalArchivePeriodDetail,
+  type LegalArchivePeriodListItem,
+} from "../fiscal/legal-archive.ts"
+import {
   syncFiscalObligationsForOrganization,
   type FiscalObligationDetail,
   type FiscalObligationOwner,
   type FiscalObligationStatus,
-} from "@/models/fiscal/obligations"
-import { getFiscalProfileAccessByOrganizationId } from "@/models/fiscal/profile"
-import { isFiscalStorageNotReadyError } from "@/models/fiscal/storage"
-import { loadModel115DraftForTenant } from "@/models/tax-forms/model-115-loader"
-import { loadModel111ManualForTenant } from "@/models/tax-forms/model-111-manual"
-import { loadModel303ForTenant, type Model303Readiness } from "@/models/tax-forms/model-303-loader"
-import { getModel347Gate } from "@/models/tax-forms/model-347"
-import { getModel349Gate } from "@/models/tax-forms/model-349"
-import { getTaxAttention } from "@/models/tax-attention"
-import { getTaxWorkflowFiscalView } from "@/models/workflow/fiscal-read-api"
-
-export const metadata = createPageMetadata("tax.title", {
-  descriptionKey: "tax.description",
-})
+} from "../fiscal/obligations.ts"
+import { syncDefaultSpanishFiscalPeriodsV1 } from "../fiscal/periods.ts"
+import { loadModel115DraftForTenant } from "../tax-forms/model-115-loader.ts"
+import { loadModel111ManualForTenant } from "../tax-forms/model-111-manual.ts"
+import { getModel347Gate } from "../tax-forms/model-347.ts"
+import { getModel349Gate } from "../tax-forms/model-349.ts"
+import { loadModel303ForTenant, type Model303Readiness } from "../tax-forms/model-303-loader.ts"
+import { getTaxAttention, type TaxAttention } from "../tax-attention.ts"
+import { buildFiscalWorkflowItems } from "./projectors/fiscal.ts"
+import { buildWorkflowReadModelFromSlices } from "./rebuild.ts"
+import type { WorkflowReadModel } from "./contracts.ts"
 
 type BadgeVariant = "default" | "secondary" | "outline"
 type QuarterlyCockpitCode = "303" | "115" | "111"
 type AnnualCockpitCode = "180" | "390" | "347" | "349"
-type TaxWorkspaceProfile = {
+
+export type TaxWorkflowProfile = {
   organizationId: string
   companyName: string
   taxId: string
@@ -43,6 +37,82 @@ type TaxWorkspaceProfile = {
   hasIntraEuOperations: boolean
   hasEmployees: boolean
   hasProfessionalWithholding: boolean
+}
+
+export type TaxWorkflowObligationItem = {
+  code: string
+  title: string
+  periodLabel: string
+  href: string
+  statusLabel: string
+  statusVariant: BadgeVariant
+  dueDateLabel: string
+  readinessLabel: string
+  readinessVariant: BadgeVariant
+  blockingItems: string[]
+  responsibleLabel: string
+  nextActionLabel: string
+  nextActionHref: string
+}
+
+export type TaxWorkflowAnnualOverviewItem = {
+  code: string
+  title: string
+  description: string
+  href: string
+  dueDateLabel: string
+  statusLabel: string
+  statusVariant: BadgeVariant
+  responsibleLabel: string
+  nextActionLabel: string
+  nextActionHref: string
+  operationalNote: string
+}
+
+export type TaxWorkflowAnnualOverview = {
+  fiscalYear: number
+  items: TaxWorkflowAnnualOverviewItem[]
+  handoffHref: string
+  handoffSummary: string
+}
+
+export type TaxWorkflowFiscalView = {
+  attention: TaxAttention
+  obligations: TaxWorkflowObligationItem[]
+  annualOverview: TaxWorkflowAnnualOverview
+  workflow: WorkflowReadModel<TaxAttention>
+}
+
+export type TaxArchiveWorkflowView = {
+  periods: LegalArchivePeriodListItem[]
+}
+
+export type TaxArchivePeriodWorkflowView = {
+  detail: LegalArchivePeriodDetail | null
+}
+
+export type AnnualArchiveWorkflowView = {
+  fiscalYear: number
+  pack: Awaited<ReturnType<typeof getAnnualHandoffPackForOrganization>>
+}
+
+type TaxWorkflowDependencies = {
+  getTaxAttention?: typeof getTaxAttention
+  loadModel303ForTenant?: typeof loadModel303ForTenant
+  loadModel115DraftForTenant?: typeof loadModel115DraftForTenant
+  loadModel111ManualForTenant?: typeof loadModel111ManualForTenant
+  getCounterparties?: typeof getCounterparties
+  syncFiscalObligationsForOrganization?: typeof syncFiscalObligationsForOrganization
+}
+
+type TaxArchiveDependencies = {
+  syncDefaultSpanishFiscalPeriodsV1?: typeof syncDefaultSpanishFiscalPeriodsV1
+  listLegalArchivePeriods?: typeof listLegalArchivePeriods
+  getLegalArchivePeriodDetail?: typeof getLegalArchivePeriodDetail
+}
+
+type AnnualArchiveDependencies = {
+  getAnnualHandoffPackForOrganization?: typeof getAnnualHandoffPackForOrganization
 }
 
 function makeUtcDate(year: number, month: number, day: number) {
@@ -216,6 +286,17 @@ function resolveModel115Status(
   }
 
   return "waiting_on_documents"
+}
+
+function resolveModel111Status(
+  obligation: FiscalObligationDetail | null,
+  applies: boolean
+): FiscalObligationStatus {
+  if (!applies) {
+    return "not_applicable"
+  }
+
+  return normalizeFiscalStatus(obligation?.status) ?? "waiting_on_documents"
 }
 
 function getStatusLabel(status: FiscalObligationStatus) {
@@ -552,17 +633,6 @@ function buildModel115Readiness(status: FiscalObligationStatus, readiness: {
   }
 }
 
-function resolveModel111Status(
-  obligation: FiscalObligationDetail | null,
-  applies: boolean
-): FiscalObligationStatus {
-  if (!applies) {
-    return "not_applicable"
-  }
-
-  return normalizeFiscalStatus(obligation?.status) ?? "waiting_on_documents"
-}
-
 function buildModel111BlockingItems(
   obligation: FiscalObligationDetail | null,
   applies: boolean,
@@ -602,7 +672,7 @@ function buildModel111Readiness(status: FiscalObligationStatus, applies: boolean
 
 function findAnnualObligation(
   obligations: FiscalObligationDetail[],
-  code: "180" | "390" | "347" | "349",
+  code: AnnualCockpitCode,
   fiscalYear: number
 ) {
   return (
@@ -612,11 +682,11 @@ function findAnnualObligation(
 
 function buildAnnualOverview(input: {
   fiscalYear: number
-  profile: TaxWorkspaceProfile
+  profile: TaxWorkflowProfile
   obligations: FiscalObligationDetail[]
   counterparties: Awaited<ReturnType<typeof getCounterparties>>
-}): AnnualFiscalOverview {
-  const items: AnnualFiscalOverview["items"] = []
+}): TaxWorkflowAnnualOverview {
+  const items: TaxWorkflowAnnualOverview["items"] = []
   const pushAnnualItem = (inputItem: {
     code: AnnualCockpitCode
     title: string
@@ -645,21 +715,19 @@ function buildAnnualOverview(input: {
   }
 
   if (input.profile.hasRentWithholding) {
-    const obligation180 = findAnnualObligation(input.obligations, "180", input.fiscalYear)
     pushAnnualItem({
       code: "180",
       title: "Modelo 180",
       description: "Resumen anual de alquileres con retención a partir del mismo núcleo que usa el 115.",
-      obligation: obligation180,
+      obligation: findAnnualObligation(input.obligations, "180", input.fiscalYear),
     })
   }
 
-  const obligation390 = findAnnualObligation(input.obligations, "390", input.fiscalYear)
   pushAnnualItem({
     code: "390",
     title: "Modelo 390",
     description: "Resumen anual de IVA consolidado desde el núcleo ya validado del 303.",
-    obligation: obligation390,
+    obligation: findAnnualObligation(input.obligations, "390", input.fiscalYear),
   })
 
   const gate347 = getModel347Gate({
@@ -669,12 +737,11 @@ function buildAnnualOverview(input: {
   })
 
   if (gate347.visible) {
-    const obligation347 = findAnnualObligation(input.obligations, "347", input.fiscalYear)
     pushAnnualItem({
       code: "347",
       title: "Modelo 347",
       description: "Operaciones con terceros habilitadas porque la calidad de contrapartes ya es suficiente.",
-      obligation: obligation347,
+      obligation: findAnnualObligation(input.obligations, "347", input.fiscalYear),
     })
   }
 
@@ -685,12 +752,11 @@ function buildAnnualOverview(input: {
   })
 
   if (gate349.visible) {
-    const obligation349 = findAnnualObligation(input.obligations, "349", input.fiscalYear)
     pushAnnualItem({
       code: "349",
       title: "Modelo 349",
       description: "Operaciones intracomunitarias activas con gate abierto por perfil fiscal y terceros.",
-      obligation: obligation349,
+      obligation: findAnnualObligation(input.obligations, "349", input.fiscalYear),
     })
   }
 
@@ -713,54 +779,63 @@ function buildAnnualOverview(input: {
   }
 }
 
-type TaxWorkspaceData = {
-  obligations: ObligationCockpitItem[]
-  annualOverview: AnnualFiscalOverview
+function findObligation(
+  obligations: FiscalObligationDetail[],
+  code: FiscalObligationDetail["code"],
+  periodKey: string
+) {
+  return obligations.find((obligation) => obligation.code === code && obligation.periodKey === periodKey) ?? null
 }
 
-async function loadTaxWorkspaceData(input: {
-  organizationId: string
-  userId: string
-  ownerScopeId: string
-  profile: TaxWorkspaceProfile
-}): Promise<TaxWorkspaceData> {
-  const [model303Data, model115Data, model111Data, counterparties] = await Promise.all([
-    loadModel303ForTenant({
+export async function getTaxWorkflowFiscalView(
+  input: {
+    organizationId: string
+    userId: string
+    ownerScopeId: string
+    profile: TaxWorkflowProfile
+  },
+  dependencies: TaxWorkflowDependencies = {}
+): Promise<TaxWorkflowFiscalView> {
+  const loadTaxAttention = dependencies.getTaxAttention ?? getTaxAttention
+  const loadModel303 = dependencies.loadModel303ForTenant ?? loadModel303ForTenant
+  const loadModel115 = dependencies.loadModel115DraftForTenant ?? loadModel115DraftForTenant
+  const loadModel111 = dependencies.loadModel111ManualForTenant ?? loadModel111ManualForTenant
+  const loadCounterparties = dependencies.getCounterparties ?? getCounterparties
+  const syncObligations = dependencies.syncFiscalObligationsForOrganization ?? syncFiscalObligationsForOrganization
+
+  const [attention, model303Data, model115Data, model111Data, counterparties, syncedObligations] = await Promise.all([
+    loadTaxAttention(input.ownerScopeId),
+    loadModel303({
       ownerScopeId: input.ownerScopeId,
     }),
-    loadModel115DraftForTenant({
+    loadModel115({
       organizationId: input.organizationId,
       userId: input.userId,
     }),
-    loadModel111ManualForTenant({
+    loadModel111({
       organizationId: input.organizationId,
       userId: input.userId,
     }),
-    getCounterparties(input.ownerScopeId),
+    loadCounterparties(input.ownerScopeId),
+    syncObligations(input.organizationId),
   ])
 
-  const syncedObligations = await syncFiscalObligationsForOrganization(input.organizationId)
   const fiscalYear = resolveAnnualHandoffFiscalYear({
     annualCloseMonth: input.profile.annualCloseMonth,
   })
 
-  const [obligation303, obligation115, obligation111] = await Promise.all([
-    model303Data
-      ? getFiscalObligationByCodeAndPeriod(input.organizationId, "303", model303Data.periodKey)
-      : Promise.resolve(null),
-    model115Data.status === "ready"
-      ? getFiscalObligationByCodeAndPeriod(input.organizationId, "115", model115Data.period.periodKey)
-      : Promise.resolve(null),
-    model111Data.status === "ready"
-      ? getFiscalObligationByCodeAndPeriod(input.organizationId, "111_manual", model111Data.period.periodKey)
-      : Promise.resolve(null),
-  ])
-
-  const obligationsCockpit: ObligationCockpitItem[] = []
+  const obligations = syncedObligations as FiscalObligationDetail[]
+  const obligationsCockpit: TaxWorkflowObligationItem[] = []
+  const quarterlyWorkflowObligations: FiscalObligationDetail[] = []
 
   if (model303Data) {
+    const obligation303 = findObligation(obligations, "303", model303Data.periodKey)
     const effectiveStatus = resolveModel303Status(obligation303, model303Data.readiness)
     const nextAction = buildNextAction(effectiveStatus, "303", model303Data.periodKey)
+
+    if (obligation303) {
+      quarterlyWorkflowObligations.push(obligation303)
+    }
 
     obligationsCockpit.push({
       code: "303",
@@ -793,9 +868,14 @@ async function loadTaxWorkspaceData(input: {
   }
 
   if (model115Data.status === "ready") {
+    const obligation115 = findObligation(obligations, "115", model115Data.period.periodKey)
     const effectiveStatus = resolveModel115Status(obligation115, model115Data.readiness)
     const nextAction = buildNextAction(effectiveStatus, "115", model115Data.period.periodKey)
     const readiness = buildModel115Readiness(effectiveStatus, model115Data.readiness)
+
+    if (obligation115) {
+      quarterlyWorkflowObligations.push(obligation115)
+    }
 
     obligationsCockpit.push({
       code: "115",
@@ -818,13 +898,18 @@ async function loadTaxWorkspaceData(input: {
       ),
       nextActionLabel: nextAction.label,
       nextActionHref: nextAction.href,
-      })
+    })
   }
 
   if (model111Data.status === "ready") {
+    const obligation111 = findObligation(obligations, "111_manual", model111Data.period.periodKey)
     const effectiveStatus = resolveModel111Status(obligation111, model111Data.manual.applies)
     const nextAction = buildNextAction(effectiveStatus, "111", model111Data.period.periodKey)
     const readiness = buildModel111Readiness(effectiveStatus, model111Data.manual.applies)
+
+    if (obligation111) {
+      quarterlyWorkflowObligations.push(obligation111)
+    }
 
     obligationsCockpit.push({
       code: "111",
@@ -851,125 +936,82 @@ async function loadTaxWorkspaceData(input: {
   }
 
   return {
+    attention,
     obligations: obligationsCockpit,
     annualOverview: buildAnnualOverview({
       fiscalYear,
       profile: input.profile,
-      obligations: syncedObligations as FiscalObligationDetail[],
+      obligations,
       counterparties,
+    }),
+    workflow: buildWorkflowReadModelFromSlices({
+      readiness: attention,
+      items: buildFiscalWorkflowItems({
+        obligations: quarterlyWorkflowObligations,
+      }),
     }),
   }
 }
 
-export default async function TaxPage() {
-  const t = createTranslator()
-  const user = await getCurrentUser()
-  const organizationId = await requireCurrentOrganizationId({
-    getCurrentUser: async () => user,
+export async function getTaxArchiveWorkflowView(
+  input: {
+    organizationId: string
+    ownerScopeId: string
+  },
+  dependencies: TaxArchiveDependencies = {}
+): Promise<TaxArchiveWorkflowView> {
+  const syncPeriods = dependencies.syncDefaultSpanishFiscalPeriodsV1 ?? syncDefaultSpanishFiscalPeriodsV1
+  const listPeriods = dependencies.listLegalArchivePeriods ?? listLegalArchivePeriods
+
+  await syncPeriods(input.ownerScopeId)
+
+  return {
+    periods: await listPeriods(input.ownerScopeId, input.organizationId),
+  }
+}
+
+export async function getTaxArchivePeriodWorkflowView(
+  input: {
+    organizationId: string
+    ownerScopeId: string
+    periodKey: string
+  },
+  dependencies: TaxArchiveDependencies = {}
+): Promise<TaxArchivePeriodWorkflowView> {
+  const syncPeriods = dependencies.syncDefaultSpanishFiscalPeriodsV1 ?? syncDefaultSpanishFiscalPeriodsV1
+  const loadDetail = dependencies.getLegalArchivePeriodDetail ?? getLegalArchivePeriodDetail
+
+  await syncPeriods(input.ownerScopeId)
+
+  return {
+    detail: await loadDetail(input.ownerScopeId, input.organizationId, input.periodKey),
+  }
+}
+
+export async function getAnnualArchiveWorkflowView(
+  input: {
+    organizationId: string
+    profile: TaxWorkflowProfile
+  },
+  dependencies: AnnualArchiveDependencies = {}
+): Promise<AnnualArchiveWorkflowView> {
+  const loadAnnualHandoffPack =
+    dependencies.getAnnualHandoffPackForOrganization ?? getAnnualHandoffPackForOrganization
+  const fiscalYear = resolveAnnualHandoffFiscalYear({
+    annualCloseMonth: input.profile.annualCloseMonth,
   })
-  const fiscalProfileAccess = await getFiscalProfileAccessByOrganizationId(organizationId, user.id)
 
-  if (fiscalProfileAccess.status === "storage_not_ready") {
-    return (
-      <main className="flex w-full max-w-7xl self-center flex-col gap-6 p-5">
-        <TaxWorkspaceHeader t={t} attention={null} companyName={null} companyTaxId={null} />
-        <FiscalStorageNotReady t={t} />
-      </main>
-    )
+  return {
+    fiscalYear,
+    pack: await loadAnnualHandoffPack({
+      organizationId: input.organizationId,
+      profile: {
+        annualCloseMonth: input.profile.annualCloseMonth,
+        companyName: input.profile.companyName,
+        organizationId: input.profile.organizationId,
+        taxId: input.profile.taxId,
+      },
+      fiscalYear,
+    }),
   }
-
-  if (fiscalProfileAccess.status !== "ready") {
-    return (
-      <main className="flex w-full max-w-7xl self-center flex-col gap-6 p-5">
-        <TaxWorkspaceHeader t={t} attention={null} companyName={null} companyTaxId={null} />
-        <TaxWorkspaceSections t={t} attention={null} setupHref="/settings/fiscal" />
-      </main>
-    )
-  }
-
-  let attention = null
-  let obligationsCockpit: ObligationCockpitItem[] = []
-  let annualOverview: AnnualFiscalOverview | undefined
-
-  try {
-    if (config.workflow.fiscalSliceEnabled) {
-      const workflowView = await getTaxWorkflowFiscalView({
-        organizationId,
-        userId: user.id,
-        ownerScopeId: fiscalProfileAccess.profile.id,
-        profile: {
-          annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
-          companyName: fiscalProfileAccess.profile.companyName,
-          hasEmployees: fiscalProfileAccess.profile.hasEmployees,
-          hasIntraEuOperations: fiscalProfileAccess.profile.hasIntraEuOperations,
-          hasProfessionalWithholding: fiscalProfileAccess.profile.hasProfessionalWithholding,
-          hasRentWithholding: fiscalProfileAccess.profile.hasRentWithholding,
-          issuesInvoices: fiscalProfileAccess.profile.issuesInvoices,
-          organizationId,
-          taxId: fiscalProfileAccess.profile.taxId,
-        },
-      })
-
-      attention = workflowView.attention
-      obligationsCockpit = workflowView.obligations as ObligationCockpitItem[]
-      annualOverview = workflowView.annualOverview as AnnualFiscalOverview
-    } else {
-      const [nextAttention, nextWorkspaceData] = await Promise.all([
-        getTaxAttention(fiscalProfileAccess.profile.id),
-        loadTaxWorkspaceData({
-          organizationId,
-          userId: user.id,
-          ownerScopeId: fiscalProfileAccess.profile.id,
-          profile: {
-            annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
-            companyName: fiscalProfileAccess.profile.companyName,
-            hasEmployees: fiscalProfileAccess.profile.hasEmployees,
-            hasIntraEuOperations: fiscalProfileAccess.profile.hasIntraEuOperations,
-            hasProfessionalWithholding: fiscalProfileAccess.profile.hasProfessionalWithholding,
-            hasRentWithholding: fiscalProfileAccess.profile.hasRentWithholding,
-            issuesInvoices: fiscalProfileAccess.profile.issuesInvoices,
-            organizationId,
-            taxId: fiscalProfileAccess.profile.taxId,
-          },
-        }),
-      ])
-
-      attention = nextAttention
-      obligationsCockpit = nextWorkspaceData.obligations
-      annualOverview = nextWorkspaceData.annualOverview
-    }
-  } catch (error) {
-    if (isFiscalStorageNotReadyError(error)) {
-      return (
-        <main className="flex w-full max-w-7xl self-center flex-col gap-6 p-5">
-          <TaxWorkspaceHeader
-            t={t}
-            attention={null}
-            companyName={fiscalProfileAccess.profile.companyName}
-            companyTaxId={fiscalProfileAccess.profile.taxId}
-          />
-          <FiscalStorageNotReady t={t} />
-        </main>
-      )
-    }
-
-    throw error
-  }
-
-  return (
-    <main className="flex w-full max-w-7xl self-center flex-col gap-6 p-5">
-      <TaxWorkspaceHeader
-        t={t}
-        attention={attention}
-        companyName={fiscalProfileAccess.profile.companyName}
-        companyTaxId={fiscalProfileAccess.profile.taxId}
-      />
-      <TaxWorkspaceSections
-        t={t}
-        attention={attention}
-        obligations={obligationsCockpit}
-        annualOverview={annualOverview}
-      />
-    </main>
-  )
 }

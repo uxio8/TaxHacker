@@ -31,7 +31,8 @@ test("Transactions usa quick views reales en URL y servidor", async () => {
   assert.match(hookSource, /areFiltersEqual\(/)
 
   assert.match(pageSource, /normalizeTransactionFilters\(await searchParams\)/)
-  assert.match(pageSource, /getTransactions\(organizationId,\s*filters,/)
+  assert.match(pageSource, /config\.workflow\.transactionsSliceEnabled/)
+  assert.match(pageSource, /getTransactionsWorkflowView/)
   assert.match(pageSource, /quickViews=\{TRANSACTION_QUICK_VIEW_OPTIONS\}/)
-  assert.match(pageSource, /getTransactionAttentionSignals\(transaction,\s*fields\)/)
+  assert.match(pageSource, /attentionByTransactionId/)
 })

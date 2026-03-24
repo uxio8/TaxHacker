@@ -20,7 +20,8 @@ import { getFiscalReviewQueue } from "@/models/fiscal/review-queue"
 import { getUnsortedFiles } from "@/models/files"
 import { getProjects } from "@/models/projects"
 import { getLLMSettings, getSettings } from "@/models/settings"
-import { buildUnsortedInboxItems } from "@/models/unsorted-inbox"
+import { buildUnsortedInboxItems, type UnsortedInboxSummary } from "@/models/unsorted-inbox"
+import { getUnsortedWorkflowDocumentView } from "@/models/workflow/document-read-api"
 import { FileText, PartyPopper, Settings, Upload } from "lucide-react"
 import Link from "next/link"
 
@@ -34,28 +35,52 @@ export default async function UnsortedPage() {
   const organizationId = await requireCurrentOrganizationId({
     getCurrentUser: async () => user,
   })
-  const files = await getUnsortedFiles(organizationId)
+  let files: Awaited<ReturnType<typeof getUnsortedFiles>> = await getUnsortedFiles(organizationId)
   const categories = await getCategories(organizationId)
   const projects = await getProjects(organizationId)
   const currencies = await getCurrencies(organizationId)
   const fields = await getFields(organizationId)
-  const settings = await getSettings(organizationId)
-  const llmSettings = getLLMSettings(settings)
-  const analyzableFilesCount = files.filter((file) => !file.isSplitted && canAnalyzeFileMimeType(file.mimetype)).length
-  const hasConfiguredLlmProvider = llmSettings.providers.some(
-    (provider) => provider.provider === "pool_cloud" || Boolean(provider.apiKey && provider.model)
-  )
-  const summaries = buildUnsortedInboxItems(files, {
-    llmConfigured: hasConfiguredLlmProvider,
-  })
-  const saveableCount = summaries.filter((summary) => summary.state === "ready_to_review").length
-  const deferredToDesktopCount = summaries.filter((summary) => summary.state === "deferred_to_desktop").length
-  const fiscalProfileAccess = await getFiscalProfileAccessByOrganizationId(organizationId, user.id)
-  const openClientReviewRequestCount =
-    fiscalProfileAccess.status === "ready"
-      ? (await getFiscalReviewQueue(fiscalProfileAccess.profile.id)).items.filter((item) => item.owner === "client")
-        .length
-      : 0
+  let settings: Awaited<ReturnType<typeof getSettings>>
+  let summaries: UnsortedInboxSummary[]
+  let hasConfiguredLlmProvider: boolean
+  let analyzableFilesCount: number
+  let saveableCount: number
+  let deferredToDesktopCount: number
+  let openClientReviewRequestCount: number
+
+  if (config.workflow.documentSliceEnabled) {
+    const workflowView = await getUnsortedWorkflowDocumentView({
+      organizationId,
+      userId: user.id,
+    })
+
+    files = workflowView.files
+    settings = workflowView.settings
+    summaries = workflowView.summaries
+    hasConfiguredLlmProvider = workflowView.hasConfiguredLlmProvider
+    analyzableFilesCount = workflowView.counts.analyzable
+    saveableCount = workflowView.counts.saveable
+    deferredToDesktopCount = workflowView.counts.deferredToDesktop
+    openClientReviewRequestCount = workflowView.counts.openClientReviewRequests
+  } else {
+    settings = await getSettings(organizationId)
+    const llmSettings = getLLMSettings(settings)
+    analyzableFilesCount = files.filter((file) => !file.isSplitted && canAnalyzeFileMimeType(file.mimetype)).length
+    hasConfiguredLlmProvider = llmSettings.providers.some(
+      (provider) => provider.provider === "pool_cloud" || Boolean(provider.apiKey && provider.model)
+    )
+    summaries = buildUnsortedInboxItems(files, {
+      llmConfigured: hasConfiguredLlmProvider,
+    })
+    saveableCount = summaries.filter((summary) => summary.state === "ready_to_review").length
+    deferredToDesktopCount = summaries.filter((summary) => summary.state === "deferred_to_desktop").length
+    const fiscalProfileAccess = await getFiscalProfileAccessByOrganizationId(organizationId, user.id)
+    openClientReviewRequestCount =
+      fiscalProfileAccess.status === "ready"
+        ? (await getFiscalReviewQueue(fiscalProfileAccess.profile.id)).items.filter((item) => item.owner === "client")
+          .length
+        : 0
+  }
 
   return (
     <>

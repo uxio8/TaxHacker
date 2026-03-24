@@ -17,6 +17,8 @@ test("buildUnsortedInboxSummary deja pendiente de análisis un documento analiza
 
   assert.equal(summary.id, "file-1")
   assert.equal(summary.state, "pending_analysis")
+  assert.equal(summary.reasonCode, null)
+  assert.equal(summary.confidenceCode, null)
   assert.equal(summary.primaryAction.kind, "analyze")
   assert.equal(summary.defaultDetailsOpen, false)
 })
@@ -42,6 +44,8 @@ test("buildUnsortedInboxSummary adelanta los diferidos desde móvil al inbox can
   })
 
   assert.equal(summary.state, "deferred_to_desktop")
+  assert.equal(summary.reasonCode, "low_confidence")
+  assert.equal(summary.confidenceCode, "low")
   assert.equal(summary.requiresDesktop, true)
   assert.equal(summary.defaultDetailsOpen, true)
   assert.equal(summary.primaryAction.kind, "open_details")
@@ -60,6 +64,7 @@ test("buildUnsortedInboxSummary deriva a configuración cuando falta IA", () => 
   })
 
   assert.equal(summary.state, "needs_setup")
+  assert.equal(summary.reasonCode, "llm_not_configured")
   assert.equal(summary.primaryAction.kind, "open_settings")
   assert.equal(summary.primaryAction.href, "/settings/llm")
 })
@@ -81,6 +86,8 @@ test("buildUnsortedInboxSummary deja listo para revisar un documento con borrado
   })
 
   assert.equal(summary.state, "ready_to_review")
+  assert.equal(summary.reasonCode, null)
+  assert.equal(summary.confidenceCode, "medium")
   assert.equal(summary.primaryAction.kind, "open_details")
   assert.equal(summary.defaultDetailsOpen, true)
 })

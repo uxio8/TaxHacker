@@ -5,6 +5,7 @@ import { TransactionList } from "@/components/transactions/list"
 import { NewTransactionDialog } from "@/components/transactions/new"
 import { Pagination } from "@/components/transactions/pagination"
 import { getCurrentUser } from "@/lib/auth"
+import config from "@/lib/config"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { getCategories } from "@/models/categories"
@@ -17,6 +18,7 @@ import {
   normalizeTransactionFilters,
   TRANSACTION_QUICK_VIEW_OPTIONS,
 } from "@/models/transactions"
+import { getTransactionsWorkflowView } from "@/models/workflow/transaction-read-api"
 import { Download, Plus, Upload } from "lucide-react"
 import { redirect } from "next/navigation"
 
@@ -37,25 +39,54 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     getCurrentUser: async () => user,
   })
 
-  const [categories, projects, fields, transactionResult] = await Promise.all([
-    getCategories(organizationId),
-    getProjects(organizationId),
-    getFields(organizationId),
-    getTransactions(organizationId, filters, {
-      limit: TRANSACTIONS_PER_PAGE,
-      offset: (page - 1) * TRANSACTIONS_PER_PAGE,
-    }),
-  ])
-  const { transactions, total } = transactionResult
+  const transactionsView = config.workflow.transactionsSliceEnabled
+    ? await getTransactionsWorkflowView({
+        organizationId,
+        filters,
+        page,
+        perPage: TRANSACTIONS_PER_PAGE,
+      })
+    : null
+
+  const [categories, projects, fields, transactions, total, attentionByTransactionId] = transactionsView
+    ? [
+        transactionsView.categories,
+        transactionsView.projects,
+        transactionsView.fields,
+        transactionsView.transactions,
+        transactionsView.total,
+        transactionsView.attentionByTransactionId,
+      ]
+    : await (async () => {
+        const [nextCategories, nextProjects, nextFields, transactionResult] = await Promise.all([
+          getCategories(organizationId),
+          getProjects(organizationId),
+          getFields(organizationId),
+          getTransactions(organizationId, filters, {
+            limit: TRANSACTIONS_PER_PAGE,
+            offset: (page - 1) * TRANSACTIONS_PER_PAGE,
+          }),
+        ])
+
+        return [
+          nextCategories,
+          nextProjects,
+          nextFields,
+          transactionResult.transactions,
+          transactionResult.total,
+          Object.fromEntries(
+            transactionResult.transactions.map((transaction) => [
+              transaction.id,
+              getTransactionAttentionSignals(transaction, nextFields),
+            ])
+          ),
+        ] as const
+      })()
 
   if (page > 1 && transactions.length === 0) {
     const params = buildTransactionSearchParams(filters)
     redirect(`/transactions${params.size > 0 ? `?${params.toString()}` : ""}`)
   }
-
-  const attentionByTransactionId = Object.fromEntries(
-    transactions.map((transaction) => [transaction.id, getTransactionAttentionSignals(transaction, fields)])
-  )
 
   return (
     <>

@@ -3,12 +3,14 @@ import { ArchiveFiscalProfileRequired } from "@/components/tax/archive/archive-f
 import { FiscalStorageNotReady } from "@/components/tax/fiscal-storage-not-ready"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
+import config from "@/lib/config"
 import { createTranslator } from "@/lib/i18n"
 import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { buildAnnualHandoffPack, resolveAnnualHandoffFiscalYear } from "@/models/fiscal/annual-handoff"
 import { syncFiscalObligationsForOrganization } from "@/models/fiscal/obligations"
 import { getFiscalProfileAccessByOrganizationId } from "@/models/fiscal/profile"
 import { isFiscalStorageNotReadyError } from "@/models/fiscal/storage"
+import { getAnnualArchiveWorkflowView } from "@/models/workflow/fiscal-read-api"
 
 export const metadata = {
   title: "Cierre anual ligero | TaxHacker",
@@ -40,15 +42,36 @@ export default async function AnnualArchivePage() {
   }
 
   try {
-    const fiscalYear = resolveAnnualHandoffFiscalYear({
-      annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
-    })
-    const obligations = await syncFiscalObligationsForOrganization(organizationId)
-    const pack = buildAnnualHandoffPack({
-      fiscalYear,
-      profile: fiscalProfileAccess.profile,
-      obligations: obligations.filter((obligation) => obligation.fiscalYear === fiscalYear),
-    })
+    const pack = config.workflow.fiscalSliceEnabled
+      ? (
+          await getAnnualArchiveWorkflowView({
+            organizationId,
+            profile: {
+              annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
+              companyName: fiscalProfileAccess.profile.companyName,
+              hasEmployees: fiscalProfileAccess.profile.hasEmployees,
+              hasIntraEuOperations: fiscalProfileAccess.profile.hasIntraEuOperations,
+              hasProfessionalWithholding: fiscalProfileAccess.profile.hasProfessionalWithholding,
+              hasRentWithholding: fiscalProfileAccess.profile.hasRentWithholding,
+              issuesInvoices: fiscalProfileAccess.profile.issuesInvoices,
+              organizationId,
+              taxId: fiscalProfileAccess.profile.taxId,
+            },
+          })
+        ).pack
+      : buildAnnualHandoffPack({
+          fiscalYear: resolveAnnualHandoffFiscalYear({
+            annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
+          }),
+          profile: fiscalProfileAccess.profile,
+          obligations: (await syncFiscalObligationsForOrganization(organizationId)).filter(
+            (obligation) =>
+              obligation.fiscalYear ===
+              resolveAnnualHandoffFiscalYear({
+                annualCloseMonth: fiscalProfileAccess.profile.annualCloseMonth,
+              })
+          ),
+        })
 
     return (
       <main className="flex w-full max-w-7xl self-center flex-col gap-6 p-5">

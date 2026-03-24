@@ -35,6 +35,9 @@ const envSchema = z.object({
   STRIPE_PRICE_ID_ADDON_AI_PLUS: z.string().default(""),
   STRIPE_PRICE_ID_ADDON_EXTRA_STORAGE: z.string().default(""),
   STRIPE_PRICE_ID_ADDON_EXTRA_USERS: z.string().default(""),
+  WORKFLOW_DOCUMENT_SLICE: z.enum(["true", "false"]).default("false"),
+  WORKFLOW_FISCAL_SLICE: z.enum(["true", "false"]).default("false"),
+  WORKFLOW_TRANSACTIONS_SLICE: z.enum(["true", "false"]).default("false"),
 })
 
 function normalizeOptionalUrl(value: string | undefined) {
@@ -88,6 +91,11 @@ export function createConfig(envInput: NodeJS.ProcessEnv = process.env) {
       accessCookieName: SELF_HOSTED_ACCESS_COOKIE_NAME,
       redirectUrl: "/self-hosted/redirect",
       welcomeUrl: "/self-hosted",
+    },
+    workflow: {
+      documentSliceEnabled: env.WORKFLOW_DOCUMENT_SLICE === "true",
+      fiscalSliceEnabled: env.WORKFLOW_FISCAL_SLICE === "true",
+      transactionsSliceEnabled: env.WORKFLOW_TRANSACTIONS_SLICE === "true",
     },
     ai: {
       openaiApiKey: env.OPENAI_API_KEY,

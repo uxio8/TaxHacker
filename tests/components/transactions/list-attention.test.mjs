@@ -13,7 +13,8 @@ test("Transactions lista y detalle muestran señales ligeras de excepción", asy
   const pageSource = await readSource("app/(app)/transactions/page.tsx")
 
   assert.match(pageSource, /attentionByTransactionId/)
-  assert.match(pageSource, /getTransactionAttentionSignals\(transaction,\s*fields\)/)
+  assert.match(pageSource, /config\.workflow\.transactionsSliceEnabled/)
+  assert.match(pageSource, /getTransactionsWorkflowView/)
   assert.match(listSource, /attentionSignals/)
   assert.match(listSource, /Pendiente fiscal|Sin categoría|Incompleta/)
   assert.match(listSource, /bg-amber-50\/40/)
