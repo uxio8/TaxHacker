@@ -20,7 +20,8 @@ test("Transactions lista y detalle muestran señales ligeras de excepción", asy
   assert.match(listSource, /bg-amber-50\/40/)
   assert.match(listSource, /hover:bg-muted\/50/)
 
-  assert.match(detailSource, /getTransactionAttentionSignals/)
+  assert.match(detailSource, /getTransactionWorkflowDetailView/)
+  assert.match(detailSource, /getLegacyTransactionWorkflowDetailView/)
   assert.match(detailSource, /Requiere revisión/)
-  assert.match(detailSource, /fiscalDocument/)
+  assert.match(detailSource, /view\.fiscalPanel\.document/)
 })

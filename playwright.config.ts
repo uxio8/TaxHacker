@@ -2,9 +2,12 @@ import { defineConfig } from "@playwright/test"
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:7331"
 const databaseUrl = process.env.DATABASE_URL
+const managedServerHosts = new Set(["127.0.0.1", "localhost", "0.0.0.0", "::1", "[::1]"])
 const webServerEnv = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === "string")
 )
+const managedBaseUrl = new URL(baseURL)
+const shouldManageWebServer = managedServerHosts.has(managedBaseUrl.hostname)
 
 if (databaseUrl) {
   const normalizedDatabaseUrl = new URL(databaseUrl)
@@ -30,11 +33,13 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  webServer: {
-    command: "npm run local:start",
-    url: `${baseURL}/self-hosted`,
-    timeout: 180_000,
-    reuseExistingServer: true,
-    env: webServerEnv,
-  },
+  webServer: shouldManageWebServer
+    ? {
+        command: "npm run local:start",
+        url: `${baseURL}/self-hosted`,
+        timeout: 180_000,
+        reuseExistingServer: true,
+        env: webServerEnv,
+      }
+    : undefined,
 })

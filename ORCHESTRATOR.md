@@ -29,6 +29,71 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
   - `docs/superpowers/plans/2026-03-23-human-first-workflow-engine-plan.md`
 - Plan técnico siguiente para limpieza y escalado sin regresión:
   - `docs/superpowers/plans/2026-03-24-compatibility-first-refactor-plan.md`
+- Runbook operativo de gates del refactor:
+  - `docs/superpowers/specs/2026-03-24-refactor-gates-runbook.md`
+- Estado actual del refactor compatibility-first:
+  - harness crítico y reglas de frontera ya añadidos en `tests/critical/*` y `tests/architecture/*`
+  - fachadas públicas ya congeladas en:
+    - `models/attention.ts`
+    - `models/organizations.ts`
+    - `models/fiscal/legal-archive.ts`
+    - `models/workflow/read-api.ts`
+    - `models/workflow/transaction-read-api.ts`
+    - `models/workflow/fiscal-read-api.ts`
+  - hotspot documental ya troceado:
+    - `components/unsorted/analyze-form.tsx`
+    - `components/unsorted/analyze-form/*`
+  - hotspot fiscal ya troceado:
+    - `models/workflow/fiscal-read-api.ts`
+    - `models/workflow/fiscal/*`
+    - `app/(app)/tax/page.tsx`
+  - hotspot transacciones ya troceado:
+    - `models/workflow/transactions/*`
+    - `components/transactions/fiscal-panel.tsx`
+    - `components/transactions/fiscal-panel/*`
+    - `app/(app)/transactions/[transactionId]/page.tsx`
+  - hotspot de organizaciones ya troceado:
+    - `models/organizations.ts`
+    - `models/organizations/*`
+  - hotspot de archivo legal ya troceado:
+    - `models/fiscal/legal-archive.ts`
+    - `models/fiscal/legal-archive/*`
+  - hardening seguro ya aplicado:
+    - `next.config.ts` ya no usa `eslint.ignoreDuringBuilds`
+    - `tsconfig.json` ya tiene `allowJs: false`
+  - deuda residual explícita:
+    - `skipLibCheck` sigue activo
+    - el bloqueo actual no es del producto, sino del ruido en dependencias externas y duplicidad `.next.types`/`.next.localdeploy.types`
+    - `verify:critical` completo sigue dependiendo de Docker/Colima para levantar el runtime local
+- Estado reciente del plan `compatibility-first`:
+  - blindaje base ya cerrado:
+    - `tests/critical/*`
+    - `tests/architecture/*`
+    - `docs/superpowers/specs/2026-03-24-compatibility-harness-contract.md`
+    - `docs/superpowers/specs/2026-03-24-architecture-boundaries.md`
+    - `docs/superpowers/specs/2026-03-24-public-facades-map.md`
+  - hotspots ya partidos detrás de fachada estable:
+    - `components/unsorted/analyze-form.tsx` -> `components/unsorted/analyze-form/*`
+    - `models/workflow/fiscal-read-api.ts` -> `models/workflow/fiscal/*`
+    - `models/workflow/transaction-read-api.ts` -> `models/workflow/transactions/*`
+    - `models/organizations.ts` -> `models/organizations/*`
+    - `models/fiscal/legal-archive.ts` -> `models/fiscal/legal-archive/*`
+  - guardrail añadido:
+    - el import público de `FiscalPanel` se mantiene estable vía `components/transactions/fiscal-panel/index.ts`
+  - verificación fresca de este corte:
+    - `node --test --experimental-strip-types tests/critical/contract.test.mjs tests/critical/env.test.mjs tests/critical/playwright-config.test.mjs tests/architecture/parser.test.mjs tests/architecture/boundaries.test.mjs tests/app/workflow-document-slice-wiring.test.mjs tests/app/capture/routes.test.mjs tests/models/workflow/document-read-api.test.mjs tests/models/workflow/capture-read-api.test.mjs tests/components/unsorted/analyze-form-guidance.test.mjs` OK
+    - `node --test --experimental-strip-types tests/models/workflow/fiscal-read-api.test.mjs tests/app/workflow-fiscal-slice-wiring.test.mjs` OK
+    - `node --test --experimental-strip-types tests/models/workflow/transaction-read-api.test.mjs tests/app/workflow-transactions-slice-wiring.test.mjs tests/app/transactions/fiscal-page.test.mjs tests/app/transactions/fiscal-actions.test.mjs tests/models/organizations.test.mjs tests/app/ops-dashboard.test.mjs tests/models/fiscal/legal-archive.test.mjs tests/models/fiscal/legal-archive-filings.test.mjs tests/models/fiscal/tenant-scope.test.mjs` OK
+    - `npx eslint` del write set OK
+    - `npx tsc --noEmit --pretty false` OK
+  - gates ya cerrados:
+    - `ignoreDuringBuilds` fuera
+    - `allowJs` fuera
+  - gates residuales:
+    - `skipLibCheck` sigue activo
+    - `verify:critical` completo sigue atado a infraestructura local
+  - motivo explícito:
+    - el plan ya ha cerrado modularización y compatibilidad de los hotspots principales; lo único diferido es deuda externa o dependiente del entorno local
 - Expansión del control plane `/ops` cerrada:
   - spec de alcance:
     - `docs/superpowers/specs/2026-03-23-ops-control-plane-scope.md`

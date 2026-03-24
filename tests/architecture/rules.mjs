@@ -1,0 +1,72 @@
+export const ALLOWED_LIB_COMPONENT_IMPORTS = [
+  {
+    importer: "lib/email.ts",
+    specifier: "@/components/emails/newsletter-welcome-email",
+  },
+  {
+    importer: "lib/email.ts",
+    specifier: "@/components/emails/otp-email",
+  },
+]
+
+export const ALLOWED_COMPONENT_FISCAL_VALUE_IMPORTERS = [
+  "components/tax/review/review-status-badge.tsx",
+]
+
+export const ALLOWED_COMPONENT_APP_IMPORTS = [
+  "components/agents/items-detect.tsx -> @/app/(app)/context",
+  "components/agents/items-detect.tsx -> @/app/(app)/unsorted/actions",
+  "components/dashboard/drop-zone-widget.tsx -> @/app/(app)/context",
+  "components/files/screen-drop-area.tsx -> @/app/(app)/context",
+  "components/files/upload-button.tsx -> @/app/(app)/context",
+  "components/import/csv.tsx -> @/app/(app)/import/csv/actions",
+  "components/ops/create-organization-form.tsx -> @/app/(app)/ops/actions",
+  "components/ops/impersonation-banner.tsx -> @/app/(app)/ops/actions",
+  "components/ops/organization-contract-card.tsx -> @/app/(app)/ops/organizations/[organizationId]/actions",
+  "components/ops/organization-members-card.tsx -> @/app/(app)/ops/organizations/[organizationId]/actions",
+  "components/ops/organization-support-card.tsx -> @/app/(app)/ops/actions",
+  "components/ops/organization-support-card.tsx -> @/app/(app)/ops/organizations/[organizationId]/actions",
+  "components/organization/organization-switcher.tsx -> @/app/(app)/settings/organization-actions",
+  "components/settings/business-settings-form.tsx -> @/app/(app)/settings/actions",
+  "components/settings/fiscal-settings-form.tsx -> @/app/(app)/settings/actions",
+  "components/settings/global-settings-form.tsx -> @/app/(app)/settings/actions",
+  "components/settings/llm-settings-form.tsx -> @/app/(app)/settings/actions",
+  "components/settings/members-management.tsx -> @/app/(app)/settings/organization-actions",
+  "components/settings/profile-settings-form.tsx -> @/app/(app)/settings/actions",
+  "components/sidebar/sidebar.tsx -> @/app/(app)/context",
+  "components/tax/archive/annual-handoff-item-form.tsx -> @/app/(app)/tax/archive/annual/actions",
+  "components/tax/close/close-periods-panel.tsx -> @/app/(app)/tax/close/actions",
+  "components/tax/counterparties/counterparty-form.tsx -> @/app/(app)/tax/counterparties/actions",
+  "components/tax/forms/shared/filing-dossier-card.tsx -> @/app/(app)/tax/forms/[obligationCode]/evidence/actions",
+  "components/tax/review/review-queue-list.tsx -> @/app/(app)/tax/review/actions",
+  "components/tax/review/review-request-composer.tsx -> @/app/(app)/tax/review/actions",
+  "components/transactions/bulk-actions.tsx -> @/app/(app)/transactions/actions",
+  "components/transactions/create.tsx -> @/app/(app)/transactions/actions",
+  "components/transactions/edit.tsx -> @/app/(app)/transactions/actions",
+  "components/transactions/fields-selector.tsx -> @/app/(app)/transactions/actions",
+  "components/transactions/fiscal-panel.tsx -> @/app/(app)/transactions/fiscal-actions",
+  "components/transactions/transaction-files.tsx -> @/app/(app)/context",
+  "components/transactions/transaction-files.tsx -> @/app/(app)/transactions/actions",
+  "components/unsorted/analyze-form.tsx -> @/app/(app)/context",
+  "components/unsorted/analyze-form.tsx -> @/app/(app)/unsorted/actions",
+]
+
+export const ALLOWED_APP_RAW_DATA_IMPORTS = [
+  "app/(app)/apps/invoices/actions.ts -> @/prisma/client",
+  "app/(app)/apps/invoices/components/invoice-generator.tsx -> @/prisma/client",
+  "app/(app)/apps/invoices/components/invoice-page.tsx -> @/prisma/client",
+  "app/(app)/apps/invoices/default-templates.ts -> @/prisma/client",
+  "app/(app)/import/csv/actions.tsx -> @/prisma/client",
+  "app/(app)/ops/organizations/[organizationId]/actions.ts -> @/prisma/client",
+  "app/(app)/settings/actions.ts -> @/prisma/client",
+  "app/(app)/settings/backups/actions.ts -> @/lib/db",
+  "app/(app)/settings/categories/page.tsx -> @/prisma/client",
+  "app/(app)/settings/danger/actions.ts -> @/lib/db",
+  "app/(app)/settings/fields/page.tsx -> @/prisma/client",
+  "app/(app)/settings/organization-actions.ts -> @/prisma/client",
+  "app/(app)/settings/projects/page.tsx -> @/prisma/client",
+  "app/(app)/tax/counterparties/actions.ts -> @/prisma/client",
+  "app/(app)/transactions/actions.ts -> @/prisma/client",
+  "app/(app)/unsorted/actions.ts -> @/prisma/client",
+  "app/invite/[token]/page.tsx -> @/lib/db",
+]

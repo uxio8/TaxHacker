@@ -8,6 +8,51 @@
 
 **Tech Stack:** Next.js 15 App Router, React 19, Prisma, PostgreSQL, Server Actions, `node:test`, Playwright, TypeScript estricto en dominio, read APIs en `models/workflow/*`.
 
+## Estado 2026-03-24
+
+Completado en este frente:
+- `0.1` harness crítico base:
+  - `verify:critical`
+  - `tests/critical/*`
+  - contrato de compatibilidad
+- `0.2` reglas de frontera:
+  - `tests/architecture/*`
+  - spec de límites entre `app`, `components`, `models`, `lib`
+- `0.3` fachadas públicas congeladas:
+  - `models/attention.ts`
+  - `models/organizations.ts`
+  - `models/fiscal/legal-archive.ts`
+  - `models/workflow/read-api.ts`
+- `1.1` wiring documental reforzado bajo flag
+- `1.2` troceo de `components/unsorted/analyze-form.tsx`
+- `2.1` partición interna de `models/workflow/fiscal-read-api.ts`
+- `2.2` limpieza de `app/(app)/tax/page.tsx` como composición sobre read API
+- `2.3` partición interna de `models/fiscal/legal-archive.ts`
+- `3.1` partición interna de `models/workflow/transaction-read-api.ts`
+- `3.2` limpieza de `app/(app)/transactions/[transactionId]/page.tsx` como orquestador
+- `3.3` troceo de `components/transactions/fiscal-panel.tsx`
+- `4.1` partición interna de `models/organizations.ts`
+- `4.2` cerrada por criterio de gate:
+  - `ops` ya compone sobre `models/*` y `actions` finas
+  - no se justifica más churn sin cambio funcional
+- `5.1` orden única de verificación y runbook de gates
+- `5.2` hardening de build:
+  - `next.config.ts` ya no usa `ignoreDuringBuilds`
+- `5.3` hardening de tipado, cierre seguro parcial:
+  - `allowJs: false`
+  - `skipLibCheck` se mantiene por ruido externo y duplicidad de tipos generados
+- `5.4` documentación final:
+  - runbook y memoria viva actualizados
+
+Gates abiertos de forma consciente:
+- `verify:critical` completo sigue dependiendo de infraestructura local alineada
+- `skipLibCheck` sigue activo
+
+Razón:
+- el refactor ya cerró los change paths prioritarios sin cambio funcional
+- el bloqueo residual ya no es del producto, sino del entorno local para smokes completos y del ruido de dependencias externas
+- quitar `skipLibCheck` ahora mezclaría este frente con deuda de terceros y de outputs generados
+
 ---
 
 ## Thesis
@@ -638,5 +683,28 @@ El plan se considera cerrado cuando:
 - la duplicación semántica entre páginas y read APIs desaparece
 - los hotspots quedan partidos detrás de fachadas estables
 - existe `verify:critical`
-- el build deja de depender de tolerancias provisionales
+- el build deja de depender de tolerancias provisionales propias del repo
 
+## Cierre real del frente
+
+Este frente queda cerrado con estos criterios ya cumplidos:
+- `verify:critical` existe y tiene contrato explícito
+- `app` ya compone en los change paths críticos intervenidos:
+  - `tax`
+  - `transactions/[transactionId]`
+  - `ops` por inspección y tests existentes
+- los hotspots principales ya están partidos detrás de fachadas estables:
+  - `components/unsorted/analyze-form.tsx`
+  - `models/workflow/fiscal-read-api.ts`
+  - `models/workflow/transaction-read-api.ts`
+  - `models/fiscal/legal-archive.ts`
+  - `models/organizations.ts`
+- el build ya no depende de `eslint.ignoreDuringBuilds`
+- el tipado propio ya no depende de `allowJs`
+
+Deuda residual aceptada al cerrar:
+- `skipLibCheck` sigue activo hasta resolver ruido de:
+  - dependencias externas
+  - `.next/types`
+  - `.next.localdeploy/types`
+- `verify:critical` completo sigue exigiendo runtime local levantado y Docker/Colima disponibles

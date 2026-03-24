@@ -29,29 +29,31 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
     setUploadError("")
   }, [])
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
 
-    // Check if the dragged items are files
-    const items = e.dataTransfer.items
-    if (!items) return
+      const items = e.dataTransfer.items
+      if (!items) return
 
-    let hasFiles = false
-    for (const item of items) {
-      if (item.kind === "file") {
-        hasFiles = true
-        break
+      let hasFiles = false
+      for (const item of items) {
+        if (item.kind === "file") {
+          hasFiles = true
+          break
+        }
       }
-    }
-    if (!hasFiles) return
+      if (!hasFiles) return
 
-    dragCounter.current++
-    if (dragCounter.current === 1) {
-      dismissUploadError()
-      setIsDragging(true)
-    }
-  }
+      dragCounter.current++
+      if (dragCounter.current === 1) {
+        dismissUploadError()
+        setIsDragging(true)
+      }
+    },
+    [dismissUploadError]
+  )
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -130,7 +132,7 @@ export default function ScreenDropArea({ children }: { children: React.ReactNode
       window.removeEventListener("blur", resetDragState)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [handleDrop, resetDragState])
+  }, [handleDragEnter, handleDrop, resetDragState])
 
   useEffect(() => {
     if (!uploadError) {
