@@ -51,13 +51,6 @@ export type OrganizationStoreTransaction = {
         defaultOrganizationId: string
       }
     }) => Promise<unknown>
-    create: (args: {
-      data: {
-        email: string
-        name: string
-        defaultOrganizationId: string
-      }
-    }) => Promise<OrganizationLookupUser>
   }
   organization: {
     findUnique: (args: {

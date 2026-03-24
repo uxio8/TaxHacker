@@ -64,7 +64,8 @@ export function CreateOrganizationForm() {
       <div className="space-y-1">
         <h3 className="text-sm font-semibold text-slate-900">Crear empresa</h3>
         <p className="text-sm text-muted-foreground">
-          Alta rápida desde superadmin. El owner queda creado y asignado al momento con el email indicado.
+          Alta rápida desde superadmin. Si el owner ya existe se asigna al momento; si no, se deja invitación
+          pendiente.
         </p>
       </div>
 

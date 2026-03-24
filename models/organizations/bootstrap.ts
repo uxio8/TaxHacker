@@ -30,17 +30,6 @@ export function buildDefaultOrganizationName(user: {
   return "Organization"
 }
 
-export function buildDefaultUserNameFromEmail(email: string) {
-  const normalizedEmail = email.trim().toLowerCase()
-  const [localPart] = normalizedEmail.split("@")
-
-  if (localPart?.trim()) {
-    return localPart.trim()
-  }
-
-  return normalizedEmail || "Owner"
-}
-
 export async function getDefaultOrganizationForUser(userId: string, store?: OrganizationStore) {
   const db = await resolveStore(store)
   const user = await db.user.findUnique({
