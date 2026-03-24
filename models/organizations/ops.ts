@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto"
 
 import { createOrganizationInvitation } from "../invitations.ts"
 import type { Role } from "../../prisma/client/index.js"
-import { buildDefaultUserNameFromEmail } from "./bootstrap.ts"
 import { normalizeInitialUsers, resolveStore } from "./runtime.ts"
 import type {
   CreateOrganizationForOpsInput,
@@ -59,40 +58,6 @@ async function provisionOrganizationAccess(
       type: "existing_user",
       userId: user.id,
       email: user.email,
-      role: input.role,
-    }
-  }
-
-  if (input.role === "owner") {
-    const createdUser = await options.store.user.create({
-      data: {
-        email: normalizedEmail,
-        name: buildDefaultUserNameFromEmail(normalizedEmail),
-        defaultOrganizationId: input.organizationId,
-      },
-    })
-
-    await options.store.membership.upsert({
-      where: {
-        userId_organizationId: {
-          userId: createdUser.id,
-          organizationId: input.organizationId,
-        },
-      },
-      update: {
-        role: input.role,
-      },
-      create: {
-        userId: createdUser.id,
-        organizationId: input.organizationId,
-        role: input.role,
-      },
-    })
-
-    return {
-      type: "existing_user",
-      userId: createdUser.id,
-      email: createdUser.email,
       role: input.role,
     }
   }

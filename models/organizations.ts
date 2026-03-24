@@ -3,7 +3,6 @@
 
 export {
   buildDefaultOrganizationName,
-  buildDefaultUserNameFromEmail,
   ensureDefaultOrganizationForUser,
   ensureOrganizationBootstrapForUser,
   getDefaultOrganizationForUser,

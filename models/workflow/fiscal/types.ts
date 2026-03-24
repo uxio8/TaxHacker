@@ -1,4 +1,9 @@
 import type { TaxAttention } from "../../tax-attention.ts"
+import type { AnnualHandoffPack } from "../../fiscal/annual-handoff.ts"
+import type {
+  LegalArchivePeriodDetail,
+  LegalArchivePeriodListItem,
+} from "../../fiscal/legal-archive.ts"
 import type { WorkflowReadModel } from "../contracts.ts"
 
 type BadgeVariant = "default" | "secondary" | "outline"
@@ -68,14 +73,14 @@ export type TaxLegacyWorkspaceView = {
 }
 
 export type TaxArchiveWorkflowView = {
-  periods: unknown[]
+  periods: LegalArchivePeriodListItem[]
 }
 
 export type TaxArchivePeriodWorkflowView = {
-  detail: unknown | null
+  detail: LegalArchivePeriodDetail | null
 }
 
 export type AnnualArchiveWorkflowView = {
   fiscalYear: number
-  pack: unknown
+  pack: AnnualHandoffPack
 }

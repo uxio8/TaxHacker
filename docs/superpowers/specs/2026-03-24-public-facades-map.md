@@ -43,7 +43,6 @@ Objetivo: congelar los entrypoints públicos que ya usa el repo antes de partir 
 **Entrypoints públicos estables**
 
 - `buildDefaultOrganizationName`
-- `buildDefaultUserNameFromEmail`
 - `getDefaultOrganizationForUser`
 - `getOrganizationById`
 - `ensureDefaultOrganizationForUser`
@@ -57,7 +56,7 @@ Objetivo: congelar los entrypoints públicos que ya usa el repo antes de partir 
 - bootstrap de organización por usuario
 - queries de membresías/acceso
 - provisioning de `ops`
-- helpers de invitaciones y owner bootstrap
+- helpers de invitaciones y normalización
 
 **No debe cambiar aún**
 
