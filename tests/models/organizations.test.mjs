@@ -15,6 +15,7 @@ function createStore(overrides = {}) {
     $transaction: async (callback) => callback(baseStore),
     user: {
       findUnique: async () => null,
+      create: async () => null,
       update: async () => null,
     },
     organization: {
@@ -315,13 +316,20 @@ test("createOrganizationForOps crea la empresa y asigna owner si el usuario ya e
   ])
 })
 
-test("createOrganizationForOps crea invitacion owner si el email no existe", async () => {
+test("createOrganizationForOps crea un usuario owner minimo si el email no existe", async () => {
   const calls = []
   const store = createStore({
     user: {
       findUnique: async (args) => {
         calls.push(["user.findUnique", args])
         return null
+      },
+      create: async (args) => {
+        calls.push(["user.create", args])
+        return {
+          id: "user_new_owner",
+          email: args.data.email,
+        }
       },
       update: async () => {
         throw new Error("no deberia tocar user.update")
@@ -340,19 +348,16 @@ test("createOrganizationForOps crea invitacion owner si el email no existe", asy
       },
     },
     membership: {
-      upsert: async () => {
-        throw new Error("no deberia asignar membership")
+      upsert: async (args) => {
+        calls.push(["membership.upsert", args])
+        return null
       },
       findMany: async () => [],
       findUnique: async () => null,
     },
     organizationInvitation: {
-      create: async (args) => {
-        calls.push(["organizationInvitation.create", args])
-        return {
-          id: "invite_1",
-          ...args.data,
-        }
+      create: async () => {
+        throw new Error("no deberia crear invitacion para el owner")
       },
     },
   })
@@ -366,7 +371,6 @@ test("createOrganizationForOps crea invitacion owner si el email no existe", asy
     store,
     {
       idFactory: () => "org_new",
-      tokenFactory: () => "invite-token-1",
       now: new Date("2026-03-23T00:00:00.000Z"),
     }
   )
@@ -377,9 +381,9 @@ test("createOrganizationForOps crea invitacion owner si el email no existe", asy
       name: "Tax Hacker Client",
     },
     owner: {
-      type: "invited_email",
+      type: "existing_user",
+      userId: "user_new_owner",
       email: "new-owner@example.com",
-      invitationToken: "invite-token-1",
     },
     initialUsers: [],
   })
@@ -407,16 +411,31 @@ test("createOrganizationForOps crea invitacion owner si el email no existe", asy
       },
     ],
     [
-      "organizationInvitation.create",
+      "user.create",
       {
         data: {
-          organizationId: "org_new",
           email: "new-owner@example.com",
-          emailNormalized: "new-owner@example.com",
+          name: "new-owner",
+          defaultOrganizationId: "org_new",
+        },
+      },
+    ],
+    [
+      "membership.upsert",
+      {
+        where: {
+          userId_organizationId: {
+            userId: "user_new_owner",
+            organizationId: "org_new",
+          },
+        },
+        update: {
           role: "owner",
-          token: "invite-token-1",
-          invitedByUserId: "admin_1",
-          expiresAt: new Date("2026-04-06T00:00:00.000Z"),
+        },
+        create: {
+          userId: "user_new_owner",
+          organizationId: "org_new",
+          role: "owner",
         },
       },
     ],
