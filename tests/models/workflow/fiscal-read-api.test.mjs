@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   getAnnualArchiveWorkflowView,
+  getLegacyTaxWorkspaceView,
   getTaxArchivePeriodWorkflowView,
   getTaxArchiveWorkflowView,
   getTaxWorkflowFiscalView,
@@ -163,6 +164,99 @@ test("getTaxWorkflowFiscalView unifica atención, obligaciones trimestrales y ca
     ["180", "390"]
   )
   assert.match(result.annualOverview.handoffSummary, /ítems listos o presentados/i)
+})
+
+test("getLegacyTaxWorkspaceView conserva el workspace fiscal legado sobre la misma semántica", async () => {
+  const result = await getLegacyTaxWorkspaceView(
+    {
+      organizationId: "org_1",
+      userId: "user_1",
+      ownerScopeId: "profile_1",
+      profile: createProfile(),
+    },
+    {
+      getTaxAttention: async () => ({
+        activeQuarter: {
+          href: "/tax/quarters/2026-Q1",
+          periodKey: "2026-Q1",
+          status: "review_blocked",
+        },
+        summary: {
+          blockedDocuments: 1,
+          needsReviewDocuments: 0,
+        },
+        nextAction: {
+          kind: "review_blocked",
+          href: "/tax/review",
+          moduleId: "review",
+        },
+      }),
+      loadModel303ForTenant: async () => ({
+        periodKey: "2026-Q1",
+        readiness: {
+          status: "ready",
+          label: "Listo para preparar",
+          summary: {
+            blockingDocumentCount: 0,
+            reviewDocumentCount: 0,
+            skippedDocumentCount: 0,
+          },
+        },
+      }),
+      loadModel115DraftForTenant: async () => ({
+        status: "ready",
+        period: {
+          periodKey: "2026-Q1",
+        },
+        readiness: {
+          candidate_document_count: 0,
+          included_document_count: 0,
+          blocked_document_count: 0,
+          needs_review_document_count: 0,
+          pending_document_count: 0,
+        },
+      }),
+      loadModel111ManualForTenant: async () => ({
+        status: "ready",
+        period: {
+          periodKey: "2026-Q1",
+        },
+        manual: {
+          applies: false,
+        },
+      }),
+      getCounterparties: async () => [],
+      syncFiscalObligationsForOrganization: async () => [
+        createQuarterlyObligation({
+          code: "303",
+          status: "ready_to_file",
+        }),
+        createQuarterlyObligation({
+          id: "obl_115",
+          code: "115",
+          status: "waiting_on_documents",
+          owner: "client",
+        }),
+        createQuarterlyObligation({
+          id: "obl_390",
+          code: "390",
+          fiscalYear: 2025,
+          quarter: null,
+          periodKey: "2025-Y",
+          dueDate: new Date("2026-01-30T00:00:00.000Z"),
+          owner: "advisor",
+        }),
+      ],
+    }
+  )
+
+  assert.equal(result.attention.activeQuarter?.periodKey, "2026-Q1")
+  assert.deepEqual(
+    result.obligations.map((item) => item.code),
+    ["303", "115", "111"]
+  )
+  assert.equal(result.obligations[2]?.statusLabel, "No aplica")
+  assert.equal(result.annualOverview.fiscalYear, 2025)
 })
 
 test("getTaxArchiveWorkflowView sincroniza periodos y devuelve el archivo fiscal estable", async () => {

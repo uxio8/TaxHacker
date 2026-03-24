@@ -23,6 +23,9 @@ test("tax y archive quedan cableados a la read API fiscal bajo flag", async () =
 
   assert.match(taxPageSource, /config\.workflow\.fiscalSliceEnabled/)
   assert.match(taxPageSource, /getTaxWorkflowFiscalView/)
+  assert.match(taxPageSource, /getLegacyTaxWorkspaceView/)
+  assert.doesNotMatch(taxPageSource, /function buildAnnualOverview/)
+  assert.doesNotMatch(taxPageSource, /function loadTaxWorkspaceData/)
 
   assert.match(archivePageSource, /config\.workflow\.fiscalSliceEnabled/)
   assert.match(archivePageSource, /getTaxArchiveWorkflowView/)

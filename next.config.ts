@@ -52,9 +52,6 @@ const distDir = process.env.NEXT_DIST_DIR?.trim() || undefined
 
 const nextConfig: NextConfig = {
   distDir,
-  eslint: {
-    ignoreDuringBuilds: true, // TODO: make me linting again
-  },
   images: {
     unoptimized: true, // FIXME: bug on prod, images always empty, investigate later
   },

@@ -10,6 +10,8 @@ test("TransactionPage integra el panel fiscal dentro del detalle de transaccion"
   )
 
   assert.match(source, /import\s+\{\s*FiscalPanel\s*\}\s+from\s+"@\/components\/transactions\/fiscal-panel"/)
-  assert.match(source, /getTransactionFiscalBySourceTransactionId/)
+  assert.match(source, /getTransactionWorkflowDetailView/)
+  assert.match(source, /getLegacyTransactionWorkflowDetailView/)
+  assert.match(source, /loadTransactionWorkflowDetailView/)
   assert.match(source, /<FiscalPanel[\s\S]*transactionId=\{transactionId\}/)
 })

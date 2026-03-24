@@ -6,7 +6,7 @@ interface Progress {
   current: number
   total: number
   type: string
-  data: any
+  data: unknown
   createdAt: string
 }
 
@@ -60,7 +60,7 @@ export function useProgress(options: UseProgressOptions = {}) {
         }
       }
 
-      source.onerror = (error) => {
+      source.onerror = () => {
         source.close()
         setIsLoading(false)
         const err = new Error("Progress tracking failed")

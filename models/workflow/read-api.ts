@@ -16,6 +16,9 @@ import {
 import { buildDocumentWorkflowItems } from "./projectors/documents.ts"
 import { buildWorkflowReadModelFromSlices } from "./rebuild.ts"
 
+// Stable public workflow facade for generic attention/readiness adapters. Keep callers on this
+// module even if the underlying projectors or slice-specific readers move later.
+
 function mapAttentionSurface(surface: AttentionSurface): WorkflowSurface {
   if (surface === "settings") return WORKFLOW_SURFACE.SETTINGS
   if (surface === "unsorted") return WORKFLOW_SURFACE.UNSORTED
