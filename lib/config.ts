@@ -7,6 +7,8 @@ const envSchema = z.object({
   PORT: z.string().default("7331"),
   APP_NAME: z.string().trim().default("LedgerFlow"),
   APP_DESCRIPTION: z.string().trim().default("AI workspace for receipts, invoices, and operations."),
+  APP_BUILD_SHA: z.string().trim().default("dev"),
+  APP_ENVIRONMENT: z.string().trim().default("development"),
   SUPPORT_EMAIL: z.string().trim().default("support@localhost"),
   APP_REPOSITORY_URL: z.string().trim().optional(),
   APP_ISSUES_URL: z.string().trim().optional(),
@@ -49,6 +51,17 @@ function normalizeOptionalUrl(value: string | undefined) {
   return trimmedValue ? trimmedValue : null
 }
 
+export function createReleaseMetadata(envInput: NodeJS.ProcessEnv = process.env) {
+  const buildSha = envInput.APP_BUILD_SHA?.trim() || "dev"
+  const environment = envInput.APP_ENVIRONMENT?.trim() || "development"
+
+  return {
+    version: envInput.npm_package_version || "0.0.1",
+    buildSha,
+    environment,
+  } as const
+}
+
 export function createConfig(envInput: NodeJS.ProcessEnv = process.env) {
   const env = envSchema.parse(envInput)
   const appTitle = env.APP_NAME || "LedgerFlow"
@@ -61,7 +74,7 @@ export function createConfig(envInput: NodeJS.ProcessEnv = process.env) {
       slug: appSlug,
       description: appDescription,
       demoCompanyName: `${appTitle} Demo SL`,
-      version: envInput.npm_package_version || "0.0.1",
+      ...createReleaseMetadata(envInput),
       baseURL: env.BASE_URL || `http://localhost:${env.PORT || "7331"}`,
       supportEmail: env.SUPPORT_EMAIL,
     },
