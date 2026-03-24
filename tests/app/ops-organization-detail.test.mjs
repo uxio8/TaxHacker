@@ -23,3 +23,10 @@ test("ops tiene ficha detallada por organización y navegación desde el listado
   assert.match(shellSource, /OrganizationHealthCard/)
   assert.match(shellSource, /OrganizationSupportCard/)
 })
+
+test("la ficha de organización expone acceso rápido para entrar como owner cuando existe", async () => {
+  const supportCardSource = await readProjectFile("components/ops/organization-support-card.tsx")
+
+  assert.match(supportCardSource, /Entrar como owner/)
+  assert.match(supportCardSource, /startOwnerImpersonationAction/)
+})

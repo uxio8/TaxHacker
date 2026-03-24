@@ -140,6 +140,7 @@ export async function upsertMembership(
 
 type OrganizationMemberRecord = MembershipRecord & {
   user: {
+    id?: string
     email: string | null
     name: string | null
   } | null
@@ -158,6 +159,31 @@ export async function listMembersByOrganizationId(organizationId: string, store?
       role: true,
       user: {
         select: {
+          email: true,
+          name: true,
+        },
+      },
+    },
+  })) as OrganizationMemberRecord[]
+}
+
+export async function listOwnerMembersByOrganizationId(organizationId: string, store?: MembershipStore) {
+  const db = await resolveStore(store)
+
+  return (await db.membership.findMany({
+    where: {
+      organizationId,
+      role: MEMBERSHIP_ROLE.OWNER,
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      userId: true,
+      organizationId: true,
+      role: true,
+      user: {
+        select: {
+          id: true,
           email: true,
           name: true,
         },

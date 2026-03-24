@@ -5,6 +5,7 @@ import {
   deleteMembership,
   getMembershipByUserAndOrganization,
   listMembersByOrganizationId,
+  listOwnerMembersByOrganizationId,
   listMembershipUserNamespacesByOrganizationId,
   listMembershipsByUserId,
   setMembershipRole,
@@ -116,6 +117,66 @@ test("listMembersByOrganizationId devuelve miembros con identidad y rol", async 
       organizationId: "org_1",
       role: "owner",
       user: {
+        email: "owner@example.com",
+        name: "Owner",
+      },
+    },
+  ])
+})
+
+test("listOwnerMembersByOrganizationId devuelve solo personas owner con identidad", async () => {
+  const owners = await listOwnerMembersByOrganizationId("org_1", createStore({
+    membership: {
+      findUnique: async () => null,
+      upsert: async () => null,
+      deleteMany: async () => ({ count: 0 }),
+      findMany: async (args) => {
+        assert.deepEqual(args, {
+          where: {
+            organizationId: "org_1",
+            role: "owner",
+          },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            userId: true,
+            organizationId: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        })
+
+        return [
+          {
+            id: "membership_owner_1",
+            userId: "user_owner_1",
+            organizationId: "org_1",
+            role: "owner",
+            user: {
+              id: "user_owner_1",
+              email: "owner@example.com",
+              name: "Owner",
+            },
+          },
+        ]
+      },
+    },
+  }))
+
+  assert.deepEqual(owners, [
+    {
+      id: "membership_owner_1",
+      userId: "user_owner_1",
+      organizationId: "org_1",
+      role: "owner",
+      user: {
+        id: "user_owner_1",
         email: "owner@example.com",
         name: "Owner",
       },

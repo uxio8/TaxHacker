@@ -42,3 +42,15 @@ test("ops expone un formulario para crear empresas desde superadmin", async () =
   assert.doesNotMatch(createFormSource, /CardTitle/)
   assert.match(actionsSource, /redirect\(`\/ops\/organizations\/\$\{created\.organization\.id\}`\)/)
 })
+
+test("ops expone una acción rápida para entrar como owner de la empresa", async () => {
+  const [opsPageSource, actionsSource] = await Promise.all([
+    readProjectFile("app/(app)/ops/page.tsx"),
+    readProjectFile("app/(app)/ops/actions.ts"),
+  ])
+
+  assert.match(opsPageSource, /Entrar como owner/)
+  assert.match(opsPageSource, /startOwnerImpersonationAction/)
+  assert.match(actionsSource, /export async function startOwnerImpersonationAction/)
+  assert.match(actionsSource, /listOwnerMembersByOrganizationId/)
+})

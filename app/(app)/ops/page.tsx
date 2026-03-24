@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { createPageMetadata } from "@/lib/i18n"
+import { MEMBERSHIP_ROLE } from "@/lib/membership-roles"
 import { getCurrentUser } from "@/lib/auth"
 import { formatBytes, formatNumber } from "@/lib/utils"
 import { listRecentPlatformAuditLogs } from "@/models/platform-audit"
@@ -28,6 +29,7 @@ import {
   revokeSupportAccessSessionAction,
   setOrganizationAccessOverrideAction,
   startImpersonationAction,
+  startOwnerImpersonationAction,
 } from "./actions"
 
 export const metadata = createPageMetadata("common.settings")
@@ -153,6 +155,8 @@ export default async function OpsPage({
               {organizations.map((organization: OpsOrganizationRow) => {
                 const storageUsage =
                   organization.usageRecords.find((row) => row.metricKey === "storage.bytes")?.quantity ?? 0
+                const ownerMemberships = organization.memberships.filter((membership) => membership.role === MEMBERSHIP_ROLE.OWNER)
+                const soleOwner = ownerMemberships.length === 1 ? ownerMemberships[0] : null
 
                 return (
                   <TableRow key={organization.id}>
@@ -192,6 +196,19 @@ export default async function OpsPage({
                         <p className="text-sm font-medium">{formatNumber(organization.memberships.length)}</p>
                         {organization.hasUnsortedBacklog ? (
                           <p className="text-xs text-muted-foreground">Hay revisión pendiente</p>
+                        ) : null}
+                        {soleOwner ? (
+                          <form action={startOwnerImpersonationAction} className="flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="organizationId" value={organization.id} />
+                            <input type="hidden" name="returnTo" value={`/ops/organizations/${organization.id}`} />
+                            <input type="hidden" name="durationHours" value="1" />
+                            <Button type="submit" size="sm">
+                              Entrar como owner
+                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                              {soleOwner.user?.name || soleOwner.user?.email || soleOwner.userId}
+                            </p>
+                          </form>
                         ) : null}
                         {organization.memberships.length > 0 ? (
                           <form action={startImpersonationAction} className="flex flex-wrap gap-2">

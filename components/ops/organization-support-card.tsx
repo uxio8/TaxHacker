@@ -2,10 +2,11 @@ import {
   createSupportAccessSessionFromOpsDetailAction,
   revokeSupportAccessSessionFromOpsDetailAction,
 } from "@/app/(app)/ops/organizations/[organizationId]/actions"
-import { startImpersonationAction } from "@/app/(app)/ops/actions"
+import { startImpersonationAction, startOwnerImpersonationAction } from "@/app/(app)/ops/actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { MEMBERSHIP_ROLE } from "@/lib/membership-roles"
 
 type OrganizationSupportCardProps = {
   organizationId: string
@@ -70,6 +71,9 @@ export function OrganizationSupportCard({
   members,
   support,
 }: OrganizationSupportCardProps) {
+  const ownerMembers = members.filter((member) => member.role === MEMBERSHIP_ROLE.OWNER)
+  const soleOwner = ownerMembers.length === 1 ? ownerMembers[0] : null
+
   return (
     <Card className="shadow-sm">
       <CardHeader>
@@ -97,6 +101,23 @@ export function OrganizationSupportCard({
             Abrir soporte
           </Button>
         </form>
+
+        {soleOwner ? (
+          <form action={startOwnerImpersonationAction} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4">
+            <div className="space-y-1">
+              <p className="font-medium">Entrar como owner</p>
+              <p className="text-sm text-muted-foreground">
+                Acceso rápido temporal como {soleOwner.user?.name || soleOwner.user?.email || soleOwner.userId}.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="organizationId" value={organizationId} />
+              <input type="hidden" name="returnTo" value={`/ops/organizations/${organizationId}`} />
+              <input type="hidden" name="durationHours" value="1" />
+              <Button type="submit">Entrar como owner</Button>
+            </div>
+          </form>
+        ) : null}
 
         {members.length > 0 ? (
           <form action={startImpersonationAction} className="grid gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-[minmax(0,1fr)_140px_1fr_auto]">

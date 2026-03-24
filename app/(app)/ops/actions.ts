@@ -14,7 +14,7 @@ import { redirect } from "next/navigation"
 
 import { createPlatformAuditLog } from "@/models/platform-audit"
 import { canAccessPlatformOps, listPlatformRolesForUser, PLATFORM_ROLE } from "@/models/platform-admins"
-import { getMembershipByUserAndOrganization } from "@/models/memberships"
+import { getMembershipByUserAndOrganization, listOwnerMembersByOrganizationId } from "@/models/memberships"
 import { setOrganizationAccessOverride } from "@/models/ops"
 import { createOrganizationForOps } from "@/models/organizations"
 import {
@@ -75,6 +75,83 @@ function canStartReadWriteImpersonation(roles: string[]) {
 
 function isInitialUserRole(value: string): value is typeof MEMBERSHIP_ROLE.ADMIN | typeof MEMBERSHIP_ROLE.MEMBER {
   return value === MEMBERSHIP_ROLE.ADMIN || value === MEMBERSHIP_ROLE.MEMBER
+}
+
+async function startImpersonationSession(input: {
+  actorUserId: string
+  actorRoles: string[]
+  organizationId: string
+  assumedUserId: string
+  reason: string
+  requestedMode: "read_only" | "read_write"
+  durationHours: number
+  returnTo: string
+}) {
+  if (!canStartReadOnlyImpersonation(input.actorRoles)) {
+    throw new Error("No tienes permisos para iniciar impersonación")
+  }
+
+  if (input.requestedMode === "read_write" && !canStartReadWriteImpersonation(input.actorRoles)) {
+    throw new Error("No tienes permisos para impersonación con escritura")
+  }
+
+  const targetMembership = await getMembershipByUserAndOrganization(input.assumedUserId, input.organizationId)
+
+  if (!targetMembership) {
+    throw new Error("El usuario objetivo ya no pertenece a la organización")
+  }
+
+  const mode = input.requestedMode === "read_write" && canStartReadWriteImpersonation(input.actorRoles)
+    ? "read_write"
+    : "read_only"
+  const durationHours = Math.max(input.durationHours, 1)
+  const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000)
+
+  const session = await createSupportAccessSession({
+    organizationId: input.organizationId,
+    userId: input.actorUserId,
+    assumedUserId: input.assumedUserId,
+    mode,
+    reason: input.reason,
+    expiresAt,
+  })
+
+  const cookieStore = await cookies()
+  cookieStore.set(
+    PLATFORM_IMPERSONATION_COOKIE_NAME,
+    await buildPlatformImpersonationCookieValue(
+      {
+        actorUserId: input.actorUserId,
+        sessionId: session.id,
+      },
+      config.auth.secret
+    ),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: config.app.baseURL.startsWith("https://"),
+      path: "/",
+      maxAge: durationHours * 60 * 60,
+    }
+  )
+
+  await createPlatformAuditLog({
+    action: "support_impersonation.started",
+    actorUserId: input.actorUserId,
+    targetUserId: input.assumedUserId,
+    organizationId: input.organizationId,
+    reason: input.reason,
+    payload: {
+      sessionId: session.id,
+      mode,
+      expiresAt: expiresAt.toISOString(),
+      returnTo: input.returnTo,
+    },
+  })
+
+  revalidatePath("/ops")
+  revalidatePath("/")
+  redirect(input.returnTo)
 }
 
 export async function createOrganizationFromOpsAction(
@@ -292,70 +369,49 @@ export async function startImpersonationAction(formData: FormData) {
     throw new Error("Faltan organización o usuario objetivo")
   }
 
-  if (!canStartReadOnlyImpersonation(roles)) {
-    throw new Error("No tienes permisos para iniciar impersonación")
-  }
-
-  if (requestedMode === "read_write" && !canStartReadWriteImpersonation(roles)) {
-    throw new Error("No tienes permisos para impersonación con escritura")
-  }
-
-  const targetMembership = await getMembershipByUserAndOrganization(assumedUserId, organizationId)
-
-  if (!targetMembership) {
-    throw new Error("El usuario objetivo ya no pertenece a la organización")
-  }
-
-  const mode = requestedMode === "read_write" && canStartReadWriteImpersonation(roles)
-    ? "read_write"
-    : "read_only"
-  const expiresAt = new Date(Date.now() + Math.max(durationHours, 1) * 60 * 60 * 1000)
-
-  const session = await createSupportAccessSession({
-    organizationId,
-    userId: user.id,
-    assumedUserId,
-    mode,
-    reason,
-    expiresAt,
-  })
-
-  const cookieStore = await cookies()
-  cookieStore.set(
-    PLATFORM_IMPERSONATION_COOKIE_NAME,
-    await buildPlatformImpersonationCookieValue(
-      {
-        actorUserId: user.id,
-        sessionId: session.id,
-      },
-      config.auth.secret
-    ),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: config.app.baseURL.startsWith("https://"),
-      path: "/",
-      maxAge: Math.max(durationHours, 1) * 60 * 60,
-    }
-  )
-
-  await createPlatformAuditLog({
-    action: "support_impersonation.started",
+  await startImpersonationSession({
     actorUserId: user.id,
-    targetUserId: assumedUserId,
+    actorRoles: roles,
     organizationId,
+    assumedUserId,
     reason,
-    payload: {
-      sessionId: session.id,
-      mode,
-      expiresAt: expiresAt.toISOString(),
-      returnTo,
-    },
+    requestedMode,
+    durationHours,
+    returnTo,
   })
+}
 
-  revalidatePath("/ops")
-  revalidatePath("/")
-  redirect(returnTo)
+export async function startOwnerImpersonationAction(formData: FormData) {
+  const { user, roles } = await requireOpsActor()
+  const organizationId = readString(formData, "organizationId")
+  const returnTo = getSafeReturnPath(readString(formData, "returnTo") || "/dashboard")
+  const reason = readString(formData, "reason") || "Impersonación temporal como owner desde Ops"
+  const durationHours = Number(readString(formData, "durationHours") || "1")
+
+  if (!organizationId) {
+    throw new Error("Falta la organización")
+  }
+
+  const ownerMembers = await listOwnerMembersByOrganizationId(organizationId)
+
+  if (ownerMembers.length === 0) {
+    throw new Error("La empresa todavía no tiene una persona owner activa")
+  }
+
+  if (ownerMembers.length > 1) {
+    throw new Error("La empresa tiene varias personas owner; usa la impersonación manual")
+  }
+
+  await startImpersonationSession({
+    actorUserId: user.id,
+    actorRoles: roles,
+    organizationId,
+    assumedUserId: ownerMembers[0]!.userId,
+    reason,
+    requestedMode: "read_write",
+    durationHours,
+    returnTo,
+  })
 }
 
 export async function stopImpersonationAction(formData?: FormData) {
