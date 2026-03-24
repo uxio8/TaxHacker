@@ -1,5 +1,5 @@
 import { canAnalyzeFileMimeType, getAnalyzeMimeTypeError } from "../lib/analysis-support.ts"
-import { getMobileConfidence, readMobileTriageMetadata } from "../lib/mobile-triage.ts"
+import { getMobileConfidence, readMobileTriageMetadata } from "../lib/mobile-triage-shared.ts"
 
 export const UNSORTED_INBOX_STATE = {
   PENDING_ANALYSIS: "pending_analysis",
@@ -31,6 +31,8 @@ export type UnsortedPrimaryAction =
 export type UnsortedInboxSummary = {
   id: string
   state: UnsortedInboxState
+  reasonCode: string | null
+  confidenceCode: "high" | "medium" | "low" | null
   stateLabel: string
   description: string
   reasonLabel: string | null
@@ -99,6 +101,18 @@ function getConfidenceLabel(confidence: string | null) {
   return null
 }
 
+function normalizeReasonCode(reasonCode?: string | null) {
+  return reasonCode ?? null
+}
+
+function normalizeConfidenceCode(confidence: string | null) {
+  if (confidence === "high" || confidence === "medium" || confidence === "low") {
+    return confidence
+  }
+
+  return null
+}
+
 export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInboxSummary {
   const mobileTriage = readMobileTriageMetadata(input.file.metadata)
   const analyzable = canAnalyzeFileMimeType(input.file.mimetype)
@@ -109,6 +123,8 @@ export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInb
     return {
       id: input.file.id,
       state: UNSORTED_INBOX_STATE.DEFERRED_TO_DESKTOP,
+      reasonCode: normalizeReasonCode(mobileTriage.reasonCode),
+      confidenceCode: normalizeConfidenceCode(confidence),
       stateLabel: "Pendiente de escritorio",
       description: "Este documento llegó desde móvil y necesita terminar la revisión aquí.",
       reasonLabel: getReasonLabel(mobileTriage.reasonCode),
@@ -127,6 +143,8 @@ export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInb
     return {
       id: input.file.id,
       state: UNSORTED_INBOX_STATE.MANUAL_REVIEW,
+      reasonCode: "unsupported_type",
+      confidenceCode: null,
       stateLabel: "Revisión manual",
       description: getAnalyzeMimeTypeError(input.file.mimetype),
       reasonLabel: null,
@@ -145,6 +163,8 @@ export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInb
     return {
       id: input.file.id,
       state: UNSORTED_INBOX_STATE.NEEDS_SETUP,
+      reasonCode: "llm_not_configured",
+      confidenceCode: null,
       stateLabel: "Falta configurar IA",
       description: "Antes de analizar este documento tienes que activar un proveedor de IA.",
       reasonLabel: null,
@@ -164,6 +184,8 @@ export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInb
     return {
       id: input.file.id,
       state: UNSORTED_INBOX_STATE.READY_TO_REVIEW,
+      reasonCode: null,
+      confidenceCode: normalizeConfidenceCode(confidence),
       stateLabel: "Listo para revisar",
       description: "Ya hay un borrador. Revisa lo crítico y guarda la transacción cuando toque.",
       reasonLabel: null,
@@ -181,6 +203,8 @@ export function buildUnsortedInboxSummary(input: BuildSummaryInput): UnsortedInb
   return {
     id: input.file.id,
     state: UNSORTED_INBOX_STATE.PENDING_ANALYSIS,
+    reasonCode: null,
+    confidenceCode: null,
     stateLabel: "Pendiente de análisis",
     description: "Todavía no hay borrador. Lanza el análisis para empezar a revisar.",
     reasonLabel: null,

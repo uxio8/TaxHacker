@@ -25,6 +25,8 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
   - `docs/superpowers/plans/2026-03-23-guided-user-experience-plan.md`
 - Plan maestro siguiente para producto fiscal S.L. española:
   - `docs/superpowers/plans/2026-03-23-spanish-sl-fiscal-control-tower-plan.md`
+- Plan técnico siguiente para motor de flujo `human-first` y `agent-ready`:
+  - `docs/superpowers/plans/2026-03-23-human-first-workflow-engine-plan.md`
 - Expansión del control plane `/ops` cerrada:
   - spec de alcance:
     - `docs/superpowers/specs/2026-03-23-ops-control-plane-scope.md`
@@ -1218,3 +1220,58 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
     - no rehacer Stripe ni pricing
     - no convertir `/ops` en editor genérico de datos de tenant
     - no tocar de nuevo el contrato multitenant base
+- Motor workflow human-first ejecutado en esta sesión:
+  - contrato semántico y specs base ya fijados en:
+    - `docs/superpowers/specs/2026-03-23-human-first-workflow-engine-contract.md`
+    - `docs/superpowers/specs/2026-03-23-period-closure-posture-contract.md`
+    - `docs/superpowers/specs/2026-03-23-workflow-read-api-contract.md`
+  - núcleo workflow ya introducido sin persistencia nueva:
+    - `models/workflow/contracts.ts`
+    - `models/workflow/read-api.ts`
+    - `models/workflow/period-closure.ts`
+    - `models/workflow/rebuild.ts`
+    - projectors puros en `models/workflow/projectors/*`
+  - slices ya migrados bajo flag con fallback legacy intacto:
+    - documental:
+      - `WORKFLOW_DOCUMENT_SLICE`
+      - `dashboard`, `unsorted`, `capture/inbox`
+    - fiscal:
+      - `WORKFLOW_FISCAL_SLICE`
+      - `tax`, `tax/archive`, `tax/archive/[periodId]`, `tax/archive/annual`
+    - libro:
+      - `WORKFLOW_TRANSACTIONS_SLICE`
+      - `/transactions`
+      - `/transactions/[transactionId]`
+  - read APIs estables ya expuestas:
+    - `models/workflow/document-read-api.ts`
+    - `models/workflow/fiscal-read-api.ts`
+    - `models/workflow/transaction-read-api.ts`
+  - capa interna de flags y parity ya añadida:
+    - `models/workflow/flags.ts`
+    - `models/workflow/metrics.ts`
+    - `tests/models/workflow/parity.test.mjs`
+  - capa `portfolio-ready` ya disponible sin abrir UX multiempresa:
+    - `models/workflow/portfolio-projections.ts`
+    - `tests/models/workflow/portfolio-projections.test.mjs`
+  - cleanup legacy final aplicado solo donde la paridad ya estaba demostrada:
+    - `models/attention.ts`
+    - `models/attention-runtime.ts`
+    - `lib/mobile-triage.ts`
+    - `lib/mobile-triage-shared.ts`
+  - cleanup evitado donde aún no hacía falta para cerrar el plan:
+    - `models/mobile/inbox.ts`
+    - `models/tax-attention.ts`
+  - tesis aplicada en implementación:
+    - `semantic workflow now`
+    - `stable read API now`
+    - `vertical slices now`
+    - sin `WorkItem` materializado
+    - sin `DomainEvent`
+    - sin `WorkflowJob`
+  - verificación fresca del bloque workflow:
+    - tests workflow/document/fiscal/transactions/portfolio/parity: OK
+    - tests de atención y triage móvil: OK
+    - `eslint` del write set: OK
+    - `npm run build`: OK
+    - `npx tsc --noEmit --pretty false`: OK
+    - `npx playwright test tests/e2e/fiscal-obligations-smoke.spec.ts tests/e2e/fiscal-collaboration-smoke.spec.ts`: OK

@@ -11,11 +11,13 @@ test("/capture usa una entrada server-first y monta el uploader movil", async ()
   assert.match(source, /capture\.hero\.title/)
 })
 
-test("/capture/inbox consume GET \\/api\\/mobile\\/inbox y delega el render al inbox movil", async () => {
+test("/capture/inbox mantiene fallback legado pero queda preparado para el reader del slice documental bajo flag", async () => {
   const source = await readFile(path.resolve(process.cwd(), "app/(app)/capture/inbox/page.tsx"), "utf8")
 
+  assert.match(source, /config\.workflow\.documentSliceEnabled/)
+  assert.match(source, /getCaptureWorkflowInboxView/)
   assert.match(source, /fetch\(`\$\{config\.app\.baseURL\}\/api\/mobile\/inbox`/)
-  assert.match(source, /cookie/)
+  assert.match(source, /buildOrganizationActionUser/)
   assert.match(source, /MobileInbox/)
 })
 

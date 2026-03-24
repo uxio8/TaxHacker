@@ -14,7 +14,7 @@ import { FormInput, FormTextarea } from "@/components/forms/simple"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { buildAnalyzeFormState } from "@/components/unsorted/analyze-form-state"
-import type { UnsortedInboxSummary } from "@/models/unsorted-inbox"
+import { buildUnsortedInboxSummary, type UnsortedInboxSummary } from "@/models/unsorted-inbox"
 import { getAnalyzedDocumentTitle } from "@/lib/analyzed-file-name"
 import { useI18n, type Translator } from "@/lib/i18n"
 import { Category, Currency, Field, File, Project } from "@/prisma/client"
@@ -101,9 +101,27 @@ export default function AnalyzeForm({
       }),
     [file.filename, settings, extraFields, file.cachedParseResult]
   )
+  const [localCachedParseResult, setLocalCachedParseResult] = useState<Record<string, unknown> | null>(() =>
+    isRecord(file.cachedParseResult) ? file.cachedParseResult : null
+  )
   const [formData, setFormData] = useState(initialFormState)
   const [isDetailsOpen, setIsDetailsOpen] = useState(summary.defaultDetailsOpen)
-  const showHeaderDeleteAction = summary.state === "pending_analysis"
+  const effectiveSummary = useMemo(
+    () =>
+      buildUnsortedInboxSummary({
+        file: {
+          id: file.id,
+          filename: file.filename,
+          mimetype: file.mimetype,
+          metadata: file.metadata,
+          cachedParseResult: localCachedParseResult,
+          isSplitted: file.isSplitted,
+        },
+        llmConfigured: summary.primaryAction.kind !== "open_settings",
+      }),
+    [file.id, file.filename, file.isSplitted, file.metadata, file.mimetype, localCachedParseResult, summary.primaryAction.kind]
+  )
+  const showHeaderDeleteAction = effectiveSummary.state === "pending_analysis"
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -178,6 +196,10 @@ export default function AnalyzeForm({
         const nonEmptyFields = Object.fromEntries(
           Object.entries(output).filter(([, value]) => value !== null && value !== undefined && value !== "")
         )
+        setLocalCachedParseResult((prev) => ({
+          ...(prev ?? {}),
+          ...nonEmptyFields,
+        }))
         setFormData((prev) => ({
           ...prev,
           ...nonEmptyFields,
@@ -201,12 +223,12 @@ export default function AnalyzeForm({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{summary.stateLabel}</Badge>
-              {summary.reasonLabel ? <Badge variant="secondary">{summary.reasonLabel}</Badge> : null}
-              {summary.confidenceLabel ? <Badge variant="secondary">{summary.confidenceLabel}</Badge> : null}
+              <Badge variant="outline">{effectiveSummary.stateLabel}</Badge>
+              {effectiveSummary.reasonLabel ? <Badge variant="secondary">{effectiveSummary.reasonLabel}</Badge> : null}
+              {effectiveSummary.confidenceLabel ? <Badge variant="secondary">{effectiveSummary.confidenceLabel}</Badge> : null}
               {file.isSplitted ? <Badge variant="outline">{t("analysis.fileSplit")}</Badge> : null}
             </div>
-            <p className="text-sm text-muted-foreground">{summary.description}</p>
+            <p className="text-sm text-muted-foreground">{effectiveSummary.description}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -217,7 +239,7 @@ export default function AnalyzeForm({
               </Button>
             ) : null}
 
-            {summary.primaryAction.kind === "analyze" ? (
+            {effectiveSummary.primaryAction.kind === "analyze" ? (
               <Button onClick={startAnalyze} disabled={isAnalyzing} data-analyze-button>
                 {isAnalyzing ? (
                   <>
@@ -227,25 +249,25 @@ export default function AnalyzeForm({
                 ) : (
                   <>
                     <Brain className="mr-1 h-4 w-4" />
-                    <span>{summary.primaryAction.label}</span>
+                    <span>{effectiveSummary.primaryAction.label}</span>
                   </>
                 )}
               </Button>
             ) : null}
 
-            {summary.primaryAction.kind === "open_settings" ? (
+            {effectiveSummary.primaryAction.kind === "open_settings" ? (
               <Button asChild>
-                <Link href={summary.primaryAction.href}>
+                <Link href={effectiveSummary.primaryAction.href}>
                   <Settings className="mr-1 h-4 w-4" />
-                  <span>{summary.primaryAction.label}</span>
+                  <span>{effectiveSummary.primaryAction.label}</span>
                 </Link>
               </Button>
             ) : null}
 
-            {summary.primaryAction.kind === "open_details" ? (
+            {effectiveSummary.primaryAction.kind === "open_details" ? (
               <Button type="button" variant="outline" onClick={() => setIsDetailsOpen((currentState) => !currentState)}>
                 {isDetailsOpen ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
-                <span>{isDetailsOpen ? "Ocultar detalles" : summary.primaryAction.label}</span>
+                <span>{isDetailsOpen ? "Ocultar detalles" : effectiveSummary.primaryAction.label}</span>
               </Button>
             ) : null}
           </div>
@@ -494,6 +516,10 @@ export default function AnalyzeForm({
       </form>
     </>
   )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
 }
 
 function getAnalyzeStepLabel(status: string, t: Translator) {

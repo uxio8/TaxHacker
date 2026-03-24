@@ -4,12 +4,14 @@ import { FiscalStorageNotReady } from "@/components/tax/fiscal-storage-not-ready
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
+import config from "@/lib/config"
 import { createPageMetadata, createTranslator } from "@/lib/i18n"
 import { requireCurrentOrganizationId } from "@/lib/tenant"
 import { listLegalArchivePeriods } from "@/models/fiscal/legal-archive"
 import { syncDefaultSpanishFiscalPeriodsV1 } from "@/models/fiscal/periods"
 import { getFiscalProfileAccessByOrganizationId } from "@/models/fiscal/profile"
 import { isFiscalStorageNotReadyError } from "@/models/fiscal/storage"
+import { getTaxArchiveWorkflowView } from "@/models/workflow/fiscal-read-api"
 import Link from "next/link"
 
 export const metadata = createPageMetadata("tax.archive.meta.title", {
@@ -71,8 +73,16 @@ export default async function TaxArchivePage() {
   let periods
 
   try {
-    await syncDefaultSpanishFiscalPeriodsV1(fiscalProfileAccess.profile.id)
-    periods = await listLegalArchivePeriods(fiscalProfileAccess.profile.id, organizationId)
+    if (config.workflow.fiscalSliceEnabled) {
+      const workflowView = await getTaxArchiveWorkflowView({
+        organizationId,
+        ownerScopeId: fiscalProfileAccess.profile.id,
+      })
+      periods = workflowView.periods
+    } else {
+      await syncDefaultSpanishFiscalPeriodsV1(fiscalProfileAccess.profile.id)
+      periods = await listLegalArchivePeriods(fiscalProfileAccess.profile.id, organizationId)
+    }
   } catch (error) {
     if (isFiscalStorageNotReadyError(error)) {
       return (
