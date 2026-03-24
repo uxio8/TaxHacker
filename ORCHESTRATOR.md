@@ -35,6 +35,17 @@ Resumen vivo del repositorio `taxhacker`. Este archivo existe para sobrevivir a 
   - `release MVP` mínimo y observable
   - plan: `docs/superpowers/plans/2026-03-24-release-mvp-discipline-plan.md`
   - runbook: `docs/superpowers/specs/2026-03-24-release-mvp-runbook.md`
+  - alcance deliberadamente mínimo:
+    - imagen por `sha`
+    - metadata de release visible por endpoint
+    - CI rápida obligatoria en PR
+    - runbook de deploy manual por `sha`
+    - check post-deploy mínimo
+  - fuera de este frente:
+    - deploy automático
+    - staging formal
+    - rollback automático
+    - Playwright pesado bloqueando PRs
 - Estado actual del refactor compatibility-first:
   - harness crítico y reglas de frontera ya añadidos en `tests/critical/*` y `tests/architecture/*`
   - fachadas públicas ya congeladas en:
